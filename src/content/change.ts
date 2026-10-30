@@ -106,7 +106,7 @@ export const CHANGE: Article[] = [
       { ul: ['One action per step. Name the exact device by tag.', 'Every step says what you should see afterward.', 'Hold points before any irreversible or high-risk step.', 'A back-out section for every stage, not just the end.'] },
       { h: 'Close-out' },
       { ul: ['Return-to-normal steps, verification readings, alarm check.', 'Sign-offs and document updates.'] },
-      { callout: 'Try it: the UPS maintenance bypass walkthrough in the Learn tab follows a real MOP structure, and the simulator checks every step.', title: 'Practice' },
+      { callout: 'Try it: the UPS maintenance bypass walkthrough in the Learn tab follows a real MOP structure, and the Quiz tab has a Change management section.', title: 'Practice' },
     ],
   },
   {
@@ -141,14 +141,4 @@ export const CHANGE: Article[] = [
       ] },
     ],
   },
-];
-
-/** "Is this a change?" practice questions. */
-export const CHANGE_QUIZ: { q: string; answer: boolean; why: string }[] = [
-  { q: 'Replacing a CRAH filter with the same filter type, using the standard procedure.', answer: false, why: 'Replacement in kind with a pre-approved standard procedure. Still log it as a standard change if your site requires.' },
-  { q: 'Raising the chilled water supply setpoint by 2 °F to save energy.', answer: true, why: 'Setpoint changes affect capacity and ride-through. They need review, a plan, and monitoring.' },
-  { q: 'Swapping a failed breaker for a different brand with the same rating.', answer: true, why: 'Different model: trip curves, arc flash, and interlock fit may differ. Engineering must review it.' },
-  { q: 'Putting a generator controller in OFF to change its oil.', answer: true, why: 'It removes redundancy. It needs a scheduled, approved window and a return-to-auto verification.' },
-  { q: 'Adding two new GPU racks to an existing row.', answer: true, why: 'Adds power and cooling load. Capacity, redundancy, and branch circuit loading must be checked.' },
-  { q: 'Updating UPS firmware during the weekly maintenance window.', answer: true, why: 'Firmware changes behavior. Vendor instructions, back-out plan, and approval required.' },
 ];

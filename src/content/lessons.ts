@@ -20,17 +20,24 @@ export type SimAction =
   | { do: 'ups'; sys: string; mode: 'static-bypass' | 'auto' }
   | { do: 'maint'; id: string };
 
+export type FigureId = 'refrigeration' | 'heat-path';
+
 export interface LessonStep {
   title: string;
   body: string[];
   simpler: string;
   actions?: SimAction[];
   focus?: string;
+  /** Show an animated figure, optionally highlighting one part of it. */
+  figure?: { id: FigureId; highlight?: string };
 }
+
+export type LessonArea = 'electrical' | 'mechanical' | 'safety';
 
 export interface Lesson {
   id: string;
   title: string;
+  area: LessonArea;
   level: 'Beginner' | 'Intermediate';
   minutes: number;
   summary: string;
@@ -41,6 +48,7 @@ export interface Lesson {
 export const LESSONS: Lesson[] = [
   {
     id: 'power-path',
+    area: 'electrical',
     title: 'Start here: how power reaches a rack',
     level: 'Beginner',
     minutes: 4,
@@ -104,6 +112,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'utility-outage',
+    area: 'electrical',
     title: 'What happens when the utility fails',
     level: 'Beginner',
     minutes: 5,
@@ -165,6 +174,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'redundancy',
+    area: 'electrical',
     title: 'N vs N+1 vs 2N: same failure, different outcome',
     level: 'Beginner',
     minutes: 5,
@@ -211,6 +221,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'sts',
+    area: 'electrical',
     title: 'Dual-corded vs single-corded racks',
     level: 'Beginner',
     minutes: 3,
@@ -241,6 +252,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'kirk-mtm',
+    area: 'electrical',
     title: 'Kirk keys: why you can\'t close the tie',
     level: 'Intermediate',
     minutes: 5,
@@ -299,6 +311,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'ups-bypass',
+    area: 'electrical',
     title: 'UPS maintenance bypass, step by step (MOP)',
     level: 'Intermediate',
     minutes: 7,
@@ -365,6 +378,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'loto-basics',
+    area: 'safety',
     title: 'Lockout/tagout in plain English',
     level: 'Beginner',
     minutes: 3,
@@ -380,6 +394,7 @@ export const LESSONS: Lesson[] = [
   },
   {
     id: 'rounds',
+    area: 'safety',
     title: 'Your first rounds',
     level: 'Beginner',
     minutes: 4,
@@ -390,6 +405,127 @@ export const LESSONS: Lesson[] = [
       { title: 'Record readings', body: ['Write real numbers (temperatures, pressures, loads, battery voltages). A number that slowly creeps over weeks is the early warning a quick glance misses.'], simpler: 'Numbers let you spot slow changes.' },
       { title: 'Check the lineup', body: ['Is every breaker, valve, and controller in its normal position and in AUTO? Equipment left in manual or bypass is a hidden loss of redundancy.'], simpler: 'Make sure everything is set the way it should be.' },
       { title: 'Report', body: ['Report abnormal findings right away, even if you\'re not sure. A false alarm costs a minute; a missed one can cost the site.', 'The Equipment tab lists what to check on each type of equipment.'], simpler: 'When in doubt, speak up.' },
+    ],
+  },
+  // ------------------------------- Mechanical -------------------------------
+  {
+    id: 'heat-path',
+    area: 'mechanical',
+    title: 'Start here: where the heat goes',
+    level: 'Beginner',
+    minutes: 4,
+    summary: 'Follow heat from a GPU chip all the way outdoors, one handoff at a time.',
+    steps: [
+      {
+        title: 'Every watt becomes heat',
+        body: ['Almost every watt the servers use turns into heat. 2,100 kW of IT means about 2,100 kW of heat that must leave the building, all day, every day.', 'Cooling is a relay race: heat gets handed from one fluid to the next until it reaches the outdoors.'],
+        simpler: 'Computers turn electricity into heat, like a space heater. We have to carry that heat outside.',
+        figure: { id: 'heat-path' },
+      },
+      {
+        title: 'Chip to air or liquid',
+        body: ['Air-cooled servers blow heat into the hot aisle. GPU racks put most of their heat into liquid running through cold plates on the chips, through a CDU.'],
+        simpler: 'Regular servers use fans. The powerful GPU servers use water pipes touching the chips.',
+        figure: { id: 'heat-path', highlight: 'rack' },
+      },
+      {
+        title: 'Air to chilled water',
+        body: ['CRAH units pull hot aisle air across chilled-water coils. CDUs hand liquid-cooling heat to the facility water through a heat exchanger. Both dump the heat into the chilled water loop.'],
+        simpler: 'Big fans blow the hot air over cold water pipes, and the water soaks up the heat.',
+        figure: { id: 'heat-path', highlight: 'crah' },
+      },
+      {
+        title: 'Chilled water to the chiller',
+        body: ['Pumps carry the warmed chilled water back to the chillers. The chiller\'s refrigeration cycle pulls the heat out and pumps it "uphill" into the condenser water.'],
+        simpler: 'The chiller is a giant refrigerator that moves heat from one water loop to another.',
+        figure: { id: 'heat-path', highlight: 'chiller' },
+      },
+      {
+        title: 'Condenser water to the outdoors',
+        body: ['Condenser water goes to the cooling towers, where evaporating a little of it cools the rest, and the heat leaves with the air.', 'On cold days the towers can cool the chilled water directly (free cooling) and the chillers can rest.'],
+        simpler: 'The cooling towers spray the warm water through outside air, which carries the heat away.',
+        figure: { id: 'heat-path', highlight: 'tower' },
+      },
+    ],
+  },
+  {
+    id: 'chiller-cycle',
+    area: 'mechanical',
+    title: 'Inside a chiller: the refrigeration cycle',
+    level: 'Beginner',
+    minutes: 5,
+    summary: 'Compressor, condenser, expansion valve, evaporator, with an animated cutaway.',
+    steps: [
+      {
+        title: 'The loop',
+        body: ['A chiller moves heat from cold chilled water to warmer condenser water. Heat doesn\'t flow uphill on its own, so a refrigerant loop does the work.', 'Four parts, one loop. Tap any part in the cutaway.'],
+        simpler: 'It works like your fridge at home, just much bigger.',
+        figure: { id: 'refrigeration' },
+      },
+      {
+        title: '1. Compressor',
+        body: ['The compressor squeezes low-pressure refrigerant vapor into high-pressure, hot vapor. This is where most of the chiller\'s electricity goes.'],
+        simpler: 'It squeezes the gas, which makes it hot, like a bike pump getting warm.',
+        figure: { id: 'refrigeration', highlight: 'compressor' },
+      },
+      {
+        title: '2. Condenser',
+        body: ['The hot vapor gives its heat to the condenser water (or outdoor air on an air-cooled chiller) and condenses into a liquid.', 'If the condenser water is too hot, pressure climbs. That\'s high head pressure, and on a 105 °F day it can trip the chiller.'],
+        simpler: 'The hot gas cools off and turns into a liquid, passing its heat to the tower water.',
+        figure: { id: 'refrigeration', highlight: 'condenser' },
+      },
+      {
+        title: '3. Expansion valve',
+        body: ['The liquid passes through a restriction and its pressure drops suddenly. Some of it flashes to vapor and the mix becomes very cold.'],
+        simpler: 'Letting the pressure out makes it ice cold, like a spray can getting cold.',
+        figure: { id: 'refrigeration', highlight: 'expansion' },
+      },
+      {
+        title: '4. Evaporator',
+        body: ['The cold refrigerant boils inside the evaporator by absorbing heat from the chilled water, which leaves colder. The vapor goes back to the compressor and the loop repeats.', 'Operators watch the evaporator and condenser approach temperatures: a rising approach means fouled tubes or low refrigerant.'],
+        simpler: 'The cold refrigerant soaks up heat from the water, so the water comes out cold.',
+        figure: { id: 'refrigeration', highlight: 'evaporator' },
+      },
+    ],
+  },
+  {
+    id: 'crah-crac',
+    area: 'mechanical',
+    title: 'CRAH vs CRAC',
+    level: 'Beginner',
+    minutes: 2,
+    summary: 'Two air units that look alike but work very differently.',
+    steps: [
+      { title: 'CRAH: air handler', body: ['A CRAH has fans and a chilled-water coil. A valve controls how much chilled water flows through the coil. It has no compressor; the chiller plant does the refrigeration.'], simpler: 'A CRAH is a big fan blowing over cold water pipes.' },
+      { title: 'CRAC: air conditioner', body: ['A CRAC is a self-contained DX unit with its own compressor and refrigerant circuit, like a home AC. It works without chilled water.'], simpler: 'A CRAC is a complete air conditioner in a box.' },
+      { title: 'Why it matters', body: ['If the chilled water plant fails, every CRAH stops cooling. CRACs keep working if they have power, which is why they often serve small rooms like UPS or telecom rooms.', 'At large scale, CRAHs with an efficient chiller plant use much less energy.'], simpler: 'CRAHs depend on the chillers; CRACs don\'t.' },
+    ],
+  },
+  {
+    id: 'doas-humidity',
+    area: 'mechanical',
+    title: 'DOAS: fresh air, humidity & pressure',
+    level: 'Intermediate',
+    minutes: 3,
+    summary: 'How the dedicated outdoor air system keeps the hall dry, clean, and pressurized.',
+    steps: [
+      { title: 'Why bring in outdoor air?', body: ['People need ventilation, and the hall needs slight positive pressure so dust and humid air leak out, not in. The DOAS brings in just enough outdoor air to do both.'], simpler: 'It gently pumps clean, dry air in so dirty air can\'t sneak in.' },
+      { title: 'Recover energy', body: ['An energy recovery wheel turns slowly between the exhaust and supply air streams, pre-cooling incoming air in summer and pre-warming it in winter.'], simpler: 'A spinning wheel reuses the temperature of the air going out.' },
+      { title: 'Dry it out', body: ['A chilled-water coil cools the air below its dew point. Moisture condenses on the coil and drains away, so the air leaving is dry.', 'Too humid risks condensation and corrosion; too dry raises static risk. ASHRAE gives a recommended dew point band.'], simpler: 'Cold pipes pull water out of the air, like a cold drink getting wet on the outside.' },
+      { title: 'Reheat and deliver', body: ['Reheat warms the dry air back to a neutral temperature so it doesn\'t overcool the room, and the supply fan delivers it.', 'If a DOAS fails, nothing happens fast, which is exactly why it gets missed. Watch dew point and hall pressure on rounds.'], simpler: 'Warm it back up a little and blow it in.' },
+    ],
+  },
+  {
+    id: 'liquid-cooling',
+    area: 'mechanical',
+    title: 'Liquid cooling & CDUs for GPU racks',
+    level: 'Intermediate',
+    minutes: 3,
+    summary: 'Why 130 kW racks need liquid, and why a CDU failure is urgent.',
+    steps: [
+      { title: 'Air runs out of room', body: ['A 130 kW rack would need a hurricane of air to cool. Water carries thousands of times more heat per volume, so GPU racks use cold plates mounted right on the chips.'], simpler: 'Air can\'t carry enough heat away from the hottest chips, so we use liquid.' },
+      { title: 'Two loops and a heat exchanger', body: ['The facility water (FWS) never touches the chips. A CDU heat exchanger passes the heat from a clean technology cooling loop (TCS) to the facility water. Redundant pumps move the TCS fluid.'], simpler: 'There\'s a clean water loop for the chips and a building water loop, and they swap heat without mixing.' },
+      { title: 'Seconds, not minutes', body: ['Cold plates hold very little fluid. If TCS flow stops, GPUs can throttle or shut down within seconds to a minute.', 'Operators verify standby pump health, filter differential pressure, coolant chemistry, and leak detection every round.'], simpler: 'If the pump stops, the chips overheat almost right away, so we watch these closely.' },
     ],
   },
 ];

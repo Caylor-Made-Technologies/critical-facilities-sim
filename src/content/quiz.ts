@@ -1,0 +1,352 @@
+/**
+ * Quiz questions. Each has one correct answer and an explanation that
+ * drops down when someone gets it wrong.
+ */
+
+export type QuizSection = 'electrical' | 'mechanical' | 'safety' | 'change';
+
+export interface QuizQuestion {
+  id: string;
+  section: QuizSection;
+  q: string;
+  options: string[];
+  /** Index of the correct option. */
+  answer: number;
+  why: string;
+}
+
+export const QUIZ_SECTIONS: { id: QuizSection; label: string }[] = [
+  { id: 'electrical', label: 'Electrical' },
+  { id: 'mechanical', label: 'Mechanical' },
+  { id: 'safety', label: 'Safety' },
+  { id: 'change', label: 'Change mgmt' },
+];
+
+export const QUIZ: QuizQuestion[] = [
+  // ---------------- Electrical ----------------
+  {
+    id: 'e-static-bypass',
+    section: 'electrical',
+    q: 'A UPS inverter faults while carrying load. Where does the load go first?',
+    options: ['Onto the UPS battery', 'Onto the static bypass', 'Onto the maintenance bypass', 'It drops'],
+    answer: 1,
+    why: 'The static bypass switch transfers the load straight to the bypass source in a fraction of a cycle. The battery only feeds the inverter, so a dead inverter can\'t use it. The maintenance bypass is a manual set of breakers, never automatic.',
+  },
+  {
+    id: 'e-n-plus-1',
+    section: 'electrical',
+    q: '4 × 750 kW UPS modules carry 2,100 kW. What redundancy level is that?',
+    options: ['N', 'N+1', 'N+2', '2N'],
+    answer: 1,
+    why: '2,100 ÷ 750 = 2.8, so you need 3 modules (N = 3). You have 4, which is one spare: N+1. Lose one and you are at N; lose two and you are overloaded.',
+  },
+  {
+    id: 'e-mtm-keys',
+    section: 'electrical',
+    q: 'A main-tie-main switchboard has 3 Kirk-key locks and 2 keys. How many of the three breakers can be closed at once?',
+    options: ['1', '2', '3', 'Depends on the load'],
+    answer: 1,
+    why: 'A key is trapped while its breaker is closed, and you need a key to close a breaker. Two keys means at most two closed breakers, so both sources can never be tied together through the tie.',
+  },
+  {
+    id: 'e-ats-delay',
+    section: 'electrical',
+    q: 'Why does an ATS wait a couple of seconds after losing utility before starting the generators?',
+    options: ['Generators need warm-up time', 'To ride through short blips without a needless start', 'So the UPS can finish charging', 'The utility requires it'],
+    answer: 1,
+    why: 'Most utility events are short sags or blips. The short delay avoids starting generators (and transferring load) for an event that clears on its own. The UPS or BESS carries the load meanwhile.',
+  },
+  {
+    id: 'e-2n-50',
+    section: 'electrical',
+    q: 'In a 2N system, why must each side stay below about 50% of its capacity?',
+    options: ['To save energy', 'So either side can carry the whole load if the other side fails', 'To keep the batteries cool', 'Code requires it'],
+    answer: 1,
+    why: 'When one side drops, all of its load moves to the other side. If each side ran at 70%, the survivor would need 140% and overload. Below 50% on each side, the survivor ends up below 100%.',
+  },
+  {
+    id: 'e-sts-speed',
+    section: 'electrical',
+    q: 'About how fast does a static transfer switch move single-corded loads to the alternate source?',
+    options: ['About 4 milliseconds', 'About 1 second', 'About 10 seconds', 'About 1 minute'],
+    answer: 0,
+    why: 'Roughly a quarter of an AC cycle (~4 ms). That is fast enough that IT power supplies ride through it. 10 seconds is how long generators take to start.',
+  },
+  {
+    id: 'e-gen-start',
+    section: 'electrical',
+    q: 'What is the most common reason a standby generator fails to start?',
+    options: ['Bad fuel', 'Weak or dead starting batteries', 'Alternator failure', 'Wrong ATS settings'],
+    answer: 1,
+    why: 'Starting batteries are the classic failure point, which is why rounds check battery voltage and charger status every time.',
+  },
+  {
+    id: 'e-mbb-order',
+    section: 'electrical',
+    q: 'What is the safe order to move a UPS onto its maintenance bypass?',
+    options: [
+      'Open the UPS output breaker, then close the maintenance bypass',
+      'UPS to static bypass, close the maintenance bypass, then open the UPS output and input breakers',
+      'Close the maintenance bypass, then put the UPS on battery',
+      'Open the UPS input breaker first, then close the maintenance bypass',
+    ],
+    answer: 1,
+    why: 'Static bypass first, so both paths come from the same source. Then close the maintenance bypass (make-before-break), then isolate the UPS. Opening the output breaker first drops the entire critical load.',
+  },
+  {
+    id: 'e-dual-cord',
+    section: 'electrical',
+    q: 'A dual-corded rack loses its A cord. What happens?',
+    options: ['The rack shuts down', 'The STS switches it', 'The B cord carries the full load with no interruption', 'It runs on its internal battery'],
+    answer: 2,
+    why: 'Each server has two power supplies, each able to carry the whole server. When one cord dies, the other supply picks up instantly. No STS is involved for dual-corded gear.',
+  },
+  {
+    id: 'e-retransfer',
+    section: 'electrical',
+    q: 'Utility power comes back after an outage. Why does the ATS wait several minutes before switching back?',
+    options: ['To let the generators cool down', 'To prove the utility is stable before trusting it again', 'To recharge the BESS first', 'To save fuel'],
+    answer: 1,
+    why: 'Utilities often restore, drop, and restore again. The retransfer timer avoids bouncing the load back onto an unstable source. The generators cool down after the retransfer.',
+  },
+  {
+    id: 'e-interlock-why',
+    section: 'electrical',
+    q: 'What is the main reason Kirk-key interlocks exist?',
+    options: ['To track who operated a breaker', 'To stop unsynchronized sources from being paralleled and prevent back-feed', 'To replace lockout/tagout', 'To speed up switching'],
+    answer: 1,
+    why: 'Interlocks make dangerous breaker combinations physically impossible, such as tying two utilities or a generator and utility together without synchronization. They are not lockout devices: you still apply your own lock.',
+  },
+
+  // ---------------- Mechanical ----------------
+  {
+    id: 'm-cycle',
+    section: 'mechanical',
+    q: 'Starting at the compressor, what is the order of the refrigeration cycle?',
+    options: [
+      'Compressor → evaporator → condenser → expansion valve',
+      'Compressor → condenser → expansion valve → evaporator',
+      'Compressor → expansion valve → condenser → evaporator',
+      'Compressor → condenser → evaporator → expansion valve',
+    ],
+    answer: 1,
+    why: 'The compressor makes hot high-pressure gas → the condenser rejects heat and turns it to liquid → the expansion valve drops the pressure so it gets very cold → the evaporator absorbs heat from the chilled water → back to the compressor.',
+  },
+  {
+    id: 'm-crac',
+    section: 'mechanical',
+    q: 'Which unit has its own compressor: a CRAH or a CRAC?',
+    options: ['CRAH', 'CRAC', 'Both', 'Neither'],
+    answer: 1,
+    why: 'CRAC = computer room air CONDITIONER, a self-contained DX unit with a compressor. CRAH = air HANDLER, which only has a chilled-water coil and fans and depends on the chiller plant.',
+  },
+  {
+    id: 'm-head',
+    section: 'mechanical',
+    q: 'On a 105 °F humid afternoon a chiller trips on high head pressure. What is the most likely cause?',
+    options: ['Chilled water too cold', 'Condenser water too hot because the towers can\'t reject enough heat', 'Low chilled water flow', 'The evaporator is iced up'],
+    answer: 1,
+    why: 'High head pressure is a condenser-side problem: the refrigerant can\'t dump heat fast enough. On hot, humid days the wet bulb is high, so towers leave warmer water. Check tower fans, condenser water flow, and fouled tubes.',
+  },
+  {
+    id: 'm-approach',
+    section: 'mechanical',
+    q: 'Cooling tower "approach" is the difference between…',
+    options: ['Entering and leaving water temperature', 'Leaving water temperature and outdoor wet-bulb temperature', 'Outdoor dry bulb and wet bulb', 'Supply and return air temperature'],
+    answer: 1,
+    why: 'Approach = leaving water temperature − wet-bulb. A tower can never cool water below the wet bulb. A growing approach means the tower is losing capacity (fans, fill, or water distribution).',
+  },
+  {
+    id: 'm-econ',
+    section: 'mechanical',
+    q: 'When does water-side economizer ("free cooling") work best?',
+    options: ['Hot, dry afternoons', 'When the outdoor wet-bulb temperature is low', 'When IT load is highest', 'Only at night'],
+    answer: 1,
+    why: 'Free cooling uses cold tower water to cool chilled water through a heat exchanger, so chillers can turn off. That only works when the tower can make water colder than the chilled water setpoint, which takes a low wet bulb.',
+  },
+  {
+    id: 'm-cdu',
+    section: 'mechanical',
+    q: 'Why does losing CDU flow threaten GPU racks faster than losing one CRAH threatens air-cooled racks?',
+    options: ['GPUs use more power', 'Cold plates hold very little coolant, so chips hit thermal limits in seconds', 'CDUs have no redundancy', 'Air is a better coolant than water'],
+    answer: 1,
+    why: 'Liquid is great at moving heat, but a cold plate holds a tiny volume of it. Without flow, there is almost no thermal mass to buffer the chip, so GPUs can throttle or shut down within seconds to a minute.',
+  },
+  {
+    id: 'm-doas-coil',
+    section: 'mechanical',
+    q: 'Besides cooling, what does the DOAS chilled-water coil do?',
+    options: ['Filters the air', 'Removes moisture by cooling the air below its dew point', 'Adds humidity', 'Pressurizes the hall'],
+    answer: 1,
+    why: 'Air cooled below its dew point drops its moisture as condensate. That is how a DOAS dries outdoor air. Reheat then brings it back up to a neutral temperature.',
+  },
+  {
+    id: 'm-pressure',
+    section: 'mechanical',
+    q: 'Why is the data hall kept at a slight positive pressure?',
+    options: ['To help server fans', 'So dust and humid outdoor air leak out instead of in', 'To keep fire doors closed', 'It reduces PUE'],
+    answer: 1,
+    why: 'With slightly higher pressure inside, air leaks outward through cracks and doors, carrying dust and moisture out rather than pulling them in.',
+  },
+  {
+    id: 'm-ashrae',
+    section: 'mechanical',
+    q: 'What is the ASHRAE recommended server inlet temperature range?',
+    options: ['50–65 °F', '64.4–80.6 °F (18–27 °C)', '80–95 °F', '60–70 °F only'],
+    answer: 1,
+    why: 'ASHRAE TC 9.9 recommends 18–27 °C (64.4–80.6 °F) for most equipment classes. Running colder than needed wastes energy; running hotter risks throttling and failures.',
+  },
+  {
+    id: 'm-tes',
+    section: 'mechanical',
+    q: 'What is a chilled water storage (TES) tank mainly for in a data center?',
+    options: ['Fire protection water', 'Carrying the cooling load while chillers restart after a power event', 'Lowering the water bill', 'Cooling the generators'],
+    answer: 1,
+    why: 'Chillers can take several minutes to restart after a transfer to generator. The stored cold water keeps the loop cold during that gap. That is thermal ride-through, like a UPS for cooling.',
+  },
+  {
+    id: 'm-pue',
+    section: 'mechanical',
+    q: 'A PUE of 1.5 means…',
+    options: ['50% of power goes to IT', 'The facility uses 1.5 kW in total for every 1 kW of IT', 'Cooling uses 1.5 kW per ton', 'The site is 1.5× redundant'],
+    answer: 1,
+    why: 'PUE = total facility power ÷ IT power. 1.0 would be perfect (all power to IT). At 1.5, cooling, losses, and lighting add 0.5 kW for every 1 kW of IT.',
+  },
+  {
+    id: 'm-standby',
+    section: 'mechanical',
+    q: 'How do you know a standby pump will actually start when the lead pump fails?',
+    options: ['Check that it is in AUTO', 'Test it: rotate lead/lag and test auto-start on a schedule', 'Look at the nameplate', 'Ask the vendor'],
+    answer: 1,
+    why: 'AUTO on the screen does not prove the pump, VFD, valves, and controls all work. Regular lead/lag rotation and auto-start testing are the only proof.',
+  },
+
+  // ---------------- Safety ----------------
+  {
+    id: 's-lock',
+    section: 'safety',
+    q: 'Who removes a personal lockout/tagout lock?',
+    options: ['Any supervisor', 'The person who applied it', 'The next shift', 'Whoever has the key'],
+    answer: 1,
+    why: 'Only the person who put the lock on removes it. If they are gone, the program has a specific, documented supervisor procedure. You never cut someone else\'s lock on your own.',
+  },
+  {
+    id: 's-energized',
+    section: 'safety',
+    q: 'When is energized electrical work allowed under NFPA 70E?',
+    options: ['When you\'re in a hurry', 'Only when de-energizing creates a greater hazard or is infeasible, with a permit and PPE', 'Whenever you wear arc-rated clothing', 'For anything under 480 V'],
+    answer: 1,
+    why: 'The default is an electrically safe work condition. Energized work needs a real justification, an energized electrical work permit, a risk assessment, and the right PPE. Inconvenience is not a justification.',
+  },
+  {
+    id: 's-label',
+    section: 'safety',
+    q: 'The arc flash label on a panel is missing. What do you do?',
+    options: ['Use the label from the panel next to it', 'Wear category 2 PPE and continue', 'Stop and treat the hazard as unknown until engineering confirms it', 'Open it carefully'],
+    answer: 2,
+    why: 'Incident energy can vary hugely between neighboring gear. Without a label you don\'t know the hazard, so the work stops until it is evaluated.',
+  },
+  {
+    id: 's-lld',
+    section: 'safety',
+    q: 'What does "live-dead-live" mean when testing for absence of voltage?',
+    options: [
+      'Test live, de-energize, test live again',
+      'Prove the meter on a known live source, test the circuit, then prove the meter again',
+      'Test each phase three times',
+      'Have three people verify',
+    ],
+    answer: 1,
+    why: 'A "dead" reading only means something if the meter works. Checking it on a known live source before and after proves the meter didn\'t fail during the test.',
+  },
+  {
+    id: 's-refrig',
+    section: 'safety',
+    q: 'The refrigerant leak alarm sounds in the chiller room. What do you do?',
+    options: ['Find the leak quickly', 'Leave, let ventilation run, and follow the alarm procedure', 'Hold your breath and reset the alarm', 'Shut the chillers off from inside'],
+    answer: 1,
+    why: 'Refrigerant is heavier than air and displaces oxygen. Leave the space, let the emergency ventilation work, and only go back in per procedure with proper monitoring and equipment.',
+  },
+  {
+    id: 's-agent',
+    section: 'safety',
+    q: 'A clean-agent pre-discharge alarm starts in the room you\'re in. What do you do?',
+    options: ['Finish your task', 'Leave the room immediately', 'Press the EPO', 'Open the doors to vent it'],
+    answer: 1,
+    why: 'Get out. The abort/hold station is for trained people following the procedure, not a reason to stay. Doors must close so the agent can hold its concentration.',
+  },
+  {
+    id: 's-kirk-loto',
+    section: 'safety',
+    q: 'Does holding a Kirk key count as your lockout?',
+    options: ['Yes, the breaker is locked open', 'No, you still apply your own personal lock and tag', 'Only on MV gear', 'Only if a supervisor agrees'],
+    answer: 1,
+    why: 'Kirk keys control operating sequence; they are not personal protection. Anyone with another key could close the breaker. Your own lock is what protects you.',
+  },
+  {
+    id: 's-gen-loto',
+    section: 'safety',
+    q: 'Before working on a generator, which controller setting is right?',
+    options: ['AUTO', 'MANUAL', 'OFF, locked out, plus battery charger and starting circuit isolated', 'TEST'],
+    answer: 2,
+    why: 'In AUTO a generator can start at any moment from a utility blip. MANUAL still allows a start. OFF plus lockout of the starting circuits is what prevents a start while you\'re working on it.',
+  },
+  {
+    id: 's-eyewash',
+    section: 'safety',
+    q: 'What must be ready near battery rooms with acid electrolyte?',
+    options: ['A fire hose', 'An eyewash station', 'A defibrillator', 'A spare UPS'],
+    answer: 1,
+    why: 'OSHA requires suitable facilities for quick drenching or flushing of the eyes and body where corrosive materials are present. Battery acid is corrosive.',
+  },
+
+  // ---------------- Change management ----------------
+  {
+    id: 'c-filter',
+    section: 'change',
+    q: 'Replacing a CRAH filter with the identical filter, using the standard procedure. Does it need a full change review?',
+    options: ['Yes', 'No, it is a standard pre-approved change'],
+    answer: 1,
+    why: 'Replacement in kind with a proven, pre-approved procedure is a standard change. It is still scheduled and logged, but it doesn\'t need a full review.',
+  },
+  {
+    id: 'c-setpoint',
+    section: 'change',
+    q: 'Raising the chilled water setpoint 2 °F to save energy. Is that a change?',
+    options: ['Yes', 'No, it is just a setting'],
+    answer: 0,
+    why: 'Setpoints affect cooling capacity, ride-through time, and humidity control. They need review, a monitoring plan, and a back-out plan.',
+  },
+  {
+    id: 'c-breaker',
+    section: 'change',
+    q: 'Swapping a failed breaker for a different brand with the same rating. Is that a change?',
+    options: ['Yes', 'No, same rating'],
+    answer: 0,
+    why: 'A different model can have different trip curves, arc flash results, and interlock fit. Engineering must review it, even in an emergency.',
+  },
+  {
+    id: 'c-mismatch',
+    section: 'change',
+    q: 'Halfway through a MOP, the equipment doesn\'t match what the step says. What do you do?',
+    options: ['Improvise the closest thing', 'Stop, make it safe, and use the back-out plan / call the lead', 'Skip that step', 'Ask the vendor to decide'],
+    answer: 1,
+    why: 'A mismatch means the procedure or the plant isn\'t what everyone thought. Stop, hold the plant in a safe state, and escalate. Improvising on critical gear is how outages happen.',
+  },
+  {
+    id: 'c-step',
+    section: 'change',
+    q: 'What should every MOP step include?',
+    options: ['A general description of the task', 'One action, the exact device tag, and the expected result', 'Only the device name', 'The vendor\'s phone number'],
+    answer: 1,
+    why: 'One action per step, an exact tag so nobody operates the wrong device, and what you should see afterward so you can confirm it worked before moving on.',
+  },
+  {
+    id: 'c-racks',
+    section: 'change',
+    q: 'IT wants to add two GPU racks to an existing row. Does facilities need a change record?',
+    options: ['Yes', 'No, it is IT\'s equipment'],
+    answer: 0,
+    why: 'New racks add power and cooling load. Branch circuits, UPS redundancy, CDU capacity, and cooling must all be checked first.',
+  },
+];

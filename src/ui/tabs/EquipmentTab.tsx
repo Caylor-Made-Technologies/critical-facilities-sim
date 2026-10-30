@@ -1,20 +1,35 @@
 /** Equipment tab: searchable guide to every component family. */
 import { useEffect, useMemo, useState } from 'react';
-import { EQUIPMENT } from '../../content/equipment';
+import { EQUIPMENT, type EquipmentGuide } from '../../content/equipment';
+import { NeverList, PageHead, SectionTabs } from '../common';
+import { Figure } from '../figures';
 import { Icon } from '../icons';
 
 interface Props {
   /** Guide to open (set when coming from a component card). */
   openId: string | null;
   onShowInSim: (kind: string) => void;
+  onRead: (id: string) => void;
 }
 
-export function EquipmentTab({ openId, onShowInSim }: Props) {
+type Group = EquipmentGuide['group'];
+const GROUPS: { id: Group; label: string }[] = [
+  { id: 'Electrical', label: 'Electrical' },
+  { id: 'Mechanical', label: 'Mechanical' },
+  { id: 'Life safety', label: 'Life safety' },
+];
+
+export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
   const [q, setQ] = useState('');
   const [current, setCurrent] = useState(openId ?? EQUIPMENT[0]!.id);
+  const [group, setGroup] = useState<Group>(EQUIPMENT.find((g) => g.id === (openId ?? ''))?.group ?? 'Electrical');
   useEffect(() => {
-    if (openId) setCurrent(openId);
+    if (!openId) return;
+    setCurrent(openId);
+    const g = EQUIPMENT.find((x) => x.id === openId);
+    if (g) setGroup(g.group);
   }, [openId]);
+  useEffect(() => onRead(current), [current, onRead]);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -27,41 +42,40 @@ export function EquipmentTab({ openId, onShowInSim }: Props) {
     );
   }, [q]);
   const guide = EQUIPMENT.find((g) => g.id === current) ?? EQUIPMENT[0]!;
-  const groups = ['Electrical', 'Mechanical', 'Life safety'] as const;
+  const pickGroup = (g: Group) => {
+    setGroup(g);
+    setCurrent(EQUIPMENT.find((x) => x.group === g)!.id);
+  };
 
   return (
     <div className="tab-panel">
-      <div className="page-head">
-        <div className="eyebrow">Equipment guide</div>
-        <h1>Every component, in the field</h1>
-        <p>
-          What it does, what to check on rounds, preventive maintenance, troubleshooting, and the things you must never
-          do. Intervals are typical starting points. Your manufacturer manuals and site program come first.
-        </p>
-      </div>
+      <PageHead eyebrow="Equipment guide" title="Every component, in the field">
+        What it does, what to check on rounds, preventive maintenance, troubleshooting, and the things you must never do.
+        Intervals are typical starting points. Your manufacturer manuals and site program come first.
+      </PageHead>
+      <SectionTabs label="Equipment sections" sections={GROUPS} value={group} onChange={pickGroup} />
       <div className="content-layout">
-        <div>
+        <div className="toc-col">
           <label className="visually-hidden" htmlFor="eq-search">
             Search equipment
           </label>
           <div style={{ position: 'relative', marginBottom: 8 }}>
             <input id="eq-search" type="search" placeholder="Search: e.g. head pressure" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <nav className="toc" aria-label="Equipment">
-            {groups.map((grp) => {
-              const items = list.filter((g) => g.group === grp);
-              if (!items.length) return null;
-              return (
-                <div key={grp} style={{ display: 'contents' }}>
-                  <div className="toc-group">{grp}</div>
-                  {items.map((g) => (
-                    <button key={g.id} type="button" aria-current={g.id === current} onClick={() => setCurrent(g.id)}>
-                      {g.title}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
+          <nav className="toc" aria-label={`${group} equipment`}>
+            {(q.trim() ? list : list.filter((g) => g.group === group)).map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                aria-current={g.id === current}
+                onClick={() => {
+                  setCurrent(g.id);
+                  setGroup(g.group);
+                }}
+              >
+                {g.title}
+              </button>
+            ))}
             {!list.length && <p style={{ color: 'var(--text-muted)', padding: 12 }}>No matches.</p>}
           </nav>
         </div>
@@ -84,6 +98,7 @@ export function EquipmentTab({ openId, onShowInSim }: Props) {
             {guide.howItWorks.map((p) => (
               <p key={p}>{p}</p>
             ))}
+            {guide.id === 'chiller' && <Figure id="refrigeration" />}
           </section>
 
           <section>
@@ -150,13 +165,11 @@ export function EquipmentTab({ openId, onShowInSim }: Props) {
           </section>
 
           <section>
-            <div className="callout callout-danger">
-              <strong>Never do this</strong>
-              <ul style={{ marginTop: 6, marginBottom: 0 }}>
-                {guide.neverDo.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
+            <div className="never-box">
+              <h3 className="never-title">
+                <span aria-hidden="true">!!</span> NEVER do this <span aria-hidden="true">!!</span>
+              </h3>
+              <NeverList rules={guide.neverDo} compact />
             </div>
             <div className="callout callout-warn">
               <strong>Hazards</strong>

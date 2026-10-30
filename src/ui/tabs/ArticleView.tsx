@@ -1,5 +1,6 @@
 /** Renders content blocks (see src/content/types.ts). All text is plain strings, so React escapes it. */
 import type { Block } from '../../content/types';
+import { DangerMark } from '../common';
 
 export function Blocks({ blocks }: { blocks: Block[] }) {
   return (
@@ -28,6 +29,16 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
                 <li key={x}>{x}</li>
               ))}
             </ol>
+          );
+        if ('callout' in b && b.tone === 'danger')
+          return (
+            <div key={i} className="callout callout-danger danger-callout">
+              <DangerMark />
+              <div>
+                {b.title && <strong className="never-rule">{b.title}!! </strong>}
+                <span>{b.callout}</span>
+              </div>
+            </div>
           );
         if ('callout' in b)
           return (

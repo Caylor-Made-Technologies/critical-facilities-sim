@@ -35,7 +35,14 @@ export type IconName =
   | 'help'
   | 'warning'
   | 'check'
-  | 'search';
+  | 'search'
+  | 'home'
+  | 'target'
+  | 'scale'
+  | 'pulse'
+  | 'chat'
+  | 'menu'
+  | 'star';
 
 const paths: Record<IconName, ReactElement> = {
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
@@ -104,6 +111,30 @@ const paths: Record<IconName, ReactElement> = {
       <path d="m20 20-4-4" />
     </>
   ),
+  home: (
+    <>
+      <path d="M3 11 12 4l9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" />
+    </>
+  ),
+  scale: (
+    <>
+      <path d="M12 3v18M7 21h10M5 7h14" />
+      <path d="m5 7-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z" />
+    </>
+  ),
+  pulse: <path d="M3 12h4l2-5 4 10 2-5h6" />,
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
 };
 
 export function Icon({ name }: { name: IconName }) {

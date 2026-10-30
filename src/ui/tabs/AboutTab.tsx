@@ -43,12 +43,19 @@ export function AboutTab({ onResetPrefs }: { onResetPrefs: () => void }) {
             pixels, and no network requests after the page loads. The simulator runs entirely in your browser.
           </p>
           <p>
-            Two preferences (light/dark theme and °F/°C) are saved in your own browser's local storage so they're
-            remembered next time. They never leave your device. You can clear them here at any time:
+            Your preferences (light/dark theme, °F/°C) and your learning progress (lessons finished, quiz answers,
+            guides read, XP) are saved only in your own browser's local storage so they're remembered next time. They
+            never leave your device. You can clear them here at any time:
           </p>
           <button className="btn" type="button" onClick={onResetPrefs}>
-            Clear my saved settings
+            Clear my saved settings & progress
           </button>
+          <h3 style={{ marginTop: 16 }}>Feedback</h3>
+          <p>
+            The Feedback tab doesn't send anything itself. It opens a pre-filled email in your own email app (or a public
+            GitHub issue, if you choose), which you review before sending. Emails are used only to improve this project
+            and are deleted within 45 days of a request.
+          </p>
           <p style={{ marginTop: 12 }}>
             The site is hosted on GitHub Pages; GitHub may keep standard server logs (such as IP addresses) under its own
             privacy statement. This site is not directed at children under 13.

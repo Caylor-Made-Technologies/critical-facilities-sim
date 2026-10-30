@@ -4,13 +4,13 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 
 | # | Point | Status for this project |
 |---|---|---|
-| 1 | Privacy policy | About page: nothing is collected or sent. Theme/units preferences stay in your own browser's local storage. GitHub Pages server logs are mentioned. |
+| 1 | Privacy policy | About page: nothing is collected or sent. Preferences and learning progress stay in your own browser's local storage. Explains how feedback works. GitHub Pages server logs are mentioned. |
 | 2 | Terms of service | About page: educational use only, no warranty, not for real work, MIT license, Texas law. Marked as a template until an attorney reviews it. |
 | 3 | Refund policy | N/A: free, nothing is sold. |
 | 4 | Cookie policy | Covered in the privacy section: no cookies. |
 | 5 | Cookie banner | Not needed: no cookies, analytics, or ad pixels. |
-| 6 | Form consents | N/A: no forms. |
-| 7 | No unnecessary data | No data is collected at all. |
+| 6 | Form consents | Feedback form: unchecked "18+ and read the privacy policy" (required) and unchecked "OK to reply" (optional). The consent time is written into the message. |
+| 7 | No unnecessary data | Feedback asks only for type, area, an optional rating, and the message. No name or email fields; the person's own email app sends it. |
 | 8 | Third-party SDKs | None at runtime. Build-time open-source dependencies are listed in `package.json` with pinned versions. |
 | 9 | Dark patterns | None: no sign-ups, upsells, or timers that pressure the user. |
 | 10 | Hidden fees | N/A: free. |
@@ -23,7 +23,7 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 | 17 | Kids' data | Not directed at children. No data is collected. |
 | 18 | Unsubscribe link | N/A: no email. |
 | 19 | Licensed fonts / images | Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
-| 20 | Data deletion | Nothing stored server-side. "Clear my saved settings" on the About page removes the local preferences. |
+| 20 | Data deletion | Nothing stored server-side. "Clear my saved settings & progress" on the About page wipes local data. Feedback emails are deleted within 45 days of a request. |
 
 ## Security
 - Strict Content Security Policy meta tag: `default-src 'self'`, no inline scripts, no `eval`, `connect-src 'none'`.

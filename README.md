@@ -9,13 +9,22 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 **Status:** Engine, electrical simulator (Explore + Failure modes), Kirk-key operation, guided walkthroughs, equipment guide, safety & codes, and change management are built. Mechanical plant view, MOP scoring, scenarios/quiz and glossary are next.
 
 ## What's in the app
+Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
+
 | Tab | What it does |
 |---|---|
-| **Simulator** | Pan/zoom one-line from utility to rack with animated power flow. Tap anything for live readings and an explainer. Failure mode: tap to break it and watch transfers, battery countdowns and generator starts in the event log. Operate breakers and Kirk keys from the component card. Switch between 7 redundancy designs. |
-| **Learn** | Step-by-step walkthroughs that drive the simulator: power path, utility outage, N vs N+1 vs 2N, STS, Kirk keys, UPS maintenance bypass MOP, LOTO, rounds. Every step has an "I don't get it, explain simpler" button. |
-| **Equipment** | For each of 19 equipment families: how it works, what to check on rounds, typical PM intervals, troubleshooting by symptom, never-do list, hazards, and when a change record is required. Searchable. |
-| **Safety & Codes** | Electrical safety (NFPA 70E, OSHA), LOTO step by step, a reference table of the standards you'll hear about, other site hazards, uptime practices, and emergency response. |
-| **Change Mgmt** | Management of change: what counts as a change, the MOC lifecycle, risk rating, anatomy of a MOP, records, change windows, and a practice quiz. |
+| **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
+| **Simulator** | Pan/zoom one-line from utility to rack with animated power flow. Explore and Failure modes, live component cards, breaker and Kirk-key operation, 7 redundancy designs, event log. |
+| **Learn** | 13 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
+| **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
+| **Equipment** | 19 equipment families split by Electrical / Mechanical / Life safety: how it works, rounds, PM, troubleshooting, hazards, MOC triggers, and a red NEVER list. |
+| **Never Do** | 34 hard stops in red with warning marks, each with the reason, by Everyone / Electrical / Mechanical / Life safety. |
+| **Glossary** | 57 searchable terms by section. |
+| **Safety** | Shock and arc flash, LOTO, battery rooms, mechanical hazards and isolation, PPE basics. |
+| **Codes & Standards** | Who writes the rules, then electrical, mechanical, fire & life safety, environmental, and tier-style ratings. |
+| **Uptime** | Where outages come from, human performance tools, electrical and mechanical practices, operations, emergencies. |
+| **Change Mgmt** | Management of change: lifecycle, risk rating, MOP anatomy, records, change windows. |
+| **Feedback** | Builds a message and opens it in your own email app or as a GitHub issue. The site itself sends and stores nothing. |
 
 ## What the engine models
 - **Electrical chain:** two utility feeds → MV switchgear → transformers → ATS → main-tie-main switchboards → BESS → UPS systems (rectifier/inverter, battery, static bypass, maintenance bypass) → STS → busway/PDU/RPP → 36 racks (2,100 kW, including 130 kW GPU racks).
@@ -46,7 +55,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 73 unit tests (engine, lessons, layout)
+npm test           # 78 unit tests (engine, lessons, quiz, content, layout)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.

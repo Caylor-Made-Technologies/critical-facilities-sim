@@ -1,4 +1,9 @@
-import { CHANGE, CHANGE_QUIZ } from '../../content/change';
+import { CHANGE } from '../../content/change';
+import { CODES } from '../../content/codes';
+import { GLOSSARY } from '../../content/glossary';
+import { NEVER } from '../../content/neverdo';
+import { QUIZ } from '../../content/quiz';
+import { UPTIME } from '../../content/uptime';
 import { EQUIPMENT, guideForKind } from '../../content/equipment';
 import { LESSONS, simForStep } from '../../content/lessons';
 import { SAFETY } from '../../content/safety';
@@ -24,11 +29,48 @@ describe('equipment guide', () => {
 
 describe('articles', () => {
   it('have unique ids', () => {
-    for (const set of [SAFETY, CHANGE]) {
+    for (const set of [SAFETY, CHANGE, CODES, UPTIME]) {
       const ids = set.map((a) => a.id);
       expect(new Set(ids).size).toBe(ids.length);
     }
-    expect(CHANGE_QUIZ.length).toBeGreaterThan(3);
+  });
+  it('safety, codes and uptime each have electrical and mechanical sections', () => {
+    for (const set of [SAFETY, CODES, UPTIME]) {
+      const groups = set.map((a) => a.group);
+      expect(groups).toContain('Electrical');
+      expect(groups).toContain('Mechanical');
+    }
+  });
+});
+
+describe('quiz', () => {
+  it('every question has a valid answer and an explanation', () => {
+    const ids = new Set<string>();
+    for (const q of QUIZ) {
+      expect(ids.has(q.id), q.id).toBe(false);
+      ids.add(q.id);
+      expect(q.answer, q.id).toBeGreaterThanOrEqual(0);
+      expect(q.answer, q.id).toBeLessThan(q.options.length);
+      expect(q.why.length, q.id).toBeGreaterThan(30);
+    }
+    for (const s of ['electrical', 'mechanical', 'safety', 'change']) {
+      expect(QUIZ.filter((q) => q.section === s).length, s).toBeGreaterThanOrEqual(6);
+    }
+  });
+});
+
+describe('never do & glossary', () => {
+  it('every hard stop starts with NEVER and has a reason', () => {
+    for (const list of Object.values(NEVER)) {
+      for (const r of list) {
+        expect(r.rule.startsWith('NEVER'), r.rule).toBe(true);
+        expect(r.why.length).toBeGreaterThan(15);
+      }
+    }
+  });
+  it('glossary terms are unique', () => {
+    const terms = GLOSSARY.map((t) => t.term.toLowerCase());
+    expect(new Set(terms).size).toBe(terms.length);
   });
 });
 
@@ -40,6 +82,10 @@ describe('walkthroughs', () => {
         if (s.focus) expect(sim.graph.nodes.has(s.focus), `${l.id} step ${i + 1} focus ${s.focus}`).toBe(true);
       });
     }
+  });
+
+  it('lessons cover electrical, mechanical and safety', () => {
+    for (const a of ['electrical', 'mechanical', 'safety']) expect(LESSONS.some((l) => l.area === a), a).toBe(true);
   });
 
   it('every step has a plain-words explanation', () => {

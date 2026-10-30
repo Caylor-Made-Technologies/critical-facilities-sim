@@ -1,7 +1,7 @@
 /**
- * Safety, codes and uptime practices.
- * Plain-language summaries of public standards. Not legal advice: editions
- * change, and the authority having jurisdiction (AHJ) decides what applies.
+ * Safety tab. Plain-language summaries of public standards. Not legal
+ * advice: editions change, and the authority having jurisdiction (AHJ)
+ * decides what applies.
  */
 import type { Article } from './types';
 
@@ -9,31 +9,22 @@ export const SAFETY: Article[] = [
   {
     id: 'start',
     group: 'Start here',
-    title: 'Why rules matter here',
+    title: 'Why safety comes first',
     intro: 'Critical facilities run energized, high-consequence equipment 24/7. The rules exist because people were hurt or sites went dark. Learn the why and the rules make sense.',
     blocks: [
-      { callout: 'Summaries of publicly available standards for learning. Your site\'s written programs, the current edition of each standard, and your authority having jurisdiction (AHJ) always take precedence.', title: 'Read this first', tone: 'warn' },
+      { callout: 'These are summaries of publicly available standards, for learning. Your site\'s written programs, the current edition of each standard, and your authority having jurisdiction (AHJ) always take precedence.', title: 'Read this first', tone: 'warn' },
       { h: 'The three priorities, in order' },
       { ol: ['People: nobody gets hurt. No uptime target is worth an injury.', 'The critical load: keep IT running.', 'The equipment: protect the asset.'] },
       { p: 'If you ever feel those are in conflict, stop and call your lead. Every team member has stop-work authority.' },
-      { h: 'Who\'s who' },
-      { table: {
-        head: ['Body', 'What they do'],
-        rows: [
-          ['OSHA', 'U.S. federal workplace safety law (29 CFR 1910). Legally enforceable.'],
-          ['NFPA', 'Writes consensus codes (NFPA 70 the NEC, 70E, 70B, 72, 110, 855...). They become law when a jurisdiction adopts them, and OSHA points to 70E as the way to meet its electrical rules.'],
-          ['EPA', 'Environmental rules: refrigerants, fuel storage, engine emissions.'],
-          ['ASHRAE', 'Thermal guidelines for data centers, ventilation and energy standards, Legionella risk management.'],
-          ['IEEE', 'Battery maintenance practices and electrical engineering standards.'],
-          ['AHJ', 'The authority having jurisdiction, e.g. the fire marshal or building official. Their interpretation decides.'],
-        ],
-      } },
+      { callout: 'The Never Do tab lists the hard stops: things you must not do under any circumstances.', title: 'Also see' },
     ],
   },
+
+  // -------------------------------- Electrical --------------------------------
   {
     id: 'electrical-safety',
-    group: 'Electrical safety',
-    title: 'Electrical safety (NFPA 70E & OSHA)',
+    group: 'Electrical',
+    title: 'Shock & arc flash (NFPA 70E, OSHA)',
     intro: 'The most serious hazards on site are shock and arc flash. NFPA 70E is the standard for electrical safety in the workplace; OSHA 1910 Subpart S is the law it supports.',
     blocks: [
       { h: 'Rule #1: work de-energized' },
@@ -55,16 +46,16 @@ export const SAFETY: Article[] = [
       ] },
       { h: 'Arc flash labels' },
       { p: 'Equipment labels show the nominal voltage, arc flash boundary, and either incident energy (cal/cm²) at a working distance or a PPE category. Labels come from an arc flash study, which must be reviewed at least every 5 years and whenever a major change happens.' },
-      { callout: 'If the label is missing, unreadable, or the equipment was changed since the study, treat it as unknown and ask before opening anything.', tone: 'danger', title: 'No label = no work' },
+      { callout: 'If the label is missing, unreadable, or the equipment was changed since the study, treat the hazard as unknown and ask before opening anything.', tone: 'danger', title: 'No label = no work' },
       { h: 'Qualified person' },
       { p: 'A person trained to recognize and avoid the hazards of the specific equipment and task, and who has shown that skill. Being an electrician on one system doesn\'t make you qualified on another.' },
     ],
   },
   {
     id: 'loto',
-    group: 'Electrical safety',
+    group: 'Electrical',
     title: 'Lockout/tagout, step by step (OSHA 1910.147)',
-    intro: 'LOTO keeps machines and circuits from being energized while someone is working on them. It applies to electrical, mechanical, hydraulic, pneumatic, chemical, and thermal energy.',
+    intro: 'LOTO keeps machines and circuits from being energized while someone is working on them. It applies to electrical, mechanical, hydraulic, pneumatic, chemical, and thermal energy, so it covers the mechanical side too.',
     blocks: [
       { h: 'Applying lockout' },
       { ol: [
@@ -83,120 +74,86 @@ export const SAFETY: Article[] = [
         'Each person removes only their own lock.',
         'Re-energize per the procedure and verify normal operation.',
       ] },
-      { callout: 'Only the person who put a lock on removes it. If someone left with a lock still on, the program has a specific supervisor procedure for removing it. Never cut a lock yourself.', tone: 'danger', title: 'Your lock, your life' },
+      { callout: 'Only the person who put a lock on removes it. If someone left with a lock still on, the program has a specific supervisor procedure. Never cut a lock yourself.', tone: 'danger', title: 'Your lock, your life' },
       { h: 'Data center specifics' },
       { ul: ['UPS and battery systems are separate energy sources: open the battery breaker too.', 'Generators can start automatically: put the controller in OFF and lock it out, not just "manual".', 'VFDs and UPS units store energy in capacitors: wait the labeled time and verify.', 'Kirk keys are interlocks, not lockout devices. You still apply your own lock.'] },
     ],
   },
   {
-    id: 'standards',
-    group: 'Codes & standards',
-    title: 'Standards you\'ll hear about',
-    intro: 'A quick reference: what each standard covers and what it means for you on shift.',
+    id: 'battery-safety',
+    group: 'Electrical',
+    title: 'Battery rooms & energy storage',
+    intro: 'UPS batteries and BESS yards store huge amounts of energy that you can\'t switch off at a breaker.',
+    blocks: [
+      { ul: [
+        'DC arcs don\'t self-extinguish like AC arcs. Use insulated tools, and remove rings and watches.',
+        'Lead-acid batteries hold sulfuric acid and can give off hydrogen: ventilation, no sparks or flames, face shield, acid-rated gloves and apron.',
+        'An eyewash station must be ready wherever corrosive electrolyte is present (OSHA 1910.151).',
+        'Lithium-ion can go into thermal runaway: know the alarm response, never open a container in alarm, and follow NFPA 855 site plans.',
+        'Battery strings stay energized even with the UPS off. Open the battery disconnect and verify.',
+      ] },
+    ],
+  },
+
+  // -------------------------------- Mechanical --------------------------------
+  {
+    id: 'mechanical-safety',
+    group: 'Mechanical',
+    title: 'Mechanical hazards',
+    intro: 'Chillers, pumps, towers, and air handlers carry their own hazards: moving parts, pressure, chemicals, and heights.',
     blocks: [
       { table: {
-        head: ['Standard', 'Covers', 'What it means on shift'],
+        head: ['Hazard', 'Where', 'Control'],
         rows: [
-          ['OSHA 29 CFR 1910.147', 'Control of hazardous energy (LOTO)', 'Written procedures, personal locks, training, annual inspections of the program.'],
-          ['OSHA 1910.331–.335', 'Electrical safe work practices', 'Only qualified people work on or near exposed energized parts.'],
-          ['NFPA 70E', 'Electrical safety in the workplace', 'ESWC, risk assessment, energized work permits, arc-flash PPE, approach boundaries.'],
-          ['NFPA 70 (NEC)', 'How electrical systems are installed', 'Working clearances, labeling, Article 645 for IT rooms, Article 700/701/702 for emergency and standby systems.'],
-          ['NFPA 70B', 'Maintenance of electrical equipment', 'An electrical maintenance program with intervals based on equipment condition.'],
-          ['NFPA 110', 'Emergency & standby power systems', 'Weekly generator inspections, monthly exercise under load, periodic extended load tests, records.'],
-          ['NFPA 111', 'Stored electrical energy systems', 'UPS/battery systems used as emergency power.'],
-          ['NFPA 855', 'Energy storage systems', 'BESS siting, fire protection, ventilation, emergency planning.'],
-          ['NFPA 72', 'Fire alarm and signaling', 'Detection, testing, impairment handling.'],
-          ['NFPA 75 / 76', 'Fire protection of IT and telecom facilities', 'Construction, suppression, and EPO guidance for IT spaces.'],
-          ['NFPA 2001', 'Clean agent systems', 'Room integrity, safety before discharge, cylinder checks.'],
-          ['IEEE 1188 / 450', 'VRLA / flooded battery maintenance', 'What to measure on batteries and how often.'],
-          ['ASHRAE TC 9.9 guidelines', 'Data center thermal envelope', 'Inlet temperature 64.4–80.6 °F (18–27 °C) recommended; dew point and humidity limits.'],
-          ['ASHRAE 62.1', 'Ventilation', 'Minimum outdoor air for occupied spaces (DOAS sizing).'],
-          ['ASHRAE 90.4', 'Data center energy', 'Efficiency requirements for mechanical and electrical systems.'],
-          ['ASHRAE 188', 'Legionella risk management', 'A written water management program for cooling towers.'],
-          ['EPA Clean Air Act §608', 'Refrigerant handling', 'Only certified technicians handle refrigerant; no venting; leak repair rules.'],
-          ['EPA 40 CFR 112 (SPCC)', 'Oil spill prevention', 'Spill plan, secondary containment, inspections for fuel storage above threshold volumes.'],
-          ['EPA engine rules (NSPS/NESHAP)', 'Emergency engine emissions', 'Limits on non-emergency run hours for testing and maintenance; keep run-hour logs.'],
-          ['TIA-942 / tier classifications', 'Data center design rating systems', 'Describe redundancy and maintainability levels. Ratings are awarded by their organizations; this simulator only explains the ideas.'],
+          ['Rotating equipment', 'Pumps, fans, couplings, belts', 'Guards in place; LOTO before touching; VFDs and automation can restart equipment on their own.'],
+          ['Stored pressure', 'Chilled water, condenser water, glycol, refrigerant', 'Isolate, then bleed to zero and verify before opening anything. Never open a hot pressurized cap.'],
+          ['Refrigerant', 'Chiller rooms, CRAC units', 'Leak monitors and alarms; leave and ventilate on alarm; only EPA 608–certified techs handle refrigerant.'],
+          ['Hot surfaces', 'Generator exhaust, chiller discharge lines, reheat coils', 'Gloves, let it cool, don\'t touch to "check temperature".'],
+          ['Confined spaces', 'Tanks, vaults, pits, tower basins', 'Permit program (OSHA 1910.146), atmospheric testing, an attendant, a rescue plan.'],
+          ['Falls', 'Roofs, cooling towers, ladders', 'Fall protection (OSHA 1910.28), guardrails, three points of contact.'],
+          ['Legionella', 'Cooling towers, evaporative equipment', 'Water management program (ASHRAE 188); respirator for some tower work.'],
+          ['Water near electricity', 'CRAH coils, CDUs, leaks under racks', 'Leak detection, drip trays, isolate and clean up before touching wet gear.'],
         ],
       } },
     ],
   },
   {
+    id: 'mechanical-loto',
+    group: 'Mechanical',
+    title: 'Isolating mechanical systems',
+    intro: 'Mechanical lockout is LOTO plus valves: you are controlling fluid and pressure as well as electricity.',
+    blocks: [
+      { ol: [
+        'Lock out the motor starter or VFD feeding the equipment.',
+        'Close and lock the isolation valves on both sides (double block where the procedure requires).',
+        'Open the drain and vent valves to bleed pressure to zero, into a container or drain as the procedure says.',
+        'Verify zero pressure on a gauge and that no fluid flows from the vent.',
+        'Watch for gravity and thermal effects: water above you can still drain down, and warming fluid can re-pressurize.',
+      ] },
+      { callout: 'On a running loop, closing the wrong valve can starve coils plant-wide. Valve operations on critical loops go in a MOP.', tone: 'warn', title: 'Critical loop' },
+    ],
+  },
+
+  // -------------------------------- Everyone --------------------------------
+  {
     id: 'other-hazards',
-    group: 'Safety',
-    title: 'Other hazards you\'ll meet',
-    intro: 'Electrical gets the headlines, but these hurt people too.',
+    group: 'Everyone',
+    title: 'Hazards everyone meets',
+    intro: 'Electrical and mechanical hazards get the headlines, but these hurt people too.',
     blocks: [
       { table: {
         head: ['Hazard', 'Where', 'Control'],
         rows: [
           ['Noise', 'Generators, chillers, pump rooms', 'Hearing protection; OSHA 1910.95 hearing conservation program.'],
-          ['Heat stress', 'Hot aisles, generator yards in summer, roofs', 'Hydration, breaks, buddy system, know heat illness signs.'],
-          ['Battery acid & hydrogen', 'Battery rooms', 'Eyewash station (OSHA 1910.151), ventilation, face shield and gloves, no sparks.'],
-          ['Refrigerant', 'Chiller rooms', 'Refrigerant monitors and alarms; leave and ventilate on alarm.'],
-          ['Confined spaces', 'Tanks, vaults, pits', 'Permit program (OSHA 1910.146), atmospheric testing, attendant.'],
-          ['Falls', 'Roofs, cooling towers, ladders', 'Fall protection (OSHA 1910.28), guardrails, three points of contact.'],
-          ['Rotating equipment', 'Pumps, fans, generators', 'Guards in place, LOTO, beware of auto-start.'],
-          ['Legionella', 'Cooling towers', 'Water management program; respirators for some tower work.'],
-          ['Chemicals', 'Water treatment, glycol, fuel', 'Safety data sheets (HazCom 1910.1200), PPE, spill kits.'],
+          ['Heat stress', 'Hot aisles, generator yards in summer, roofs', 'Hydration, breaks, buddy system; know the signs of heat illness.'],
+          ['Chemicals', 'Water treatment, glycol, fuel, battery acid', 'Safety data sheets (HazCom 1910.1200), the right PPE, spill kits.'],
+          ['Slips & trips', 'Raised floors, wet mechanical rooms, cable runs', 'Replace floor tiles, clean up spills, keep walkways clear.'],
+          ['Lifting', 'Batteries, filters, floor tiles, parts', 'Team lifts and carts; batteries are heavier than they look.'],
+          ['Working alone', 'Night shift rounds', 'Check-in calls; tell someone where you are going.'],
         ],
       } },
-    ],
-  },
-  {
-    id: 'uptime',
-    group: 'Uptime',
-    title: 'How to maximize uptime',
-    intro: 'Most outages are not caused by equipment simply wearing out. Industry surveys consistently point to human error and process failures as major contributors. Good habits are the best redundancy.',
-    blocks: [
-      { h: 'Human performance tools' },
-      { ul: [
-        'STAR: Stop, Think, Act, Review, before every step that changes plant state.',
-        'Peer check: a second qualified person watches and confirms the right device before you touch it.',
-        'Three-way communication: "Open breaker UOB-A." / "Open breaker UOB-A, understood." / "Correct."',
-        'Procedure use: read the step, do the step, check it off. Never work from memory on critical gear.',
-        'Pre-job brief: scope, risks, hold points, back-out plan, who to call. Post-job debrief: what surprised us?',
-        'Stop when unsure. A paused job costs minutes; a wrong breaker can cost the site.',
-      ] },
-      { h: 'Operations' },
-      { ul: [
-        'Know the normal state: the one-line, breaker lineup, and valve lineup should be second nature.',
-        'Rounds with readings, not just a walk-through. Trends catch failing equipment early.',
-        'Alarm management: every alarm should mean something and have a response. Don\'t let nuisance alarms train people to ignore them.',
-        'Keep the redundancy you paid for: don\'t leave equipment out of auto, in manual, or on bypass.',
-        'Track and limit time spent at reduced redundancy (e.g. N+1 running at N during maintenance).',
-      ] },
-      { h: 'Maintenance' },
-      { ul: [
-        'Preventive maintenance on schedule, and predictive tools: IR scans, vibration analysis, oil analysis, battery ohmic trending.',
-        'Concurrent maintainability: plan work so the load always has a path.',
-        'Critical spares on site (fuses, breakers, UPS boards, pump seals) with a known location.',
-        'Test what you rely on: monthly generator loads, transfer tests, standby pump auto-start.',
-      ] },
-      { h: 'Organization' },
-      { ul: [
-        'Written procedures: SOPs (normal), MOPs (planned changes), EOPs (emergencies).',
-        'Training and drills: practice EOPs with tabletop and live drills.',
-        'Management of change for everything that touches the plant (see the Change tab).',
-        'Root cause analysis after every incident and near miss, and fix the system, not just the person.',
-      ] },
-    ],
-  },
-  {
-    id: 'emergency',
-    group: 'Uptime',
-    title: 'When something goes wrong',
-    intro: 'Emergencies are where training shows. EOPs exist so you don\'t have to invent the response under stress.',
-    blocks: [
-      { ol: [
-        'Protect people first. If there is fire, smoke, an injury, or an arc flash, follow life-safety procedures.',
-        'Assess: what is the alarm, what is at risk, and how much time do you have (UPS runtime, inlet temperatures)?',
-        'Communicate: notify the control room or lead immediately using the escalation list. Say what you see, not what you guess.',
-        'Stabilize using the EOP: restore redundancy or capacity (e.g. bring standby equipment online). Don\'t chase every alarm; find the first one.',
-        'Don\'t make it worse: no improvised switching, no defeated interlocks, no resetting trips without understanding them.',
-        'Document: times, actions, readings. It feeds the root cause analysis.',
-      ] },
-      { callout: 'The first alarm usually points closest to the root cause. Sort the event log by time and start there.', title: 'Tip' },
+      { h: 'Personal protective equipment basics' },
+      { ul: ['Safety glasses everywhere on the plant floor.', 'Hearing protection in posted areas.', 'Arc-rated clothing and gear per the label for electrical work.', 'Gloves matched to the task (cut, chemical, insulating).', 'Hard hat where overhead work or hazards exist.'] },
     ],
   },
 ];

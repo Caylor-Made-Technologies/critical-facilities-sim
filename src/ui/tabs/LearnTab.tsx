@@ -1,6 +1,8 @@
 /** Learn tab: guided step-by-step walkthroughs, plus the coach used inside the Simulator. */
 import { useState } from 'react';
-import { LESSONS, type Lesson } from '../../content/lessons';
+import { LESSONS, type Lesson, type LessonArea } from '../../content/lessons';
+import { PageHead, SectionTabs } from '../common';
+import { Figure } from '../figures';
 import { Icon } from '../icons';
 
 export interface LessonState {
@@ -15,10 +17,11 @@ interface CoachProps {
   onExit: () => void;
   onShowSim?: () => void;
   onBackToLesson?: () => void;
+  onFinish?: () => void;
 }
 
 /** Step-by-step coach card. Shows a simpler explanation on request. */
-export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson }: CoachProps) {
+export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson, onFinish }: CoachProps) {
   const { lesson, step } = state;
   const s = lesson.steps[step]!;
   const [simpleFor, setSimpleFor] = useState<string | null>(null);
@@ -49,6 +52,7 @@ export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson 
         {s.body.map((p) => (
           <p key={p}>{p}</p>
         ))}
+        {s.figure && <Figure id={s.figure.id} highlight={s.figure.highlight} />}
         {showSimple && (
           <div className="callout simpler">
             <strong>In plain words: </strong>
@@ -75,7 +79,14 @@ export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson 
         )}
         <span className="spacer" />
         {last ? (
-          <button className="btn btn-primary" type="button" onClick={onExit}>
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => {
+              onFinish?.();
+              onExit();
+            }}
+          >
             <Icon name="check" /> Finish
           </button>
         ) : (
@@ -88,42 +99,63 @@ export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson 
   );
 }
 
+const AREAS: { id: LessonArea; label: string }[] = [
+  { id: 'electrical', label: 'Electrical' },
+  { id: 'mechanical', label: 'Mechanical' },
+  { id: 'safety', label: 'Safety & operations' },
+];
+
 interface Props {
   active: LessonState | null;
+  done: string[];
   start: (lesson: Lesson) => void;
   goTo: (step: number) => void;
   exit: () => void;
+  finish: (id: string) => void;
   showSim: () => void;
 }
 
-export function LearnTab({ active, start, goTo, exit, showSim }: Props) {
+export function LearnTab({ active, done, start, goTo, exit, finish, showSim }: Props) {
+  const [area, setArea] = useState<LessonArea>(active?.lesson.area ?? 'electrical');
+  const counts = Object.fromEntries(
+    AREAS.map((a) => {
+      const ls = LESSONS.filter((l) => l.area === a.id);
+      return [a.id, `${ls.filter((l) => done.includes(l.id)).length}/${ls.length}`];
+    }),
+  ) as Record<LessonArea, string>;
+  const list = LESSONS.filter((l) => l.area === area);
   return (
     <div className="tab-panel">
-      <div className="page-head">
-        <div className="eyebrow">Learn</div>
-        <h1>Step-by-step walkthroughs</h1>
-        <p>
-          Short guided lessons that drive the simulator for you. Stuck on a step? Press <strong>"I don't get it"</strong>{' '}
-          for a plain-words version. New here? Start with the first one.
-        </p>
-      </div>
+      <PageHead eyebrow="Learn" title="Step-by-step walkthroughs">
+        Short guided lessons. Electrical ones drive the simulator for you; mechanical ones use animated cutaways. Stuck?
+        Press "I don't get it" on any step for a plain-words version.
+      </PageHead>
       {active ? (
-        <Coach state={active} goTo={goTo} onExit={exit} onShowSim={showSim} />
+        <Coach state={active} goTo={goTo} onExit={exit} onShowSim={showSim} onFinish={() => finish(active.lesson.id)} />
       ) : (
-        <div className="lesson-list">
-          {LESSONS.map((l, i) => (
-            <button key={l.id} type="button" className="card lesson-card" onClick={() => start(l)}>
-              <div className="eyebrow">Lesson {i + 1}</div>
-              <h2 className="h-card">{l.title}</h2>
-              <p style={{ color: 'var(--text-muted)', margin: 0 }}>{l.summary}</p>
-              <div className="meta">
-                <span className={`chip ${l.level === 'Beginner' ? 'chip-ok' : 'chip-info'}`}>{l.level}</span>
-                <span className="chip">{l.minutes} min</span>
-                <span className="chip">{l.steps.length} steps</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          <SectionTabs label="Lesson sections" sections={AREAS} value={area} onChange={setArea} counts={counts} />
+          <div className="lesson-list" key={area}>
+            {list.map((l, i) => {
+              const isDone = done.includes(l.id);
+              return (
+                <button key={l.id} type="button" className={`card lesson-card${isDone ? ' done' : ''}`} onClick={() => start(l)}>
+                  <div className="eyebrow">
+                    Lesson {i + 1}
+                    {isDone && <span className="done-tag"> · <Icon name="check" /> Done</span>}
+                  </div>
+                  <h2 className="h-card">{l.title}</h2>
+                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>{l.summary}</p>
+                  <div className="meta">
+                    <span className={`chip ${l.level === 'Beginner' ? 'chip-ok' : 'chip-info'}`}>{l.level}</span>
+                    <span className="chip">{l.minutes} min</span>
+                    <span className="chip">{l.steps.length} steps</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
