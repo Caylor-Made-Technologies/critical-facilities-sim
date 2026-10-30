@@ -4,8 +4,8 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 
 | # | Point | Status for this project |
 |---|---|---|
-| 1 | Privacy policy | Short "Privacy" section on the site: nothing is collected, stored, or sent. Optional settings (theme, units) stay in your own browser. |
-| 2 | Terms of service | Short "Terms of use" section: educational use only, no warranty, not a site procedure, Texas law. Template until a lawyer reviews it. |
+| 1 | Privacy policy | About page: nothing is collected or sent. Theme/units preferences stay in your own browser's local storage. GitHub Pages server logs are mentioned. |
+| 2 | Terms of service | About page: educational use only, no warranty, not for real work, MIT license, Texas law. Marked as a template until an attorney reviews it. |
 | 3 | Refund policy | N/A: free, nothing is sold. |
 | 4 | Cookie policy | Covered in the privacy section: no cookies. |
 | 5 | Cookie banner | Not needed: no cookies, analytics, or ad pixels. |
@@ -16,14 +16,14 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 | 10 | Hidden fees | N/A: free. |
 | 11 | Fake reviews | No testimonials section. |
 | 12 | Unsupported claims | Tier descriptions are generic, plain-language explanations and say "Tier-style". No claim of certification, code compliance, or engineering accuracy. The footer disclaimer says it is not a site procedure. |
-| 13 | Alt text | Every diagram SVG gets a `<title>`/`aria-label`. Components are reachable as a text list for screen readers. |
-| 14 | Color contrast | WCAG AA (4.5:1) in light and dark themes. Status is never shown by color alone (icons + text too). |
+| 13 | Alt text | Logo has alt text; the diagram has a title and every component is a labeled button announcing its tag, name, and state. Rack tiles announce power and cord status. |
+| 14 | Color contrast | WCAG AA verified with axe in both themes (0 violations). Status is always also shown as text ("FAILED", "open", "BATT 92%"). |
 | 15 | Keyboard navigation | Skip link, visible focus ring, every component and control tabbable, Escape closes panels. |
-| 16 | Business details | Footer: "Built by Caylor Made Technologies, Hereford, TX" plus a contact email and GitHub link. |
+| 16 | Business details | Footer and About page: Caylor Made Technologies, Hereford, TX, email, website, source link. |
 | 17 | Kids' data | Not directed at children. No data is collected. |
 | 18 | Unsubscribe link | N/A: no email. |
-| 19 | Licensed fonts / images | System font stack (no font files). All diagrams are original SVG drawn in code. No photos. |
-| 20 | Data deletion | Nothing stored server-side. A "Reset settings" button clears local preferences. |
+| 19 | Licensed fonts / images | Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
+| 20 | Data deletion | Nothing stored server-side. "Clear my saved settings" on the About page removes the local preferences. |
 
 ## Security
 - Strict Content Security Policy meta tag: `default-src 'self'`, no inline scripts, no `eval`, `connect-src 'none'`.
