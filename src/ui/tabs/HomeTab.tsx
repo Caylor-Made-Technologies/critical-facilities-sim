@@ -4,6 +4,8 @@ import { NEVER } from '../../content/neverdo';
 import { QUIZ } from '../../content/quiz';
 import { EQUIPMENT } from '../../content/equipment';
 import { GLOSSARY } from '../../content/glossary';
+import { PROCEDURES } from '../../content/procedures';
+import { grade } from '../../sim';
 import { Icon } from '../icons';
 import { LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
@@ -107,6 +109,9 @@ export function HomeTab({ p, go, startTour }: Props) {
               <strong>{LESSONS.length}</strong> walkthroughs
             </li>
             <li>
+              <strong>{PROCEDURES.length}</strong> scored MOPs and drills
+            </li>
+            <li>
               <strong>{QUIZ.length}</strong> quiz questions
             </li>
             <li>
@@ -161,8 +166,39 @@ export function HomeTab({ p, go, startTour }: Props) {
             <span>
               <strong>{p.progress.guides.length}</strong>/{EQUIPMENT.length} guides read
             </span>
+            <span>
+              <strong>{Object.keys(p.progress.procs).length}</strong>/{PROCEDURES.length} procedures run
+            </span>
           </div>
         </div>
+      </section>
+
+      <section className="card record" aria-labelledby="record-h">
+        <div className="record-head">
+          <h2 id="record-h" className="h-card">
+            Training record
+          </h2>
+          <button className="btn btn-sm" type="button" onClick={() => go('procedures')}>
+            <Icon name="list" /> All procedures
+          </button>
+        </div>
+        <ul className="record-list">
+          {PROCEDURES.map((pr) => {
+            const best = p.progress.procs[pr.id];
+            return (
+              <li key={pr.id} className={best === undefined ? 'todo' : ''}>
+                <span className={`record-grade${best === undefined ? '' : ` g-${grade(best).letter[0]!.toLowerCase()}`}`} aria-hidden="true">
+                  {best === undefined ? '–' : grade(best).letter}
+                </span>
+                <span className="record-name">
+                  {pr.title}
+                  <small>{pr.kind === 'mop' ? 'MOP' : 'Drill'} · {best === undefined ? 'not run yet' : `best ${best}/100`}</small>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="record-note">Saved only in this browser. Nothing is sent anywhere.</p>
       </section>
 
       <div className="tip" role="note">

@@ -12,11 +12,13 @@ export interface Progress {
   /** Question id → answered correctly on the first try. */
   quiz: Record<string, boolean>;
   guides: string[];
+  /** Procedure / drill id → best score (0–100). */
+  procs: Record<string, number>;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [] };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {} };
 
-export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5 } as const;
+export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40 } as const;
 
 export const LEVELS = [
   { xp: 0, name: 'Rookie', blurb: 'Every pro started here. Take the guided tour.' },
@@ -35,6 +37,10 @@ function load(): Progress {
       lessons: Array.isArray(p.lessons) ? p.lessons.filter((x) => typeof x === 'string') : [],
       quiz: p.quiz && typeof p.quiz === 'object' ? Object.fromEntries(Object.entries(p.quiz).filter(([, v]) => typeof v === 'boolean')) : {},
       guides: Array.isArray(p.guides) ? p.guides.filter((x) => typeof x === 'string') : [],
+      procs:
+        p.procs && typeof p.procs === 'object'
+          ? Object.fromEntries(Object.entries(p.procs).filter(([, v]) => typeof v === 'number' && v >= 0 && v <= 100))
+          : {},
     };
   } catch {
     return EMPTY;
@@ -55,7 +61,8 @@ export function xpOf(p: Progress): number {
     p.lessons.length * XP.lesson +
     quiz.filter(Boolean).length * XP.quizCorrect +
     quiz.filter((v) => !v).length * XP.quizTried +
-    p.guides.length * XP.guide
+    p.guides.length * XP.guide +
+    Object.keys(p.procs).length * XP.procedure
   );
 }
 
@@ -102,6 +109,14 @@ export function useProgress(onGain?: (msg: string) => void) {
     (id: string) => commit((p) => (p.guides.includes(id) ? null : { ...p, guides: [...p.guides, id] })),
     [commit],
   );
+  const finishProcedure = useCallback(
+    (id: string, score: number) =>
+      commit(
+        (p) => ((p.procs[id] ?? -1) >= score ? null : { ...p, procs: { ...p.procs, [id]: score } }),
+        `New best: ${score} / 100`,
+      ),
+    [commit],
+  );
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(KEY);
@@ -111,7 +126,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

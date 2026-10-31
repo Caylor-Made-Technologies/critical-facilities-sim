@@ -44,8 +44,13 @@ export function AboutTab({ onResetPrefs }: { onResetPrefs: () => void }) {
           </p>
           <p>
             Your preferences (light/dark theme, °F/°C) and your learning progress (lessons finished, quiz answers,
-            guides read, XP) are saved only in your own browser's local storage so they're remembered next time. They
-            never leave your device. You can clear them here at any time:
+            guides read, procedure scores, XP) are saved only in your own browser's local storage so they're remembered next
+            time. They never leave your device. You can clear them here at any time:
+          </p>
+          <p>
+            <strong>Offline copy:</strong> so the simulator works with no signal, your browser keeps a copy of this site's
+            own files (pages, code, fonts, images) in its offline cache. It holds no information about you. Clearing this
+            site's data in your browser settings removes it.
           </p>
           <button className="btn" type="button" onClick={onResetPrefs}>
             Clear my saved settings & progress

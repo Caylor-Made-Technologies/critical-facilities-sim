@@ -9,3 +9,5 @@ export * from './engine';
 export * from './thermal';
 export * from './plant/builder';
 export { EXPLAINERS } from './plant/explainers';
+export * from './procedure';
+export * from './designs';

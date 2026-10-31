@@ -38,7 +38,7 @@ export const TOPOLOGIES: Record<Topology, { label: string; summary: string }> = 
   },
   DR: {
     label: 'Distributed redundant',
-    summary: 'Three UPS systems, each normally about 2/3 loaded. Racks are spread across pairs (A/B, B/C, C/A), so losing any one system shifts its load onto the other two. Same resilience as 2N with fewer modules.',
+    summary: 'Three UPS systems, each normally a little over half loaded. Racks are spread across pairs (A/B, B/C, C/A), so losing any one system shifts its load onto the other two. Same resilience as 2N with fewer modules.',
   },
   BLOCK: {
     label: 'Block redundant ("catcher")',
@@ -50,8 +50,8 @@ export const TOPOLOGIES: Record<Topology, { label: string; summary: string }> = 
 
 export const DESIGN = {
   upsModuleKw: 750,
-  /** DR systems use larger modules sized for 1.5× their normal share. */
-  drModuleKw: 1100,
+  /** DR systems use larger modules: each must pick up half of a failed neighbour's rows, and GPU rows load the pairs unevenly. */
+  drModuleKw: 1200,
   generatorKw: 1250,
   generatorDayTankL: 1000,
   bessKw: 2000,

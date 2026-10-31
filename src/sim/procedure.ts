@@ -1,0 +1,192 @@
+/**
+ * Procedure runner for MOP practice and emergency drills.
+ *
+ * A procedure is an ordered list of steps. A step finishes in one of three
+ * ways: the engine sees the plant reach the right state (check), the
+ * operator confirms a hold point (confirm), or the operator picks the right
+ * answer at a decision point (choices). The runner watches the event log
+ * and the racks to score the run: blocked actions, hints, wrong answers
+ * and dropped load all cost points.
+ *
+ * Pure logic, no UI. The UI calls evaluate() after every engine change.
+ */
+import { Simulation } from './engine';
+import { buildPlant } from './plant/builder';
+import type { WeatherId } from './thermal';
+import type { Topology } from './plant/builder';
+
+export type ProcKind = 'mop' | 'drill';
+
+export interface ProcChoice {
+  text: string;
+  correct: boolean;
+  /** Why this answer is right or wrong. Shown after it is picked. */
+  why: string;
+}
+
+export interface ProcStep {
+  title: string;
+  /** What to do, in plain words. */
+  detail: string;
+  /** Why the step matters. */
+  why: string;
+  /** Where to tap. Using it costs points. */
+  hint?: string;
+  /** Component to select on the diagram when the step starts. */
+  focus?: string;
+  view?: 'electrical' | 'mechanical';
+  /** Finishes automatically when this returns true. */
+  check?: (sim: Simulation) => boolean;
+  /** Hold point: the operator confirms it by pressing a button with this label. */
+  confirm?: string;
+  /** Decision point. */
+  choices?: ProcChoice[];
+  /** Runs once when the step finishes (drills use it to move the story along). */
+  after?: (sim: Simulation) => void;
+}
+
+export interface Procedure {
+  id: string;
+  kind: ProcKind;
+  title: string;
+  summary: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  minutes: number;
+  topology: Topology;
+  weather?: WeatherId;
+  /** Puts the plant in the starting condition (drills fail something here). */
+  setup?: (sim: Simulation) => void;
+  /** Start the clock running (drills) or leave it paused (MOPs). */
+  run?: boolean;
+  steps: ProcStep[];
+  /** Key takeaways shown on the result screen. */
+  debrief: string[];
+}
+
+export const SCORE = { start: 100, blocked: 5, hint: 5, wrongChoice: 10, dropped: 30 } as const;
+
+export interface ProcRun {
+  id: string;
+  step: number;
+  score: number;
+  done: boolean;
+  /** Plain-English list of what cost points. */
+  mistakes: string[];
+  /** Steps where the hint was opened. */
+  hints: number[];
+  /** Wrong answers picked so far, per step. */
+  wrong: Record<number, number[]>;
+  /** Events already scored. */
+  eventIdx: number;
+  /** Racks down at the last check; more than this costs points. */
+  racksDown: number;
+}
+
+/** Build the plant a procedure starts from. */
+export function procedureSim(p: Procedure): Simulation {
+  const sim = new Simulation(buildPlant(p.topology));
+  if (p.weather) {
+    sim.setWeather(p.weather);
+    sim.advance(600); // let the plant settle into the weather before the clock starts
+  }
+  p.setup?.(sim);
+  return sim;
+}
+
+export function startRun(p: Procedure, sim: Simulation): ProcRun {
+  return evaluate(p, {
+    id: p.id,
+    step: 0,
+    score: SCORE.start,
+    done: false,
+    mistakes: [],
+    hints: [],
+    wrong: {},
+    eventIdx: sim.events.length,
+    racksDown: sim.itDownRacks().length,
+  }, sim);
+}
+
+const clampScore = (n: number) => Math.max(0, Math.min(SCORE.start, n));
+
+/** Finish the current step and move on, running its after() hook. */
+function advanceStep(p: Procedure, run: ProcRun, sim: Simulation): ProcRun {
+  p.steps[run.step]?.after?.(sim);
+  const step = run.step + 1;
+  return { ...run, step, done: step >= p.steps.length, eventIdx: run.eventIdx };
+}
+
+/**
+ * Score anything new in the event log and the racks, then auto-finish any
+ * steps whose check is now true. Call after every engine change.
+ */
+export function evaluate(p: Procedure, run: ProcRun, sim: Simulation): ProcRun {
+  if (run.done) return run;
+  let r = { ...run, mistakes: [...run.mistakes] };
+  // Blocked actions: the interlock or the engine said no.
+  for (const e of sim.events.slice(r.eventIdx)) {
+    if (e.severity === 'warning' && e.message.startsWith('Blocked:')) {
+      r.score -= SCORE.blocked;
+      r.mistakes.push(`Blocked action (${e.source}): ${e.message.replace(/^Blocked:\s*/, '')}`);
+    }
+  }
+  r.eventIdx = sim.events.length;
+  // Dropped load is the worst outcome.
+  const down = sim.itDownRacks().length;
+  if (down > r.racksDown) {
+    r.score -= SCORE.dropped;
+    r.mistakes.push(`Dropped load: ${down - r.racksDown} rack${down - r.racksDown > 1 ? 's' : ''} lost power.`);
+  }
+  r.racksDown = down;
+  // Auto-finish consecutive steps the plant already satisfies.
+  let guard = 0;
+  while (!r.done && guard++ < p.steps.length) {
+    const s = p.steps[r.step]!;
+    if (!s.check || s.choices || s.confirm || !s.check(sim)) break;
+    r = advanceStep(p, r, sim);
+    r.eventIdx = sim.events.length; // events from after() are the story, not the operator
+  }
+  r.score = clampScore(r.score);
+  return r;
+}
+
+/** Operator confirms a hold point. */
+export function confirmStep(p: Procedure, run: ProcRun, sim: Simulation): ProcRun {
+  const s = p.steps[run.step];
+  if (run.done || !s?.confirm) return run;
+  const r = advanceStep(p, run, sim);
+  return evaluate(p, { ...r, eventIdx: sim.events.length }, sim);
+}
+
+/** Operator picks an answer at a decision point. */
+export function choose(p: Procedure, run: ProcRun, sim: Simulation, index: number): ProcRun {
+  const s = p.steps[run.step];
+  const c = s?.choices?.[index];
+  if (run.done || !s || !c) return run;
+  if (!c.correct) {
+    const tried = run.wrong[run.step] ?? [];
+    if (tried.includes(index)) return run;
+    return {
+      ...run,
+      score: clampScore(run.score - SCORE.wrongChoice),
+      mistakes: [...run.mistakes, `Step ${run.step + 1}: picked "${c.text}"`],
+      wrong: { ...run.wrong, [run.step]: [...tried, index] },
+    };
+  }
+  const r = advanceStep(p, run, sim);
+  return evaluate(p, { ...r, eventIdx: sim.events.length }, sim);
+}
+
+/** Operator opens the hint for the current step (costs points once per step). */
+export function takeHint(run: ProcRun): ProcRun {
+  if (run.done || run.hints.includes(run.step)) return run;
+  return { ...run, hints: [...run.hints, run.step], score: clampScore(run.score - SCORE.hint) };
+}
+
+export function grade(score: number): { letter: string; label: string } {
+  if (score >= 95) return { letter: 'A+', label: 'Flawless. You would be trusted to lead this.' };
+  if (score >= 85) return { letter: 'A', label: 'Clean work. Small slips only.' };
+  if (score >= 70) return { letter: 'B', label: 'Safe, but slow down and check before each step.' };
+  if (score >= 50) return { letter: 'C', label: 'You got there, with mistakes that matter on a live site.' };
+  return { letter: 'D', label: 'Review the steps and run it again. That is what practice is for.' };
+}

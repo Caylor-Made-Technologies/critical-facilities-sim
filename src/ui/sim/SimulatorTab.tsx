@@ -25,6 +25,8 @@ interface Props {
   setSelected: (id: string | null) => void;
   onOpenGuide: (kind: Component['kind']) => void;
   coach?: ReactNode;
+  /** A walkthrough or procedure is running: keep the intro short so the coach sits near the top. */
+  focused?: boolean;
   view: SimView;
   setView: (v: SimView) => void;
   units: Units;
@@ -50,7 +52,7 @@ function Kpi({ icon, label, value, tone }: { icon: IconName; label: string; valu
   );
 }
 
-export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGuide, coach, view, setView, units, setUnits }: Props) {
+export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGuide, coach, focused, view, setView, units, setUnits }: Props) {
   const { sim, version } = h;
   const sol = sim.solution;
   const racksDown = sim.itDownRacks().length;
@@ -78,8 +80,8 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
   return (
     <div className="tab-panel">
       <PageHead eyebrow="Simulator" title="Utility to chip, live">
-        Follow power from two utility feeds to 36 racks, and heat from the chips back out to the cooling towers. Tap anything
-        to learn what it does. Switch to Failure mode to break things and watch the plant respond.
+        {focused ? null : <>Follow power from two utility feeds to 36 racks, and heat from the chips back out to the cooling towers. Tap anything
+        to learn what it does. Switch to Failure mode to break things and watch the plant respond.</>}
       </PageHead>
 
       {coach}

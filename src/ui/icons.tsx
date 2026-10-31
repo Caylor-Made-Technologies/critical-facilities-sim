@@ -15,6 +15,8 @@ const base = {
 
 export type IconName =
   | 'bolt'
+  | 'list'
+  | 'layers'
   | 'book'
   | 'wrench'
   | 'shield'
@@ -45,6 +47,8 @@ export type IconName =
   | 'star';
 
 const paths: Record<IconName, ReactElement> = {
+  list: <path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" />,
+  layers: <path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />,
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
   book: (
     <>

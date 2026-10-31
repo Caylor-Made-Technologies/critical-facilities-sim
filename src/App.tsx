@@ -3,13 +3,14 @@
  * sheet (phone), hash routing, XP toasts, and every tab.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { CHANGE } from './content/change';
 import { CODES } from './content/codes';
 import { guideForKind } from './content/equipment';
 import { LESSONS, simForStep, type Lesson } from './content/lessons';
 import { SAFETY } from './content/safety';
 import { UPTIME } from './content/uptime';
-import type { ComponentKind } from './sim';
+import { choose, confirmStep, evaluate, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
 import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
@@ -24,6 +25,9 @@ import { GlossaryTab } from './ui/tabs/GlossaryTab';
 import { HomeTab } from './ui/tabs/HomeTab';
 import { Coach, LearnTab, type LessonState } from './ui/tabs/LearnTab';
 import { NeverDoTab } from './ui/tabs/NeverDoTab';
+import { ProceduresTab } from './ui/tabs/ProceduresTab';
+import { DesignsTab } from './ui/tabs/DesignsTab';
+import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { QuizTab } from './ui/tabs/QuizTab';
 import { useSimulation } from './ui/useSimulation';
 
@@ -53,6 +57,8 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [guideId, setGuideId] = useState<string | null>(null);
   const [lesson, setLesson] = useState<LessonState | null>(null);
+  const [proc, setProc] = useState<{ p: Procedure; run: ProcRun } | null>(null);
+  const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
 
   useEffect(() => {
     const on = () => setTabState(tabFromHash());
@@ -62,9 +68,16 @@ export function App() {
 
   const setTab = useCallback((t: Tab) => {
     if (window.location.hash !== `#/${t}`) window.location.hash = `/${t}`;
-    setTabState(t);
-    setMoreOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const swap = () => {
+      setTabState(t);
+      setMoreOpen(false);
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    };
+    // Cross-fade between tabs where the browser supports view transitions.
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (doc.startViewTransition && !calm) doc.startViewTransition(() => flushSync(swap));
+    else swap();
     document.getElementById('main')?.focus({ preventScroll: true });
   }, []);
 
@@ -89,11 +102,96 @@ export function App() {
     },
     [h],
   );
-  const startLesson = (l: Lesson) => goToStep(l, 0);
+  const startLesson = (l: Lesson) => {
+    setProc(null);
+    goToStep(l, 0);
+  };
   const startTour = () => {
+    setProc(null);
     goToStep(LESSONS[0]!, 0);
     setTab('sim');
   };
+
+  // --- Procedures and drills run on the live simulator ---
+  const focusStep = useCallback((p: Procedure, i: number) => {
+    const st = p.steps[i];
+    if (!st) return;
+    setSimView(st.view ?? 'electrical');
+    if (st.focus) setSelected(st.focus);
+  }, []);
+  const startProc = (p: Procedure) => {
+    const sim = procedureSim(p);
+    h.load(sim);
+    h.setSpeed(1);
+    h.setRunning(!!p.run);
+    setMode('explore');
+    setLesson(null);
+    setSelected(null);
+    setProcFb(null);
+    const run = startRun(p, sim);
+    setProc({ p, run });
+    focusStep(p, run.step);
+    setTab('sim');
+  };
+  // Score and auto-advance on every engine change.
+  useEffect(() => {
+    if (!proc || proc.run.done) return;
+    const next = evaluate(proc.p, proc.run, h.sim);
+    if (next.score === proc.run.score && next.step === proc.run.step && next.eventIdx === proc.run.eventIdx && next.racksDown === proc.run.racksDown) return;
+    if (next.score < proc.run.score) setProcFb({ ok: false, text: next.mistakes[next.mistakes.length - 1] ?? 'Points lost.' });
+    else if (next.step > proc.run.step) {
+      setProcFb({ ok: true, text: `Step ${proc.run.step + 1} done: ${proc.p.steps[proc.run.step]!.title}.` });
+      // On a phone the coach may be scrolled out of view, so confirm with a toast too.
+      if (!next.done) showToast(`Step ${proc.run.step + 1} done. Next: ${proc.p.steps[next.step]!.title}`);
+    }
+    setProc({ p: proc.p, run: next });
+    if (next.step !== proc.run.step) focusStep(proc.p, next.step);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [h.version]);
+  // Save the best score when a run finishes.
+  useEffect(() => {
+    if (proc?.run.done) {
+      p.finishProcedure(proc.p.id, proc.run.score);
+      h.setRunning(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proc?.run.done]);
+  const procAct = (fn: (r: ProcRun) => ProcRun, fb?: (before: ProcRun, after: ProcRun) => ProcFeedback | null) => {
+    if (!proc) return;
+    const before = proc.run;
+    const after = h.act(() => fn(before));
+    setProcFb(fb ? fb(before, after) : null);
+    setProc({ p: proc.p, run: after });
+    if (after.step !== before.step) focusStep(proc.p, after.step);
+  };
+  const procCoach = proc ? (
+    <ProcedureCoach
+      proc={proc.p}
+      run={proc.run}
+      feedback={procFb}
+      onConfirm={() => procAct((r) => confirmStep(proc.p, r, h.sim), (b) => ({ ok: true, text: `Confirmed: ${proc.p.steps[b.step]!.confirm}.` }))}
+      onChoose={(i) =>
+        procAct(
+          (r) => choose(proc.p, r, h.sim, i),
+          (b, a) => {
+            const c = proc.p.steps[b.step]!.choices![i]!;
+            return a.step > b.step ? { ok: true, text: c.why } : null;
+          },
+        )
+      }
+      onHint={() => procAct(takeHint)}
+      onShowMe={() => focusStep(proc.p, proc.run.step)}
+      onRetry={() => startProc(proc.p)}
+      onExit={() => {
+        setProc(null);
+        setProcFb(null);
+      }}
+      onBrowse={() => {
+        setProc(null);
+        setTab('procedures');
+      }}
+    />
+  ) : null;
 
   const openGuide = (kind: ComponentKind) => {
     setGuideId(guideForKind(kind)?.id ?? null);
@@ -185,9 +283,10 @@ export function App() {
                 view={simView}
                 setView={setSimView}
                 units={prefs.units}
+                focused={!!proc || !!simLesson}
                 setUnits={(u) => update({ units: u })}
                 coach={
-                  simLesson ? (
+                  procCoach ?? (simLesson ? (
                     <Coach
                       compact
                       state={simLesson}
@@ -201,10 +300,14 @@ export function App() {
                       <strong>New here? </strong>
                       <button className="linklike" type="button" onClick={startTour}>
                         Take the 4-minute guided tour
-                      </button>{' '}
-                      or pick any walkthrough in the Learn tab.
+                      </button>
+                      , pick a walkthrough in Learn, or{' '}
+                      <button className="linklike" type="button" onClick={() => setTab('procedures')}>
+                        run a scored MOP or drill
+                      </button>
+                      .
                     </div>
-                  )
+                  ))
                 }
               />
             )}
@@ -219,6 +322,8 @@ export function App() {
                 showSim={() => setTab('sim')}
               />
             )}
+            {tab === 'procedures' && <ProceduresTab best={p.progress.procs} start={startProc} />}
+            {tab === 'designs' && <DesignsTab sim={h.sim} version={h.version} units={prefs.units} onTry={(t) => { setProc(null); setLesson(null); h.reset(t); setSelected(null); setTab('sim'); }} />}
             {tab === 'quiz' && <QuizTab p={p} />}
             {tab === 'equipment' && <EquipmentTab openId={guideId} onShowInSim={showKindInSim} onRead={p.readGuide} />}
             {tab === 'never' && <NeverDoTab />}

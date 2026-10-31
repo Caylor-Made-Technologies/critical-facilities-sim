@@ -5,6 +5,8 @@ export type Tab =
   | 'home'
   | 'sim'
   | 'learn'
+  | 'procedures'
+  | 'designs'
   | 'quiz'
   | 'equipment'
   | 'never'
@@ -29,8 +31,10 @@ export const NAV: NavItem[] = [
   { id: 'home', label: 'Home', short: 'Home', icon: 'home', group: 'Start', desc: 'Your progress and where to go next.' },
   { id: 'sim', label: 'Simulator', short: 'Sim', icon: 'bolt', group: 'Practice', desc: 'Break the plant on purpose and watch the backups catch it.' },
   { id: 'learn', label: 'Learn', short: 'Learn', icon: 'book', group: 'Practice', desc: 'Step-by-step walkthroughs, electrical and mechanical.' },
+  { id: 'procedures', label: 'Procedures & Drills', short: 'MOPs', icon: 'list', group: 'Practice', desc: 'Run MOPs and emergency drills on the live plant. Scored.' },
   { id: 'quiz', label: 'Quiz', short: 'Quiz', icon: 'target', group: 'Practice', desc: 'Test yourself. Wrong answers explain why.' },
   { id: 'equipment', label: 'Equipment', short: 'Gear', icon: 'wrench', group: 'Know your gear', desc: 'Rounds, PM, troubleshooting for every component.' },
+  { id: 'designs', label: 'Designs & PUE', short: 'Designs', icon: 'layers', group: 'Know your gear', desc: 'Compare redundancy designs side by side, and see where the power goes.' },
   { id: 'never', label: 'Never Do', short: 'Never', icon: 'warning', group: 'Know your gear', desc: 'Hard stops you must never cross.' },
   { id: 'glossary', label: 'Glossary', short: 'Terms', icon: 'search', group: 'Know your gear', desc: 'The words you\'ll hear on the floor.' },
   { id: 'safety', label: 'Safety', short: 'Safety', icon: 'shield', group: 'Work safe', desc: 'Arc flash, LOTO, and mechanical hazards.' },

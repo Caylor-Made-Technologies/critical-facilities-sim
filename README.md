@@ -6,7 +6,7 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** Electrical and mechanical simulators, Kirk-key operation, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, and change management are built. MOP scoring, the redundancy/tiers explainer, and timed scenarios are next.
+**Status:** All build phases done (1–10): electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
@@ -15,6 +15,8 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 |---|---|
 | **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
 | **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, °F/°C, Explore and Failure modes, event log. |
+| **Procedures & Drills** | Scored practice on the live plant. **MOP practice:** UPS to maintenance bypass, return from maintenance bypass, main-tie-main transfer. **Emergency drills:** utility loss, chiller trip on a 105 °F day, both utilities lost with a generator failure. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. Best scores go on the Home training record. |
+| **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
 | **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
 | **Equipment** | 19 equipment families split by Electrical / Mechanical / Life safety: how it works, rounds, PM, troubleshooting, hazards, MOC triggers, and a red NEVER list. |
@@ -46,6 +48,8 @@ src/sim/
   thermal.ts      mechanical plant, BMS staging, thermal and humidity model
   power.ts        electrical solver: energization, load flow, UPS modes, paralleling check
   capacity.ts     N / N+1 / 2N capacity math
+  procedure.ts    MOP / drill runner and scoring
+  designs.ts      design comparison and PUE breakdown
   interlocks.ts   Kirk-key trapped-key system
   engine.ts       time stepping, automatic controls, event log, operator actions
   plant/          reference plant builder (all 7 topologies) and explainer cards
@@ -56,10 +60,12 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 92 unit tests (electrical, thermal, lessons, quiz, content, layout)
+npm test           # 111 unit tests (electrical, thermal, procedures, designs, lessons, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.
+
+**Offline:** after the first visit a small service worker (`public/sw.js`) keeps this site's own files in the browser cache, so the app opens with no signal and can be added to a phone's home screen. Pages load network-first, so updates arrive as soon as you are online.
 
 ## Quality checks
 - Automated axe accessibility scan of every tab, light and dark, phone and laptop: 0 violations.

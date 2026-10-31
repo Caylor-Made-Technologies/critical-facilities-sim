@@ -5,8 +5,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { buildPlant, Simulation, type Topology } from '../sim';
 
-/** Real-time tick interval (ms). Each tick advances `speed × tick` sim seconds. */
-const TICK_MS = 250;
+/** Target time between screen updates (ms). The engine advances by real elapsed time, so the clock never drifts. */
+const FRAME_MS = 120;
+/** Longest real gap counted in one step (ms), so a backgrounded tab doesn't jump minutes ahead. */
+const MAX_GAP_MS = 500;
 
 export function useSimulation(initial: Topology = '2N') {
   const [topology, setTopologyState] = useState<Topology>(initial);
@@ -17,11 +19,24 @@ export function useSimulation(initial: Topology = '2N') {
 
   useEffect(() => {
     if (!running) return;
-    const id = window.setInterval(() => {
-      simRef.current.advance((TICK_MS / 1000) * speed);
-      bump();
-    }, TICK_MS);
-    return () => window.clearInterval(id);
+    // Animation-frame loop: smooth, pauses itself when the tab is hidden, and
+    // re-renders only every FRAME_MS so phones stay cool.
+    let raf = 0;
+    let last = performance.now();
+    let acc = 0;
+    const loop = (now: number) => {
+      const gap = Math.min(MAX_GAP_MS, now - last);
+      last = now;
+      acc += gap;
+      if (acc >= FRAME_MS) {
+        simRef.current.advance((acc / 1000) * speed);
+        acc = 0;
+        bump();
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, [running, speed]);
 
   /** Rebuild the plant from scratch, optionally in a new topology. */
