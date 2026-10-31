@@ -15,7 +15,7 @@ import { Icon } from './ui/icons';
 import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
 import { usePrefs } from './ui/prefs';
 import { levelOf, useProgress } from './ui/progress';
-import { SimulatorTab } from './ui/sim/SimulatorTab';
+import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
 import { AboutTab } from './ui/tabs/AboutTab';
 import { ArticlesTab } from './ui/tabs/ArticlesTab';
 import { EquipmentTab } from './ui/tabs/EquipmentTab';
@@ -27,13 +27,17 @@ import { NeverDoTab } from './ui/tabs/NeverDoTab';
 import { QuizTab } from './ui/tabs/QuizTab';
 import { useSimulation } from './ui/useSimulation';
 
+/** Lessons with simulator actions or focus targets play out in the Simulator tab. */
+const drivesSim = (l: Lesson) => l.steps.some((s) => s.actions || s.focus);
+
 function tabFromHash(): Tab {
   const h = window.location.hash.replace(/^#\/?/, '');
   return (TAB_IDS as string[]).includes(h) ? (h as Tab) : 'home';
 }
 
 export function App() {
-  const { resolvedTheme, update, reset: resetPrefs } = usePrefs();
+  const { prefs, resolvedTheme, update, reset: resetPrefs } = usePrefs();
+  const [simView, setSimView] = useState<SimView>('electrical');
   const [tab, setTabState] = useState<Tab>(tabFromHash);
   const [moreOpen, setMoreOpen] = useState(false);
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
@@ -75,10 +79,11 @@ export function App() {
   // --- Walkthroughs drive the simulator ---
   const goToStep = useCallback(
     (l: Lesson, step: number) => {
-      if (l.area === 'electrical') {
+      if (drivesSim(l)) {
         h.load(simForStep(l, step));
         setSelected(l.steps[step]?.focus ?? null);
         setMode('explore');
+        setSimView(l.steps[step]?.view ?? 'electrical');
       }
       setLesson({ lesson: l, step });
     },
@@ -97,12 +102,13 @@ export function App() {
   const showKindInSim = (kind: string) => {
     const first = [...h.sim.graph.nodes.values()].find((n) => n.kind === kind);
     setSelected(first?.id ?? null);
+    if (first) setSimView(first.domain === 'mechanical' && first.kind !== 'cdu' ? 'mechanical' : 'electrical');
     setTab('sim');
   };
 
   const lvl = levelOf(p.xp);
   const current = NAV.find((n) => n.id === tab)!;
-  const simLesson = lesson && lesson.lesson.area === 'electrical' ? lesson : null;
+  const simLesson = lesson && drivesSim(lesson.lesson) ? lesson : null;
 
   return (
     <div className="shell">
@@ -176,6 +182,10 @@ export function App() {
                 selected={selected}
                 setSelected={setSelected}
                 onOpenGuide={openGuide}
+                view={simView}
+                setView={setSimView}
+                units={prefs.units}
+                setUnits={(u) => update({ units: u })}
                 coach={
                   simLesson ? (
                     <Coach

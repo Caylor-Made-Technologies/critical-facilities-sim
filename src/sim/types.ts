@@ -76,8 +76,12 @@ export interface ComponentState {
   soc?: number;
   /** BESS: usable energy capacity (kWh). */
   capacityKwh?: number;
-  /** IT racks and mechanical loads: demand in kW. */
+  /** IT racks and mechanical loads: demand in kW (changes as equipment runs, throttles or trips). */
   demandKw?: number;
+  /** IT racks: design load in kW, independent of throttling or thermal trips. */
+  baseKw?: number;
+  /** IT racks: shut down by their own thermal protection (still energized). */
+  thermalTrip?: boolean;
 }
 
 export interface Component {

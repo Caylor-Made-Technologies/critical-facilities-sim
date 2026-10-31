@@ -6,7 +6,7 @@
  * Steps are cumulative and replayed from the start each time, so going
  * back and forth always shows the right plant state.
  */
-import { buildPlant, Simulation, type Topology } from '../sim';
+import { buildPlant, Simulation, type Topology, type WeatherId } from '../sim';
 
 export type SimAction =
   | { do: 'topology'; t: Topology }
@@ -18,7 +18,8 @@ export type SimAction =
   | { do: 'removeKey'; lock: string }
   | { do: 'insertKey'; key: string; lock: string }
   | { do: 'ups'; sys: string; mode: 'static-bypass' | 'auto' }
-  | { do: 'maint'; id: string };
+  | { do: 'maint'; id: string }
+  | { do: 'weather'; w: WeatherId };
 
 export type FigureId = 'refrigeration' | 'heat-path';
 
@@ -28,6 +29,8 @@ export interface LessonStep {
   simpler: string;
   actions?: SimAction[];
   focus?: string;
+  /** Which simulator view to show for this step. */
+  view?: 'electrical' | 'mechanical';
   /** Show an animated figure, optionally highlighting one part of it. */
   figure?: { id: FigureId; highlight?: string };
 }
@@ -449,6 +452,89 @@ export const LESSONS: Lesson[] = [
     ],
   },
   {
+    id: 'cooling-failure',
+    area: 'mechanical',
+    title: 'When cooling fails on a 105 °F day',
+    level: 'Intermediate',
+    minutes: 6,
+    summary: 'Lose a chiller, then the towers, then a CDU, and watch the storage tank, standby units, and GPUs react.',
+    topology: '2N',
+    steps: [
+      {
+        title: 'The plant on a hot afternoon',
+        body: [
+          'It is 105 °F outside. The wet bulb is too high for free cooling, so two water-cooled chillers carry the load, with CH-03 on standby.',
+          'Watch the pipe colors: blue is chilled water headed to the hall, orange and red are warm water headed back to the towers.',
+        ],
+        simpler: 'It\'s very hot out, so the big refrigerators are doing all the work.',
+        actions: [{ do: 'weather', w: 'hot-dry' }, { do: 'advance', s: 300 }],
+        focus: 'CH-01',
+        view: 'mechanical',
+      },
+      {
+        title: 'Lose a chiller',
+        body: [
+          'CH-01 fails. The BMS calls standby CH-03, but a chiller needs about 2 minutes to start and load.',
+          'Meanwhile the chilled water storage tank discharges to cover the gap. Check its percentage dropping and the event log.',
+        ],
+        simpler: 'One refrigerator broke. A spare is starting, and a big tank of cold water covers the gap.',
+        actions: [{ do: 'fail', id: 'CH-01' }, { do: 'advance', s: 30 }],
+        focus: 'TES-01',
+        view: 'mechanical',
+      },
+      {
+        title: 'The standby picks up',
+        body: ['Two minutes later CH-03 is running. The tank stops discharging and starts recharging. N+1 did its job: no rack ever saw a temperature change.'],
+        simpler: 'The spare is running now. Nobody in the data hall noticed anything.',
+        actions: [{ do: 'advance', s: 120 }],
+        focus: 'CH-03',
+        view: 'mechanical',
+      },
+      {
+        title: 'Now lose two cooling towers',
+        body: [
+          'Two towers fail. The last tower is badly overloaded, condenser water gets hotter, and refrigerant head pressure climbs.',
+          'On a 105 °F day it climbs past the limit and the water-cooled chillers trip on HIGH HEAD PRESSURE. A safety trip like this needs investigation and a manual reset.',
+        ],
+        simpler: 'The towers that dump heat outside broke. The refrigerators overheat and shut themselves off to protect themselves.',
+        actions: [{ do: 'fail', id: 'CT-01' }, { do: 'fail', id: 'CT-02' }, { do: 'advance', s: 5 }],
+        focus: 'CH-02',
+        view: 'mechanical',
+      },
+      {
+        title: 'Air-cooled chiller and storage buy time',
+        body: [
+          'With no tower capacity, the BMS starts the air-cooled chiller ACH-04, which doesn\'t need towers. But it is smaller and loses capacity in the heat.',
+          'The storage tank covers the difference. Its "minutes left" is now the most important number on the BMS. Operators would restore towers or chillers before it runs out.',
+        ],
+        simpler: 'A different kind of refrigerator that uses outside air starts up, and the cold water tank fills in the rest, but only for a while.',
+        actions: [{ do: 'advance', s: 300 }],
+        focus: 'ACH-04',
+        view: 'mechanical',
+      },
+      {
+        title: 'Liquid cooling: seconds, not minutes',
+        body: [
+          'Now CDU-2 fails. GPU cold plates hold very little coolant, so the row 2 GPUs hit throttling temperature in about 30 seconds and would trip offline soon after.',
+          'Compare that to the air side, where the hall barely moved. Liquid-cooled racks need the fastest response of anything in the building.',
+        ],
+        simpler: 'The water pump for the GPU row stopped, and those chips overheat almost instantly.',
+        actions: [{ do: 'fail', id: 'CDU-2' }, { do: 'advance', s: 40 }],
+        focus: 'CDU-2',
+        view: 'mechanical',
+      },
+      {
+        title: 'What operators do',
+        body: [
+          'Protect the load first: confirm standby units started, watch storage minutes and rack inlet temperatures, and escalate early.',
+          'Then find causes, not symptoms: why did the towers fail? Never reset a tripped chiller over and over, and never jumper its safeties.',
+          'Try it yourself: switch weather, fail equipment in Failure mode, and watch the BMS panel.',
+        ],
+        simpler: 'Keep the servers cool first, then figure out what broke and why.',
+      },
+    ],
+  },
+  {
     id: 'chiller-cycle',
     area: 'mechanical',
     title: 'Inside a chiller: the refrigeration cycle',
@@ -576,6 +662,9 @@ export function applyAction(sim: Simulation, a: SimAction): void {
       return;
     case 'maint':
       sim.setMaintenance(a.id);
+      return;
+    case 'weather':
+      sim.setWeather(a.w);
       return;
   }
 }

@@ -76,12 +76,59 @@ export const PHYSICS = {
   hxApproachC: 1.5,
   /** Ideal Carnot efficiency fraction actually achieved by a real chiller. */
   chillerCarnotFraction: 0.5,
-  /** Condenser leaving temperature above which the chiller trips on high head pressure (°C). */
-  chillerHighHeadTripC: 46,
+  /** Condenser water leaving temperature (≈104 °F) above which a water-cooled chiller trips on high head pressure (°C). */
+  chillerHighHeadTripC: 40,
 
   // --- Water ----------------------------------------------------------------
   /** Specific heat of water, kJ/(kg·°C). 1 L ≈ 1 kg. */
   waterCpKj: 4.186,
+
+  // --- Mechanical plant (Phase 4) -----------------------------------------
+  /** Seconds for a standby chiller to start and load once the BMS calls for it. */
+  chillerStartS: 120,
+  /** Seconds a chiller needs to restart after losing power (oil, controls, purge). */
+  chillerRestartS: 180,
+  /** Condenser water range: rise across the condenser (°C). */
+  condenserRangeC: 5.5,
+  /** Air-cooled condensing temperature above outdoor dry bulb (°C). */
+  airCooledCondenserLiftC: 12,
+  /** Air-cooled chiller high head trip (condensing °C). */
+  airCooledHighHeadTripC: 58,
+  /** Dry bulb above which air-cooled chillers start losing capacity (°C). */
+  airCooledDerateStartC: 35,
+  /** Hot aisle / CRAH return air temperature (°C). CRAH capacity hits zero when chilled water reaches it. */
+  hotAisleC: 35,
+  /** Chilled water storage tank volume (L). ~21,000 gal. */
+  tesLitres: 80_000,
+  /** Max TES recharge rate (kWt) when the chillers have spare capacity. */
+  tesRechargeKw: 300,
+  /** Effective thermal mass of the chilled water loop (kJ/°C): pipes + ~40,000 L of water. */
+  chwLoopMassKjPerC: 170_000,
+  /** Effective thermal mass of the data hall air path (kJ/°C). */
+  hallThermalMassKjPerC: 20_000,
+  /** Server inlet temperature at which air-cooled IT shuts itself down (°C). */
+  serverShutdownC: 40,
+  /** Share of a GPU rack's heat removed by liquid (the rest goes to air). */
+  gpuLiquidFraction: 0.8,
+  /** Normal GPU (cold plate) temperature with healthy flow (°C). */
+  gpuNormalC: 65,
+  /** GPUs throttle (cut power ~50%) above this (°C). */
+  gpuThrottleC: 85,
+  /** GPUs trip offline above this (°C). */
+  gpuShutdownC: 95,
+  /** Cold plate + coolant thermal mass per GPU row (kJ/°C). Small on purpose: seconds, not minutes. */
+  gpuRowMassKjPerC: 620,
+  /** Chilled-water coil leaving air temperature in the DOAS (°C) ≈ supply dew point. */
+  doasCoilLeavingC: 10,
+  /** Time constant for hall dew point drift with the DOAS running / off (s). */
+  doasTauOnS: 900,
+  doasTauOffS: 3600,
+  /** Hall pressure with DOAS running / off (Pa, relative to outdoors). */
+  hallPressureOnPa: 5,
+  hallPressureOffPa: -2,
+  /** UPS room thermal mass (kJ/°C) and heat from UPS losses (kW). */
+  upsRoomMassKjPerC: 20_000,
+  upsRoomHeatKw: 60,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -260,6 +307,49 @@ export function economizerFraction(wetBulbC: number, p = PHYSICS): number {
   return (returnC - achievable) / p.chwDeltaTC;
 }
 
+/**
+ * First-order relaxation toward a resting value when cooling keeps up,
+ * linear heating when it doesn't. Shared by the hall, loop and GPU models.
+ */
+export function stepTemp(
+  tempC: number,
+  heatKw: number,
+  coolingKw: number,
+  dtS: number,
+  massKjPerC: number,
+  restC: number,
+  tauS = 60,
+): number {
+  const deficit = heatKw - coolingKw;
+  if (deficit > 0) return tempC + (deficit * dtS) / massKjPerC;
+  const alpha = 1 - Math.exp(-dtS / tauS);
+  return tempC + (restC - tempC) * alpha;
+}
+
+/**
+ * Cooling tower leaving water when the towers are loaded to `loadFraction`
+ * of their capacity. Approach grows quickly once towers are overloaded.
+ */
+export function towerLeavingLoadedC(wetBulbC: number, loadFraction: number, p = PHYSICS): number {
+  const f = Math.max(0.5, loadFraction);
+  return wetBulbC + p.towerApproachC * f * f;
+}
+
+/** Air-cooled chiller capacity factor: derates on very hot days. */
+export function airCooledDerate(dryBulbC: number, p = PHYSICS): number {
+  if (dryBulbC <= p.airCooledDerateStartC) return 1;
+  return Math.max(0.5, 1 - (dryBulbC - p.airCooledDerateStartC) * 0.03);
+}
+
+/**
+ * CRAH coil capacity factor vs. chilled water supply temperature.
+ * Full capacity at setpoint; zero when chilled water is as warm as the hot aisle.
+ */
+export function crahCapacityFactor(chwSupplyC: number, p = PHYSICS): number {
+  const span = p.hotAisleC - p.chwSupplyC;
+  return Math.max(0, Math.min(1, (p.hotAisleC - chwSupplyC) / span));
+}
+
 // ---------------------------------------------------------------------------
 // Psychrometrics (for the DOAS)
 // ---------------------------------------------------------------------------
@@ -274,6 +364,22 @@ export function dewPointC(dryBulbC: number, rhPct: number): number {
   const rh = Math.max(1, Math.min(100, rhPct)) / 100;
   const gamma = Math.log(rh) + (a * dryBulbC) / (b + dryBulbC);
   return (b * gamma) / (a - gamma);
+}
+
+/**
+ * Wet-bulb temperature from dry bulb and RH (Stull 2011 empirical fit,
+ * valid ~5–99% RH and −20…50 °C at sea level).
+ */
+export function wetBulbC(dryBulbC: number, rhPct: number): number {
+  const T = dryBulbC;
+  const RH = Math.max(5, Math.min(99, rhPct));
+  return (
+    T * Math.atan(0.151977 * Math.sqrt(RH + 8.313659)) +
+    Math.atan(T + RH) -
+    Math.atan(RH - 1.676331) +
+    0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) -
+    4.686035
+  );
 }
 
 /** Relative humidity (%) from dry bulb and dew point (inverse Magnus). */

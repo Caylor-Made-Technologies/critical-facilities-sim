@@ -422,7 +422,7 @@ export function buildPlant(topology: Topology = '2N'): Plant {
       add(id, r.kind === 'gpu' ? `GPU rack ${pad(n)}` : `Rack ${pad(n)}`, 'rack', {
         ratedKw: kw * 1.2,
         highDensity: r.kind === 'gpu',
-        state: { demandKw: kw },
+        state: { demandKw: kw, baseKw: kw },
       });
       g.connect(dist.A, id, 'power', 'A');
       g.connect(dist.B, id, 'power', 'B');
@@ -446,7 +446,7 @@ export function buildPlant(topology: Topology = '2N'): Plant {
         const id = `R-${pad(n)}`;
         add(id, `Single-corded rack ${pad(n)}`, 'rack', {
           ratedKw: DESIGN.singleCordRackKw * 1.2,
-          state: { demandKw: DESIGN.singleCordRackKw },
+          state: { demandKw: DESIGN.singleCordRackKw, baseKw: DESIGN.singleCordRackKw },
         });
         g.connect(rpp, id, 'power', 'A');
       }

@@ -15,6 +15,7 @@ import type { InterlockSystem } from './interlocks';
 import { bessSocDrop, genFuelLPerS, PHYSICS, pue, upsSocDrop } from './physics';
 import type { Plant, PlantMeta } from './plant/builder';
 import { loadFraction, solvePower, type PowerSolution } from './power';
+import { ThermalPlant, WEATHER, type WeatherId } from './thermal';
 import type { ActionResult, Component, Severity, SimEvent, Status } from './types';
 
 /** Format simulation seconds as "T+12s" or "T+4m05s". */
@@ -44,6 +45,8 @@ export class Simulation {
   t = 0;
   events: SimEvent[] = [];
   solution: PowerSolution;
+  /** Mechanical plant and thermal model (Phase 4). */
+  thermal: ThermalPlant;
   private atsTimers = new Map<string, AtsTimers>();
   /** Status each component had at build time, used by restore(). */
   private homeStatus = new Map<string, Status>();
@@ -57,6 +60,10 @@ export class Simulation {
     for (const n of this.graph.nodes.values()) this.homeStatus.set(n.id, n.status);
     for (const a of this.graph.byKind('ats')) this.atsTimers.set(a.id, { lossS: 0, restoreS: 0 });
     this.solution = solvePower(this.graph);
+    this.thermal = new ThermalPlant(this);
+    this.thermal.init();
+    // Mechanical loads now carry their real running kW; solve again so PUE starts right.
+    this.solution = solvePower(this.graph);
   }
 
   /** Independent copy for "what if" previews. Events and time carry over. */
@@ -67,6 +74,9 @@ export class Simulation {
     sim.homeStatus = new Map(this.homeStatus);
     sim.overloaded = new Set(this.overloaded);
     for (const [k, v] of this.atsTimers) sim.atsTimers.set(k, { ...v });
+    sim.thermal.restore(this.thermal.snapshot());
+    sim.thermal.step(0);
+    sim.solution = solvePower(sim.graph);
     return sim;
   }
 
@@ -102,6 +112,7 @@ export class Simulation {
     this.runTransferSwitches(dt);
     this.resolve();
     this.runStorage(dt);
+    this.thermal.step(dt);
   }
 
   // -------------------------------------------------------------------------
@@ -411,6 +422,19 @@ export class Simulation {
     const frac = loadFraction(this.graph, this.solution, id);
     if (frac <= 0) return Infinity;
     return (u.state.soc ?? 0) * (1 / upsSocDrop(frac, 1));
+  }
+
+  /** Change the outdoor conditions the mechanical plant works against. */
+  setWeather(w: WeatherId): ActionResult {
+    if (!(w in WEATHER)) return { ok: false, reason: `Unknown weather ${w}.` };
+    this.thermal.setWeather(w);
+    this.thermal.step(0);
+    return { ok: true };
+  }
+
+  /** Racks with no IT running: no power, or shut down by their own thermal protection. */
+  itDownRacks(): Component[] {
+    return this.graph.byKind('rack').filter((r) => !this.solution.energized.has(r.id) || r.state.thermalTrip);
   }
 
   /** Racks currently without power. */

@@ -289,9 +289,9 @@ function solveOnce(g: PlantGraph, forcedBypass: Set<string>): PowerSolution {
   let itDemandKw = 0;
   let itPoweredKw = 0;
   for (const r of g.byKind('rack')) {
-    const d = r.state.demandKw ?? 0;
+    const d = r.state.baseKw ?? r.state.demandKw ?? 0;
     itDemandKw += d;
-    if (walk.energized.has(r.id)) itPoweredKw += d;
+    if (walk.energized.has(r.id) && !r.state.thermalTrip) itPoweredKw += r.state.demandKw ?? 0;
   }
 
   return {

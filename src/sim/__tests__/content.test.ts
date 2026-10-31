@@ -105,6 +105,14 @@ describe('walkthroughs', () => {
     expect(simForStep(l, 5).graph.get('UPS-A1').status).toBe('maintenance');
   });
 
+  it('cooling failure lesson: standby chiller, head pressure trip, GPU throttle', () => {
+    const l = LESSONS.find((x) => x.id === 'cooling-failure')!;
+    expect(simForStep(l, 1).thermal.readout.tesDischargeKwt).toBeGreaterThan(0);
+    expect(simForStep(l, 2).thermal.readout.chillers['CH-03']).toBe('running');
+    expect(simForStep(l, 3).graph.get('CH-02').status).toBe('failed');
+    expect(simForStep(l, 5).thermal.readout.gpuRows[1]!.throttled).toBe(true);
+  });
+
   it('Kirk-key lesson blocks the illegal close and then completes the legal one', () => {
     const l = LESSONS.find((x) => x.id === 'kirk-mtm')!;
     expect(simForStep(l, 1).graph.get('TIE-AB').state.closed).toBe(false);

@@ -1,7 +1,10 @@
 /** Details card for the selected component: live readings, explainer and actions. */
 import { useState } from 'react';
 import { loadFraction, type ActionResult, type Component, type Lock, type Simulation } from '../../sim';
+import { Figure } from '../figures';
+import { fmtTemp } from '../format';
 import { Icon } from '../icons';
+import type { Units } from '../prefs';
 
 interface Props {
   sim: Simulation;
@@ -9,6 +12,7 @@ interface Props {
   act: <R>(fn: (s: Simulation) => R) => R;
   onClose: () => void;
   onOpenGuide: (kind: Component['kind']) => void;
+  units: Units;
 }
 
 const kw = (v: number) => `${Math.round(v).toLocaleString('en-US')} kW`;
@@ -22,7 +26,8 @@ function statusChip(n: Component, energized: boolean) {
   return <span className="chip chip-ok">Online</span>;
 }
 
-export function ComponentCard({ sim, id, act, onClose, onOpenGuide }: Props) {
+export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Props) {
+  const th = sim.thermal.readout;
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const n = sim.graph.get(id);
   const sol = sim.solution;
@@ -65,10 +70,46 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide }: Props) {
     case 'breaker':
       rows.push(['Position', n.state.closed ? 'Closed' : 'Open']);
       break;
+    case 'chiller-water-cooled':
+    case 'chiller-air-cooled': {
+      const m = th.chillers[id] ?? 'off';
+      rows.push(['Chiller', m === 'starting' ? `starting (${Math.ceil(th.chillerTimers[id] ?? 0)} s)` : m]);
+      rows.push(['Electrical draw', `${Math.round(n.state.demandKw ?? 0)} kW`]);
+      rows.push(['Condenser water', fmtTemp(th.condenserC, units, 1)]);
+      rows.push(['CHW supply', fmtTemp(th.chwSupplyC, units, 1)]);
+      break;
+    }
+    case 'cooling-tower':
+    case 'pump-chw':
+    case 'pump-cw':
+    case 'crah':
+    case 'crac':
+    case 'doas':
+      rows.push(['Running', th.running.includes(id) ? `yes · ${Math.round(n.state.demandKw ?? 0)} kW` : 'no']);
+      if (n.kind === 'cooling-tower') rows.push(['Tower loading', `${Math.round(th.towerLoad * 100)}%`]);
+      if (n.kind === 'crah') rows.push(['Hall inlet', fmtTemp(th.hallInletC, units, 1)]);
+      if (n.kind === 'crac') rows.push(['UPS room', fmtTemp(th.upsRoomC, units, 1)]);
+      if (n.kind === 'doas') rows.push(['Hall dew point', fmtTemp(th.hallDewC, units)]);
+      break;
+    case 'tes-tank':
+      rows.push(['Charge', `${Math.round(th.tesSoc * 100)}%`]);
+      rows.push(['Ride-through', isFinite(th.tesMinutes) ? `${Math.round(th.tesMinutes)} min at this load` : '—']);
+      rows.push(['Discharging', th.tesDischargeKwt > 0 ? `${Math.round(th.tesDischargeKwt)} kWt` : 'no']);
+      break;
+    case 'cdu': {
+      const row = th.gpuRows[Number(id.slice(4)) - 1];
+      if (row) {
+        rows.push(['GPU temperature', `${Math.round(row.tempC)} °C`]);
+        rows.push(['GPU state', row.tripped ? 'TRIPPED' : row.throttled ? 'THROTTLING' : 'normal']);
+      }
+      break;
+    }
     case 'rack': {
       const feeds = sol.feeders.get(id) ?? [];
       rows.push(['Fed from', feeds.length ? feeds.join(' + ') : 'NOTHING']);
       rows.push(['Type', n.highDensity ? 'GPU, liquid cooled' : 'Air cooled']);
+      rows.push(['Inlet', fmtTemp(th.hallInletC, units, 1)]);
+      if (n.state.thermalTrip) rows.push(['Thermal', 'SHUT DOWN (too hot)']);
       break;
     }
   }
@@ -189,6 +230,8 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide }: Props) {
           {msg.ok ? <Icon name="check" /> : <Icon name="warning" />} {msg.text}
         </div>
       )}
+
+      {(n.kind === 'chiller-water-cooled' || n.kind === 'chiller-air-cooled') && <Figure id="refrigeration" />}
 
       <div className="explain">
         <h3>What it does</h3>

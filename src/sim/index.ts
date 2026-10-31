@@ -6,5 +6,6 @@ export * from './power';
 export * from './capacity';
 export * from './interlocks';
 export * from './engine';
+export * from './thermal';
 export * from './plant/builder';
 export { EXPLAINERS } from './plant/explainers';

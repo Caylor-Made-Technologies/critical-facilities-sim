@@ -6,7 +6,7 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** Engine, electrical simulator (Explore + Failure modes), Kirk-key operation, guided walkthroughs, equipment guide, safety & codes, and change management are built. Mechanical plant view, MOP scoring, scenarios/quiz and glossary are next.
+**Status:** Electrical and mechanical simulators, Kirk-key operation, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, and change management are built. MOP scoring, the redundancy/tiers explainer, and timed scenarios are next.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
@@ -14,8 +14,8 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 | Tab | What it does |
 |---|---|
 | **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
-| **Simulator** | Pan/zoom one-line from utility to rack with animated power flow. Explore and Failure modes, live component cards, breaker and Kirk-key operation, 7 redundancy designs, event log. |
-| **Learn** | 13 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
+| **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, °F/°C, Explore and Failure modes, event log. |
+| **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
 | **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
 | **Equipment** | 19 equipment families split by Electrical / Mechanical / Life safety: how it works, rounds, PM, troubleshooting, hazards, MOC triggers, and a red NEVER list. |
 | **Never Do** | 34 hard stops in red with warning marks, each with the reason, by Everyone / Electrical / Mechanical / Life safety. |
@@ -33,7 +33,7 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 - **Kirk-key interlocks:** main-tie-main (2 keys, 3 locks) and UPS maintenance bypass with a solenoid key release unit. The engine also refuses to parallel unsynchronized sources, even if someone uses a "cheater" key.
 - **Redundancy topologies:** N, N+1, N+2, 2N, 2N+1, distributed redundant, and block redundant ("catcher"). Same IT load, different architecture.
 - **Capacity math:** e.g. `4 × 750 kW UPS modules, 2,100 kW load → N+1 holds (70% of available)`.
-- **Mechanical and DOAS (physics ready, plant UI in Phase 4):** chiller COP vs. lift, economizer modes, chilled-water storage ride-through, rack inlet heating, ASHRAE bands, dew point and humidity control for the dedicated outdoor air system.
+- **Mechanical plant (thermal.ts):** a simplified BMS stages chillers lead/lag (2-minute start, 3-minute restart after a power loss), uses water-side free cooling when the wet bulb allows, and checks tower loading and condenser water. Chillers trip on high head pressure or loss of condenser flow. The chilled-water storage tank covers shortfalls. CRAH capacity falls as chilled water warms. CDU loss makes GPU rows throttle in ~30 s and trip soon after. Hall inlet heats with thermal mass, and air-cooled IT shuts down above 104 °F. DOAS controls dew point and hall pressure, CRAC cools the UPS room, and mechanical kW updates live, so PUE moves with weather and staging.
 
 ## Code layout
 ```
@@ -43,6 +43,7 @@ src/sim/
   types.ts        component, edge, and event types
   graph.ts        directed plant graph
   physics.ts      every formula and tunable constant, documented
+  thermal.ts      mechanical plant, BMS staging, thermal and humidity model
   power.ts        electrical solver: energization, load flow, UPS modes, paralleling check
   capacity.ts     N / N+1 / 2N capacity math
   interlocks.ts   Kirk-key trapped-key system
@@ -55,7 +56,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 78 unit tests (engine, lessons, quiz, content, layout)
+npm test           # 92 unit tests (electrical, thermal, lessons, quiz, content, layout)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.

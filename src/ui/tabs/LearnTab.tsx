@@ -127,7 +127,7 @@ export function LearnTab({ active, done, start, goTo, exit, finish, showSim }: P
   return (
     <div className="tab-panel">
       <PageHead eyebrow="Learn" title="Step-by-step walkthroughs">
-        Short guided lessons. Electrical ones drive the simulator for you; mechanical ones use animated cutaways. Stuck?
+        Short guided lessons. Many drive the simulator for you; others use animated cutaways. Stuck?
         Press "I don't get it" on any step for a plain-words version.
       </PageHead>
       {active ? (

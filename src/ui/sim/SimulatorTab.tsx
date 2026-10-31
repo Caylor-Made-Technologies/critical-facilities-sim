@@ -1,12 +1,18 @@
-/** Simulator tab: Explore and Failure modes over the electrical one-line. */
+/** Simulator tab: Explore and Failure modes over the electrical one-line and the mechanical plant. */
 import type { ReactNode } from 'react';
-import { describeCapacity, formatT, TOPOLOGIES, type Component, type Topology } from '../../sim';
+import { describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, type Component, type Topology, type WeatherId } from '../../sim';
+import { fmtTemp } from '../format';
 import { Icon } from '../icons';
+import type { Units } from '../prefs';
 import type { SimHandle } from '../useSimulation';
+import { BmsPanel } from './BmsPanel';
 import { ComponentCard } from './ComponentCard';
 import { DataHall } from './DataHall';
 import { EventLog } from './EventLog';
+import { MechPlant } from './MechPlant';
 import { OneLine } from './OneLine';
+
+export type SimView = 'electrical' | 'mechanical';
 
 interface Props {
   h: SimHandle;
@@ -16,14 +22,19 @@ interface Props {
   setSelected: (id: string | null) => void;
   onOpenGuide: (kind: Component['kind']) => void;
   coach?: ReactNode;
+  view: SimView;
+  setView: (v: SimView) => void;
+  units: Units;
+  setUnits: (u: Units) => void;
 }
 
 const SPEEDS = [1, 10, 60];
 
-export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGuide, coach }: Props) {
+export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGuide, coach, view, setView, units, setUnits }: Props) {
   const { sim, version } = h;
   const sol = sim.solution;
-  const racksDown = sim.droppedRacks().length;
+  const racksDown = sim.itDownRacks().length;
+  const th = sim.thermal.readout;
   const onBattery = [...sol.upsMode.values()].filter((m) => m === 'battery').length;
   const onBypass = [...sol.upsMode.values()].filter((m) => m === 'static-bypass').length;
   const gensRunning = sim.graph.byKind('generator').filter((g) => g.state.genState === 'running').length;
@@ -45,8 +56,8 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         <div className="eyebrow">Simulator</div>
         <h1>Utility to chip, live</h1>
         <p>
-          Follow power from two utility feeds through generators, UPS, and distribution to 36 racks. Tap anything to learn
-          what it does. Switch to <strong>Failure mode</strong> to break things and watch the plant respond.
+          Follow power from two utility feeds to 36 racks, and heat from the chips back out to the cooling towers. Tap
+          anything to learn what it does. Switch to <strong>Failure mode</strong> to break things and watch the plant respond.
         </p>
       </div>
 
@@ -69,6 +80,38 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             ))}
           </select>
         </label>
+        <div className="field">
+          <span>View</span>
+          <div className="seg" role="group" aria-label="Diagram view">
+            <button type="button" aria-pressed={view === 'electrical'} onClick={() => setView('electrical')}>
+              Electrical
+            </button>
+            <button type="button" aria-pressed={view === 'mechanical'} onClick={() => setView('mechanical')}>
+              Mechanical
+            </button>
+          </div>
+        </div>
+        <label className="field">
+          Outdoor weather
+          <select value={sim.thermal.state.weather} onChange={(e) => h.act((s) => s.setWeather(e.target.value as WeatherId))}>
+            {(Object.keys(WEATHER) as WeatherId[]).map((w) => (
+              <option key={w} value={w}>
+                {WEATHER[w].label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="field">
+          <span>Units</span>
+          <div className="seg" role="group" aria-label="Temperature units">
+            <button type="button" aria-pressed={units === 'F'} onClick={() => setUnits('F')}>
+              °F
+            </button>
+            <button type="button" aria-pressed={units === 'C'} onClick={() => setUnits('C')}>
+              °C
+            </button>
+          </div>
+        </div>
         <div className="field">
           <span>Mode</span>
           <div className="seg" role="group" aria-label="Mode">
@@ -137,6 +180,14 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
           <div className={`kpi-value${gensRunning ? ' warn' : ''}`}>{gensRunning}</div>
         </div>
         <div className="kpi">
+          <div className="kpi-label">Rack inlet</div>
+          <div className={`kpi-value${th.hallInletC > PHYSICS.ashraeRecommendedC[1] ? ' bad' : ''}`}>{fmtTemp(th.hallInletC, units, 1)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">CHW supply</div>
+          <div className={`kpi-value${th.chwSupplyC > PHYSICS.chwSupplyC + 1 ? ' warn' : ''}`}>{fmtTemp(th.chwSupplyC, units, 1)}</div>
+        </div>
+        <div className="kpi">
           <div className="kpi-label">PUE</div>
           <div className="kpi-value">{isFinite(pue) ? pue.toFixed(2) : '—'}</div>
         </div>
@@ -144,7 +195,12 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
 
       <div className="sim-layout">
         <div>
-          <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
+          {view === 'mechanical' ? (
+            <MechPlant sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} units={units} onActivate={activate} />
+          ) : (
+            <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
+          )}
+{view === 'electrical' && (
           <div className="legend" aria-hidden="true">
             <span>
               <i style={{ background: 'var(--side-a)' }} /> A side
@@ -163,13 +219,18 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </span>
             <span>Moving dashes = power flowing (faster = more load)</span>
           </div>
-          <DataHall sim={sim} selected={selected} onActivate={activate} />
+          )}
+          <DataHall sim={sim} selected={selected} onActivate={activate} units={units} />
         </div>
         <aside className="side-panel" aria-label="Details">
-          {selected ? (
-            <ComponentCard key={selected} sim={sim} id={selected} act={h.act} onClose={() => setSelected(null)} onOpenGuide={onOpenGuide} />
+          {selected && (
+            <ComponentCard key={selected} sim={sim} id={selected} act={h.act} onClose={() => setSelected(null)} onOpenGuide={onOpenGuide} units={units} />
+          )}
+          {view === 'mechanical' ? (
+            <BmsPanel sim={sim} units={units} />
           ) : (
-            <section className="card" aria-labelledby="cap-h">
+            !selected && (
+              <section className="card" aria-labelledby="cap-h">
               <h2 id="cap-h" className="h-card">Capacity check</h2>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Live N-math for each group. Tap a component on the diagram for its details.
@@ -182,6 +243,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
                 ))}
               </ul>
             </section>
+            )
           )}
           <EventLog sim={sim} />
         </aside>
