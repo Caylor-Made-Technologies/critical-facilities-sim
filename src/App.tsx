@@ -254,6 +254,14 @@ export function App() {
 
           <footer className="app-footer">
             <div className="inner">
+              <div className="brand-foot">
+                <img src={`${import.meta.env.BASE_URL}brand/logo-mark.png`} alt="" width={44} height={44} />
+                <div className="foot-word">
+                  <strong>CAYLOR MADE</strong>
+                  <span>TECHNOLOGIES</span>
+                </div>
+              </div>
+              <p className="foot-tagline">Advanced Engineering. Built Different.</p>
               <p className="disclaimer">
                 Educational simulation of generic data center infrastructure. Not a site procedure. Always follow your
                 facility's approved MOPs/EOPs and LOTO program.

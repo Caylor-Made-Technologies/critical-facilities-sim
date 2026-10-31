@@ -243,7 +243,7 @@ export function OneLine({ sim, version, selected, failureMode, onActivate }: Pro
       <svg className="oneline" viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" data-version={version}>
         <title>Electrical one-line diagram</title>
         {layout.zones.map((z) => (
-          <text key={z.label} className="ol-zone-label" x={14} y={z.y}>
+          <text key={z.label} className="ol-zone-label" x={Math.max(14, view.x + 14)} y={z.y}>
             {z.label}
           </text>
         ))}

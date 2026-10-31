@@ -71,9 +71,34 @@ export function NeverList({ rules, compact }: { rules: (NeverRule | string)[]; c
   );
 }
 
+/** Small decorative circuit traces, echoing the CM brand mark (original artwork). */
+function HeadArt() {
+  return (
+    <svg className="head-art" viewBox="0 0 420 120" aria-hidden="true" focusable="false">
+      <path d="M0,30 H120 L150,60 H260 L290,30 H420" />
+      <path d="M40,95 H180 L210,70 H330 L360,95 H420" />
+      <path d="M150,60 V95 M290,30 V8" />
+      <path className="pulse" d="M0,30 H120 L150,60 H260 L290,30 H420" />
+      {[
+        [120, 30],
+        [150, 60],
+        [260, 60],
+        [290, 30],
+        [290, 8],
+        [210, 70],
+        [330, 70],
+        [150, 95],
+      ].map(([x, y]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={4} />
+      ))}
+    </svg>
+  );
+}
+
 export function PageHead({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return (
     <div className="page-head">
+      <HeadArt />
       <div className="eyebrow">{eyebrow}</div>
       <h1>{title}</h1>
       {children && <p>{children}</p>}

@@ -106,7 +106,7 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
               <span className="dot" aria-hidden="true" />
               On your rounds
             </h3>
-            <ul>
+            <ul className="checklist">
               {guide.rounds.map((r) => (
                 <li key={r}>{r}</li>
               ))}
