@@ -15,7 +15,8 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 |---|---|
 | **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
 | **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, °F/°C, Explore and Failure modes, event log. |
-| **Procedures & Drills** | Scored practice on the live plant. **7 MOPs:** UPS to maintenance bypass and back, main-tie-main transfer and return, monthly generator test run, chiller out for PM, air handler filter change. **8 emergency drills:** utility loss, chiller trip at 105 °F, both utilities plus a generator, CDU failure, UPS room cooling loss, fire alarm, two towers lost at 105 °F, long-outage fuel math. **Surprise drill:** one of 8 random failures to find from the event log and repair. **Rounds:** 4 round sheets where you spot the readings that need action. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. A stopwatch saves best times, filters and a "recommended next" pick what to do, and Home has a printable practice record. |
+| **Procedures & Drills** | Scored practice on the live plant. **7 MOPs:** UPS to maintenance bypass and back, main-tie-main transfer and return, monthly generator test run, chiller out for PM, air handler filter change. **8 emergency drills:** utility loss, chiller trip at 105 °F, both utilities plus a generator, CDU failure, UPS room cooling loss, fire alarm, two towers lost at 105 °F, long-outage fuel math. **Surprise drill:** one of 8 random failures to find from the event log and repair. **Rounds:** 4 round sheets where you spot the readings that need action. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. A stopwatch saves best times, filters and a "recommended next" pick what to do, and Home has a printable practice record. **Wrong answers are simulated:** the choice runs on a copy of the live plant and shows what would really have happened (e.g. the EPO drops all 36 racks, the interlock refuses the tie). Every result screen ends with **Think deeper** questions and model answers. |
+| **Case Studies** | Six composite incidents (bypass not closed, generator left in OFF, fuel gauge stuck, heat wave and fouled tubes, dual-corded racks on one side, alarm fatigue). Each has a timeline, a step-by-step "5 whys" to the root cause, contributing factors, what changed afterwards, discussion questions, and a link to practice the lesson. |
 | **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
 | **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
@@ -60,7 +61,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 126 unit tests (electrical, thermal, procedures, designs, lessons, content)
+npm test           # 140 unit tests (electrical, thermal, procedures, designs, lessons, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.
@@ -72,6 +73,7 @@ Pushing to `main` runs the tests and deploys to GitHub Pages.
 - No console errors under the strict Content Security Policy.
 - Keyboard: skip link, every component and control reachable, arrow keys pan and +/- zoom the diagram.
 - Respects `prefers-reduced-motion` and `prefers-color-scheme`.
+- Performance: the power solver is skipped when none of its inputs changed, the event log re-renders only on new lines, diagram animations pause when scrolled off screen, and off-screen panels skip rendering. About 58 fps on a 4× CPU-throttled phone profile while the plant runs at 60×.
 
 ## Notes
 - All tags (`UPS-A1`, `CH-02`, `CRAH-104`) and layouts are invented and generic.

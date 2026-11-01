@@ -249,7 +249,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </section>
             )
           )}
-          <EventLog sim={sim} />
+          <EventLog sim={sim} count={sim.events.length} />
         </aside>
       </div>
     </div>

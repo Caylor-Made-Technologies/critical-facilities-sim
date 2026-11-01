@@ -212,3 +212,26 @@ describe('rounds practice', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe('think deeper', () => {
+  it('every procedure and the surprise drill has at least two questions with model answers', () => {
+    for (const p of [...PROCEDURES, surpriseDrill(0)]) {
+      expect(p.deeper?.length ?? 0, p.id).toBeGreaterThanOrEqual(2);
+      for (const d of p.deeper!) expect(d.a.length).toBeGreaterThan(60);
+    }
+  });
+});
+
+import { CASES } from '../../content/cases';
+describe('case studies', () => {
+  it('each case has a timeline, five whys, fixes, questions and a valid practice link', () => {
+    const ids = new Set([...PROCEDURES.map((p) => p.id), ...ROUNDS.map((r) => r.id)]);
+    for (const c of CASES) {
+      expect(c.whys, c.id).toHaveLength(5);
+      expect(c.timeline.length).toBeGreaterThanOrEqual(4);
+      expect(c.fixes.length).toBeGreaterThanOrEqual(3);
+      expect(c.questions.length).toBeGreaterThanOrEqual(2);
+      if (c.practice) expect(ids.has(c.practice), c.practice).toBe(true);
+    }
+  });
+});

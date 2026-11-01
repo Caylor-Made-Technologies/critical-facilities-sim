@@ -245,8 +245,34 @@ export class Simulation {
   // -------------------------------------------------------------------------
 
   /** Re-solve the network and log anything that changed. */
+  /** Signature of every input the power solver reads. Same signature → same solution. */
+  private solveKey(): string {
+    const parts: (string | number)[] = [];
+    for (const n of this.graph.nodes.values()) {
+      const s = n.state;
+      parts.push(
+        n.status,
+        s.closed ? 1 : 0,
+        s.selected ?? '',
+        s.upsMode ?? '',
+        s.genState ?? '',
+        (s.fuelL ?? 1) > 0 ? 1 : 0,
+        (s.soc ?? 1) > 0 ? 1 : 0,
+        s.demandKw ?? '',
+        s.baseKw ?? '',
+        s.thermalTrip ? 1 : 0,
+      );
+    }
+    return parts.join('|');
+  }
+  private lastKey = '';
+
   resolve(): void {
     const prev = this.solution;
+    // Skip the solve when nothing it depends on has changed (most steps at steady state).
+    const key = this.solveKey();
+    if (key === this.lastKey) return;
+    this.lastKey = key;
     const next = solvePower(this.graph);
     this.solution = next;
 
@@ -348,6 +374,19 @@ export class Simulation {
     n.status = 'maintenance';
     if (n.kind === 'generator') n.state.manualRun = false;
     this.log('info', n.tag, n.domain === 'mechanical' ? `${n.tag} shut down and locked out for maintenance. The BMS will run the plant without it.` : `${n.tag} tagged out for maintenance.`);
+    this.resolve();
+    return { ok: true };
+  }
+
+  /**
+   * Emergency power off for the data hall: every UPS output is shut off and
+   * the maintenance bypasses opened, so all IT in the hall goes dark at once.
+   * Life-safety device: for fire or electrocution only.
+   */
+  emergencyPowerOff(): ActionResult {
+    for (const u of this.graph.byKind('ups')) u.state.upsMode = 'off';
+    for (const b of this.graph.byKind('breaker')) if (b.id.startsWith('MBB-')) b.state.closed = false;
+    this.log('critical', 'EPO-01', 'EMERGENCY POWER OFF pressed. All UPS outputs shut down; the data hall is dark.');
     this.resolve();
     return { ok: true };
   }

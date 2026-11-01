@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { formatT, type Simulation } from '../../sim';
 
 const SEV_LABEL = { info: 'Info', warning: 'Warning', alarm: 'Alarm', critical: 'Critical' } as const;
 
-/** Most-recent-first event log with a severity filter. A polite live region announces new alarms. */
-export function EventLog({ sim }: { sim: Simulation }) {
+/**
+ * Most-recent-first event log with a severity filter. A polite live region announces new alarms.
+ * Memoized on the event count: the log is append-only, so it only re-renders when a line is added.
+ */
+export const EventLog = memo(function EventLog({ sim }: { sim: Simulation; count: number }) {
   const [alarmsOnly, setAlarmsOnly] = useState(false);
   const all = sim.events.slice(-200).reverse();
   const events = (alarmsOnly ? all.filter((e) => e.severity !== 'info') : all).slice(0, 150);
@@ -33,7 +36,7 @@ export function EventLog({ sim }: { sim: Simulation }) {
           <span className="ok-dot" aria-hidden="true" /> {alarmsOnly ? 'No alarms.' : 'All quiet. Fail something or start a walkthrough to see events here.'}
         </p>
       ) : (
-        <ol className="log">
+        <ol className="log" tabIndex={0} aria-label="Events, newest first">
           {events.map((e, i) => (
             <li key={`${e.t}-${i}-${e.message}`} className={`sev-${e.severity}`}>
               <time>{formatT(e.t)}</time>
@@ -48,4 +51,4 @@ export function EventLog({ sim }: { sim: Simulation }) {
       )}
     </section>
   );
-}
+});

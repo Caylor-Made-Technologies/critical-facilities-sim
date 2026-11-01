@@ -1,6 +1,6 @@
 /** Coach card for MOP practice and emergency drills, shown above the simulator. */
-import { useEffect, useState } from 'react';
-import { grade, SCORE, type Procedure, type ProcRun } from '../../sim';
+import { useEffect, useRef, useState } from 'react';
+import { grade, SCORE, type Consequence, type Procedure, type ProcChoice, type ProcRun } from '../../sim';
 import { Icon } from '../icons';
 import { fmtSecs } from '../progress';
 
@@ -18,6 +18,8 @@ interface Props {
   secs?: number;
   bestSecs?: number;
   feedback: ProcFeedback | null;
+  /** Run a choice's consequence on a copy of the live plant. */
+  preview: (c: ProcChoice) => Consequence | null;
   onConfirm: () => void;
   onChoose: (i: number) => void;
   onHint: () => void;
@@ -27,9 +29,25 @@ interface Props {
   onBrowse: () => void;
 }
 
-export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, onConfirm, onChoose, onHint, onShowMe, onRetry, onExit, onBrowse }: Props) {
+export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, preview, onConfirm, onChoose, onHint, onShowMe, onRetry, onExit, onBrowse }: Props) {
   const [whyOpen, setWhyOpen] = useState(false);
+  // Outcomes of wrong choices, simulated once when picked (key: "step:choice").
+  const [outcomes, setOutcomes] = useState<Record<string, Consequence | null>>({});
   const kindLabel = proc.kind === 'mop' ? 'MOP practice' : 'Emergency drill';
+  // Follow bar: when the coach card scrolls out of view, a slim bar keeps the step in sight.
+  const cardRef = useRef<HTMLElement>(null);
+  const [away, setAway] = useState(false);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setAway(!e?.isIntersecting), { threshold: 0.05 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [run.done]);
+  useEffect(() => {
+    document.body.classList.toggle('has-follow', away && !run.done);
+    return () => document.body.classList.remove('has-follow');
+  }, [away, run.done]);
   // Live stopwatch (real time), ticking once a second while the run is open.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -81,6 +99,22 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, o
             <Icon name="check" /> {run.hints.length ? `No mistakes. Hints used: ${run.hints.length}.` : 'Nothing. Clean run.'}
           </p>
         )}
+        {proc.deeper && proc.deeper.length > 0 && (
+          <>
+            <h3 className="h-sub">Think deeper</h3>
+            <div className="deeper">
+              {proc.deeper.map((d) => (
+                <details key={d.q} className="deeper-q">
+                  <summary>{d.q}</summary>
+                  <p>
+                    <strong>One good answer: </strong>
+                    {d.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </>
+        )}
         <h3 className="h-sub">Remember</h3>
         <ul className="checklist">
           {proc.debrief.map((d) => (
@@ -103,7 +137,23 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, o
   const hinted = run.hints.includes(run.step);
   const wrong = run.wrong[run.step] ?? [];
   return (
-    <section className={`card proc-card kind-${proc.kind}`} aria-labelledby="proc-h">
+    <>
+    {away && (
+      <button
+        type="button"
+        className={`follow-bar kind-${proc.kind}`}
+        onClick={() => cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        aria-label={`Step ${run.step + 1} of ${proc.steps.length}: ${s.title}. Score ${run.score}. Show the step.`}
+      >
+        <span className="follow-step">
+          {run.step + 1}/{proc.steps.length}
+        </span>
+        <span className="follow-title">{s.title}</span>
+        <span className="follow-score">{run.score}</span>
+        <Icon name="arrow-up" />
+      </button>
+    )}
+    <section ref={cardRef} className={`card proc-card kind-${proc.kind}`} aria-labelledby="proc-h">
       <div className="proc-top">
         <div style={{ flex: 1 }}>
           <div className="eyebrow">
@@ -144,7 +194,15 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, o
               const isWrong = wrong.includes(i);
               return (
                 <div key={c.text}>
-                  <button type="button" className={`choice${isWrong ? ' wrong' : ''}`} disabled={isWrong} onClick={() => onChoose(i)}>
+                  <button
+                    type="button"
+                    className={`choice${isWrong ? ' wrong' : ''}`}
+                    disabled={isWrong}
+                    onClick={() => {
+                      if (!c.correct && c.consequence) setOutcomes((o) => ({ ...o, [`${run.step}:${i}`]: preview(c) }));
+                      onChoose(i);
+                    }}
+                  >
                     <span className="choice-letter" aria-hidden="true">
                       {String.fromCharCode(65 + i)}
                     </span>
@@ -155,6 +213,7 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, o
                       <strong>Not this one!</strong> {c.why}
                     </p>
                   )}
+                  {isWrong && outcomes[`${run.step}:${i}`] && <Outcome c={outcomes[`${run.step}:${i}`]!} />}
                 </div>
               );
             })}
@@ -191,5 +250,33 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, o
         )}
       </div>
     </section>
+    </>
+  );
+}
+
+/** What a wrong choice would have done, simulated on a copy of the plant. */
+function Outcome({ c }: { c: Consequence }) {
+  const headline = c.refused
+    ? 'The plant would have refused it.'
+    : c.racksDown > 0
+      ? `${c.racksDown} rack${c.racksDown > 1 ? 's' : ''} would have lost power within ${c.seconds} s.`
+      : c.gpuRowsTripped.length
+        ? `GPU row ${c.gpuRowsTripped.join(', ')} would have shut down.`
+        : `No racks down in ${c.seconds} s, but look what it set off:`;
+  return (
+    <div className="outcome" role="note">
+      <div className="outcome-head">
+        <Icon name="pulse" /> Simulated on a copy of your plant
+      </div>
+      <p className="outcome-headline">{headline}</p>
+      {c.refused && <p className="outcome-refused">{c.refused}</p>}
+      {c.lines.length > 0 && (
+        <ul className="outcome-lines">
+          {c.lines.filter((l) => !c.refused || !l.includes(c.refused.slice(0, 30))).map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

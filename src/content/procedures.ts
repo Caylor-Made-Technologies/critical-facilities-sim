@@ -4,6 +4,7 @@
  * approved for each site and each piece of equipment.
  */
 import type { Procedure, Simulation } from '../sim';
+import { DEEPER } from './deeper';
 
 const upsModules = (sim: Simulation, sys: string) => sim.graph.downstream(`UIB-${sys}`).filter((n) => n.kind === 'ups');
 const isClosed = (sim: Simulation, id: string) => !!sim.graph.get(id).state.closed;
@@ -325,7 +326,7 @@ export const MOPS: Procedure[] = [
         why: 'Knowing what the load will see before you switch is how you avoid surprises.',
         choices: [
           { text: 'A short break on switchboard A; UPS A and the battery yard carry it for a few seconds', correct: true, why: 'Right. Open transition, break before make. The UPS is there for exactly this.' },
-          { text: 'Nothing, close Main A first so there is no break', correct: false, why: 'That would tie utility A and utility B together. The interlock blocks it because it can cause a huge fault.' },
+          { text: 'Nothing, close Main A first so there is no break', correct: false, consequence: (s) => s.closeBreaker('MB-A'),  why: 'That would tie utility A and utility B together. The interlock blocks it because it can cause a huge fault.' },
           { text: 'Every rack drops for a moment', correct: false, why: 'The racks are on UPS power. They never see the gap.' },
         ],
       },
@@ -386,7 +387,7 @@ export const MOPS: Procedure[] = [
         choices: [
           { text: 'The other chillers are available, the storage tank is full, and the weather forecast is mild', correct: true, why: 'Right. Spares, stored cooling and the weather decide how much risk you are taking.' },
           { text: 'Nothing, the BMS will sort it out', correct: false, why: 'The BMS can only use what is available. You check that it is.' },
-          { text: 'Shut every chiller down so the plant is quiet for the tech', correct: false, why: 'That would heat the data hall in minutes. Only the unit being worked on comes out.' },
+          { text: 'Shut every chiller down so the plant is quiet for the tech', correct: false, consequence: (s) => ['CH-01', 'CH-02', 'CH-03', 'ACH-04'].forEach((id) => s.setMaintenance(id)), consequenceS: 600,  why: 'That would heat the data hall in minutes. Only the unit being worked on comes out.' },
         ],
       },
       {
@@ -486,9 +487,9 @@ export const DRILLS: Procedure[] = [
         focus: 'ATS-A',
         choices: [
           { text: 'Confirm B side is carrying, watch the generators start and the ATS transfer', correct: true, why: 'Right. Verify the automation and the redundant side. Your EOP tells you when to step in.' },
-          { text: 'Close the tie breaker to feed A from B', correct: false, why: 'The Kirk-key interlock blocks it with both mains closed, and switching during an automatic transfer causes outages.' },
-          { text: 'Press the EPO to protect the equipment', correct: false, why: 'EPO kills the whole data hall. It is only for life safety (fire, electrocution).' },
-          { text: 'Transfer UPS A to bypass so the battery lasts longer', correct: false, why: 'Bypass is fed from the same dead source. That would drop the A side immediately.' },
+          { text: 'Close the tie breaker to feed A from B', correct: false, consequence: (s) => s.closeBreaker('TIE-AB'),  why: 'The Kirk-key interlock blocks it with both mains closed, and switching during an automatic transfer causes outages.' },
+          { text: 'Press the EPO to protect the equipment', correct: false, consequence: (s) => s.emergencyPowerOff(), consequenceS: 30,  why: 'EPO kills the whole data hall. It is only for life safety (fire, electrocution).' },
+          { text: 'Transfer UPS A to bypass so the battery lasts longer', correct: false, consequence: (s) => s.setUpsSystemMode('A', 'static-bypass'),  why: 'Bypass is fed from the same dead source. That would drop the A side immediately.' },
         ],
       },
       {
@@ -650,7 +651,7 @@ export const DRILLS: Procedure[] = [
         choices: [
           { text: 'Report the lost redundancy, call for generator support, and plan for fuel', correct: true, why: 'Right. Escalate early, protect the fuel supply, and get GEN-A1 fixed.' },
           { text: 'Shed load by turning off racks', correct: false, why: 'Load shedding is a customer decision in a written plan, not an operator reflex. You still have capacity.' },
-          { text: 'Try to parallel side A and B generators through the tie', correct: false, why: 'Never parallel unsynchronized sources. The interlock exists to stop exactly this.' },
+          { text: 'Try to parallel side A and B generators through the tie', correct: false, consequence: (s) => s.closeBreaker('TIE-AB'),  why: 'Never parallel unsynchronized sources. The interlock exists to stop exactly this.' },
         ],
       },
       {
@@ -687,8 +688,8 @@ export const DRILLS: Procedure[] = [
         focus: 'CDU-1',
         choices: [
           { text: 'Go to the CDU, switch to the standby pump, and warn the customer their GPUs may throttle', correct: true, why: 'Right. Speed matters here, and the customer needs to know their jobs may slow down.' },
-          { text: 'Turn up the air handlers to cool the GPUs', correct: false, why: 'Liquid-cooled GPUs reject most of their heat to water. Air cannot make up for it.' },
-          { text: 'Wait and see if it clears on its own', correct: false, why: 'You have seconds. Waiting means tripped GPUs and lost customer work.' },
+          { text: 'Turn up the air handlers to cool the GPUs', correct: false, consequence: () => undefined, consequenceS: 150,  why: 'Liquid-cooled GPUs reject most of their heat to water. Air cannot make up for it.' },
+          { text: 'Wait and see if it clears on its own', correct: false, consequence: () => undefined, consequenceS: 150,  why: 'You have seconds. Waiting means tripped GPUs and lost customer work.' },
         ],
         after: (s) => {
           s.restore('CDU-1');
@@ -745,7 +746,7 @@ export const DRILLS: Procedure[] = [
         why: 'You buy time and watch the temperature trend.',
         choices: [
           { text: 'Set up approved temporary cooling, keep doors closed unless the plan says otherwise, and watch room and battery temperatures', correct: true, why: 'Right. Follow the site plan and keep an eye on the trend.' },
-          { text: 'Put the UPS on bypass to make less heat', correct: false, why: 'That removes battery protection from the load. Not for a slow temperature rise.' },
+          { text: 'Put the UPS on bypass to make less heat', correct: false, consequence: (s) => s.setUpsSystemMode('A', 'static-bypass'),  why: 'That removes battery protection from the load. Not for a slow temperature rise.' },
           { text: 'Open the battery cabinets to let the heat out', correct: false, why: 'Opening energized battery cabinets is a shock and arc-flash hazard.' },
         ],
         after: (s) => {
@@ -780,7 +781,7 @@ export const DRILLS: Procedure[] = [
         choices: [
           { text: 'Follow the site fire plan: notify the control room and fire department as required, and investigate only if it is safe and you are trained to', correct: true, why: 'Right. People first, by the plan.' },
           { text: 'Silence and reset the panel so the alarm stops', correct: false, why: 'Never silence or reset a fire alarm you have not investigated. That is for the fire department or the plan to decide.' },
-          { text: 'Press the EPO to cut power to the hall', correct: false, why: 'EPO is not a fire response by reflex. Your site plan says when, and it is rarely the first move.' },
+          { text: 'Press the EPO to cut power to the hall', correct: false, consequence: (s) => s.emergencyPowerOff(), consequenceS: 30,  why: 'EPO is not a fire response by reflex. Your site plan says when, and it is rarely the first move.' },
         ],
       },
       {
@@ -834,7 +835,7 @@ export const DRILLS: Procedure[] = [
         focus: 'CT-01',
         choices: [
           { text: 'Head pressure rises and the water-cooled chillers trip; the tank and the air-cooled chiller carry the load', correct: true, why: 'Right. That is why sites keep a different kind of backup, like an air-cooled chiller.' },
-          { text: 'Nothing, the chillers will just run slower', correct: false, why: 'Chillers protect themselves. High head pressure trips them off.' },
+          { text: 'Nothing, the chillers will just run slower', correct: false, consequence: () => undefined, consequenceS: 240,  why: 'Chillers protect themselves. High head pressure trips them off.' },
           { text: 'The data hall loses power', correct: false, why: 'Power is fine. This is a cooling problem.' },
         ],
       },
@@ -911,7 +912,7 @@ export const DRILLS: Procedure[] = [
         choices: [
           { text: 'Confirm the bulk tank level and transfer pumps, call the fuel supplier under the emergency contract now, and track burn rate hourly', correct: true, why: 'Right. Order early, verify the transfer system, and measure.' },
           { text: 'Wait until the tank is half empty before calling for fuel', correct: false, why: 'During a storm everyone calls at once. Order early.' },
-          { text: 'Shut down half the generators to stretch the fuel', correct: false, why: 'That removes redundancy and the remaining units burn more each. Never trade redundancy for fuel without a plan.' },
+          { text: 'Shut down half the generators to stretch the fuel', correct: false, consequence: (s) => (s.fail('GEN-A1'), s.fail('GEN-A2'), s.fail('GEN-B1')), consequenceS: 60,  why: 'That removes redundancy and the remaining units burn more each. Never trade redundancy for fuel without a plan.' },
         ],
       },
       {
@@ -926,6 +927,7 @@ export const DRILLS: Procedure[] = [
 ];
 
 export const PROCEDURES: Procedure[] = [...MOPS, ...DRILLS];
+for (const p of PROCEDURES) p.deeper = DEEPER[p.id];
 
 /** Failures the surprise drill can pick from: what fails, and what an operator sees first. */
 const SURPRISES: { id: string; clue: string }[] = [
@@ -991,6 +993,7 @@ export function surpriseDrill(pick: number = Math.floor(Math.random() * SURPRISE
         confirm: 'Alarms clearing, event logged, work order opened',
       },
     ],
+    deeper: DEEPER['drill-surprise'],
     debrief: ['Find the first alarm, not the loudest one.', 'The status bar tells you what is wrong now; the event log tells you what happened first.', 'Log every failure, even when nothing went down.'],
   };
 }

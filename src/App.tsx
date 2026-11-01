@@ -10,7 +10,7 @@ import { guideForKind } from './content/equipment';
 import { LESSONS, simForStep, type Lesson } from './content/lessons';
 import { SAFETY } from './content/safety';
 import { UPTIME } from './content/uptime';
-import { choose, confirmStep, evaluate, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
+import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
 import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
@@ -26,8 +26,9 @@ import { HomeTab } from './ui/tabs/HomeTab';
 import { Coach, LearnTab, type LessonState } from './ui/tabs/LearnTab';
 import { NeverDoTab } from './ui/tabs/NeverDoTab';
 import { ProceduresTab } from './ui/tabs/ProceduresTab';
-import { surpriseDrill } from './content/procedures';
+import { PROCEDURES, surpriseDrill } from './content/procedures';
 import { DesignsTab } from './ui/tabs/DesignsTab';
+import { CasesTab } from './ui/tabs/CasesTab';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { QuizTab } from './ui/tabs/QuizTab';
 import { useSimulation } from './ui/useSimulation';
@@ -175,6 +176,7 @@ export function App() {
       secs={proc.secs}
       bestSecs={p.progress.times[proc.p.id]}
       feedback={procFb}
+      preview={(c) => previewConsequence(h.sim, c)}
       onConfirm={() => procAct((r) => confirmStep(proc.p, r, h.sim), (b) => ({ ok: true, text: `Confirmed: ${proc.p.steps[b.step]!.confirm}.` }))}
       onChoose={(i) =>
         procAct(
@@ -330,6 +332,15 @@ export function App() {
             )}
             {tab === 'procedures' && (
               <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} onRound={(id, score) => p.finishProcedure(id, score)} />
+            )}
+            {tab === 'cases' && (
+              <CasesTab
+                onPractice={(id) => {
+                  const pr = PROCEDURES.find((x) => x.id === id);
+                  if (pr) startProc(pr);
+                  else setTab('procedures');
+                }}
+              />
             )}
             {tab === 'designs' && <DesignsTab sim={h.sim} version={h.version} units={prefs.units} onTry={(t) => { setProc(null); setLesson(null); h.reset(t); setSelected(null); setTab('sim'); }} />}
             {tab === 'quiz' && <QuizTab p={p} />}

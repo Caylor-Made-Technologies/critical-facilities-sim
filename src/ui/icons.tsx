@@ -16,6 +16,7 @@ const base = {
 export type IconName =
   | 'bolt'
   | 'list'
+  | 'clipboard'
   | 'layers'
   | 'book'
   | 'wrench'
@@ -31,6 +32,7 @@ export type IconName =
   | 'moon'
   | 'skip'
   | 'arrow-right'
+  | 'arrow-up'
   | 'arrow-left'
   | 'close'
   | 'info'
@@ -47,6 +49,7 @@ export type IconName =
   | 'star';
 
 const paths: Record<IconName, ReactElement> = {
+  clipboard: <path d="M9 4h6v3H9zM7 5.5H5V21h14V5.5h-2M8.5 12h7M8.5 16h5" />,
   list: <path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" />,
   layers: <path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />,
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
@@ -87,6 +90,7 @@ const paths: Record<IconName, ReactElement> = {
   ),
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />,
   skip: <path d="M5 5v14l9-7zM18 5v14" />,
+  'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
   'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
   'arrow-left': <path d="M19 12H5M11 6l-6 6 6 6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,

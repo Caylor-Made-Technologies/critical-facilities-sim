@@ -4,7 +4,8 @@
  * storage tank → CRAHs, CDUs and DOAS in the data hall.
  * Pipes are colored by water temperature and animate when water is moving.
  */
-import type { CSSProperties, ReactNode } from 'react';
+import { useRef, type CSSProperties, type ReactNode } from 'react';
+import { usePauseWhenOffscreen } from '../common';
 import type { Component, Simulation } from '../../sim';
 import { fmtTemp, tempColor } from '../format';
 import type { Units } from '../prefs';
@@ -24,6 +25,8 @@ const CRAH_X = [70, 140, 210, 280, 350, 420, 490, 560];
 const CDU_X = [660, 735, 810];
 
 export function MechPlant({ sim, version, selected, failureMode, units, onActivate }: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  usePauseWhenOffscreen(wrapRef);
   const r = sim.thermal.readout;
   const g = sim.graph;
   const running = new Set(r.running);
@@ -113,7 +116,7 @@ export function MechPlant({ sim, version, selected, failureMode, units, onActiva
   };
 
   return (
-    <div className="diagram-wrap mech" role="group" aria-label="Mechanical plant diagram. Tab to move between equipment.">
+    <div ref={wrapRef} className="diagram-wrap mech" role="group" aria-label="Mechanical plant diagram. Tab to move between equipment.">
       <div className="mode-banner">
         {failureMode ? (
           <span className="chip chip-alarm">Failure mode: tap equipment to fail or restore it</span>

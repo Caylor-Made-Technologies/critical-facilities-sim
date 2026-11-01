@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { loadFraction, type Component, type Simulation } from '../../sim';
 import { Icon } from '../icons';
+import { usePauseWhenOffscreen } from '../common';
 import { computeLayout, type NodeBox } from './layout';
 
 interface Props {
@@ -74,6 +75,7 @@ function subLine(sim: Simulation, n: Component): string {
 export function OneLine({ sim, version, selected, failureMode, onActivate }: Props) {
   const layout = useMemo(() => computeLayout(sim.graph), [sim.graph]);
   const wrapRef = useRef<HTMLDivElement>(null);
+  usePauseWhenOffscreen(wrapRef);
   const fit = useCallback((): View => ({ x: 0, y: 0, w: layout.width, h: layout.height }), [layout]);
   /**
    * Opening view: zoomed to a readable scale (~0.85 px per unit) and centered

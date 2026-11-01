@@ -14,6 +14,7 @@ import { Simulation } from './engine';
 import { buildPlant } from './plant/builder';
 import type { WeatherId } from './thermal';
 import type { Topology } from './plant/builder';
+import type { ActionResult } from './types';
 
 export type ProcKind = 'mop' | 'drill';
 
@@ -22,6 +23,57 @@ export interface ProcChoice {
   correct: boolean;
   /** Why this answer is right or wrong. Shown after it is picked. */
   why: string;
+  /**
+   * What this choice would actually do to the plant. Run on a copy of the
+   * live simulation when the choice is picked, so the operator sees the
+   * real outcome without the live plant being touched.
+   */
+  consequence?: (sim: Simulation) => ActionResult | void;
+  /** How long to run the copy after the consequence (s). Default 90. */
+  consequenceS?: number;
+}
+
+/** What a choice would have done, measured on a copy of the plant. */
+export interface Consequence {
+  /** The plant refused the action (interlock or engine rule). */
+  refused?: string;
+  racksDown: number;
+  gpuRowsTripped: number[];
+  maxInletC: number;
+  /** The most important new event-log lines. */
+  lines: string[];
+  seconds: number;
+}
+
+export function previewConsequence(sim: Simulation, c: ProcChoice): Consequence | null {
+  if (!c.consequence) return null;
+  // Count from the live plant: making the copy can itself settle a pending trip.
+  const from = sim.events.length;
+  const racksBefore = sim.itDownRacks().length;
+  const copy = sim.clone();
+  const r = c.consequence(copy);
+  const seconds = c.consequenceS ?? 90;
+  let maxInletC = copy.thermal.readout.hallInletC;
+  for (let t = 0; t < seconds; t += 10) {
+    copy.advance(Math.min(10, seconds - t));
+    maxInletC = Math.max(maxInletC, copy.thermal.readout.hallInletC);
+  }
+  const rank = { critical: 0, alarm: 1, warning: 2, info: 3 } as const;
+  const lines = copy.events
+    .slice(from)
+    .filter((e) => e.severity !== 'info')
+    .sort((a, b) => rank[a.severity] - rank[b.severity] || a.t - b.t)
+    .map((e) => e.message)
+    .filter((m, i, all) => all.indexOf(m) === i)
+    .slice(0, 4);
+  return {
+    refused: r && !r.ok ? r.reason : undefined,
+    racksDown: Math.max(0, copy.itDownRacks().length - racksBefore),
+    gpuRowsTripped: copy.thermal.readout.gpuRows.filter((g) => g.tripped).map((g) => g.row),
+    maxInletC,
+    lines,
+    seconds,
+  };
 }
 
 export interface ProcStep {
@@ -61,6 +113,8 @@ export interface Procedure {
   steps: ProcStep[];
   /** Key takeaways shown on the result screen. */
   debrief: string[];
+  /** Open questions to think about afterwards, each with a model answer. */
+  deeper?: { q: string; a: string }[];
 }
 
 export const SCORE = { start: 100, blocked: 5, hint: 5, wrongChoice: 10, dropped: 30 } as const;

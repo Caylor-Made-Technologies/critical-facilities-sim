@@ -1,5 +1,5 @@
 /** Small shared UI pieces. */
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode, type RefObject } from 'react';
 import type { NeverRule } from '../content/neverdo';
 
 /** Section switcher (Electrical / Mechanical / …) used at the top of tabs. */
@@ -104,4 +104,22 @@ export function PageHead({ eyebrow, title, children }: { eyebrow: string; title:
       {children && <p>{children}</p>}
     </div>
   );
+}
+
+/**
+ * Pause an element's CSS animations while it is scrolled off screen, so the
+ * animated power and water flow costs nothing when you can't see it.
+ * Sets an attribute directly; no re-render.
+ */
+export function usePauseWhenOffscreen(ref: RefObject<Element>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e?.isIntersecting) el.removeAttribute('data-offscreen');
+      else el.setAttribute('data-offscreen', '');
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref]);
 }

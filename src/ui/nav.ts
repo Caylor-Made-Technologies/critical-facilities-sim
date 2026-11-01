@@ -6,6 +6,7 @@ export type Tab =
   | 'sim'
   | 'learn'
   | 'procedures'
+  | 'cases'
   | 'designs'
   | 'quiz'
   | 'equipment'
@@ -32,6 +33,7 @@ export const NAV: NavItem[] = [
   { id: 'sim', label: 'Simulator', short: 'Sim', icon: 'bolt', group: 'Practice', desc: 'Break the plant on purpose and watch the backups catch it.' },
   { id: 'learn', label: 'Learn', short: 'Learn', icon: 'book', group: 'Practice', desc: 'Step-by-step walkthroughs, electrical and mechanical.' },
   { id: 'procedures', label: 'Procedures & Drills', short: 'MOPs', icon: 'list', group: 'Practice', desc: 'Run MOPs and emergency drills on the live plant. Scored.' },
+  { id: 'cases', label: 'Case Studies', short: 'Cases', icon: 'clipboard', group: 'Practice', desc: 'Six incidents, root-caused. Timeline, five whys, and what changed.' },
   { id: 'quiz', label: 'Quiz', short: 'Quiz', icon: 'target', group: 'Practice', desc: 'Test yourself. Wrong answers explain why.' },
   { id: 'equipment', label: 'Equipment', short: 'Gear', icon: 'wrench', group: 'Know your gear', desc: 'Rounds, PM, troubleshooting for every component.' },
   { id: 'designs', label: 'Designs & PUE', short: 'Designs', icon: 'layers', group: 'Know your gear', desc: 'Compare redundancy designs side by side, and see where the power goes.' },
