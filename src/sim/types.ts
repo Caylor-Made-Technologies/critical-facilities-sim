@@ -68,6 +68,8 @@ export interface ComponentState {
   genState?: 'off' | 'cranking' | 'running';
   /** Seconds remaining until a cranking generator is ready to accept load. */
   genTimer?: number;
+  /** Generators: started by an operator for a test run (not by an ATS). */
+  manualRun?: boolean;
   /** Generators: fuel left in the day tank (litres). */
   fuelL?: number;
   /** UPS: operator-selected mode. 'auto' lets the UPS choose normal / battery / static bypass. */

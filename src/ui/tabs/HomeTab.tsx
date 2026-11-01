@@ -5,9 +5,10 @@ import { QUIZ } from '../../content/quiz';
 import { EQUIPMENT } from '../../content/equipment';
 import { GLOSSARY } from '../../content/glossary';
 import { PROCEDURES } from '../../content/procedures';
+import { ROUNDS } from '../../content/rounds';
 import { grade } from '../../sim';
 import { Icon } from '../icons';
-import { LEVELS, levelOf, type ProgressHandle } from '../progress';
+import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 
 const TIPS = [
@@ -173,18 +174,32 @@ export function HomeTab({ p, go, startTour }: Props) {
         </div>
       </section>
 
-      <section className="card record" aria-labelledby="record-h">
+      <section className="card record print-area" aria-labelledby="record-h">
+        <div className="print-only print-head">
+          <strong>Critical Facilities Simulator · Practice record</strong>
+          <span>Printed {new Date().toISOString().slice(0, 10)} · {lvl.name}, {p.xp} XP</span>
+        </div>
         <div className="record-head">
           <h2 id="record-h" className="h-card">
             Training record
           </h2>
-          <button className="btn btn-sm" type="button" onClick={() => go('procedures')}>
-            <Icon name="list" /> All procedures
-          </button>
+          <div className="record-actions no-print">
+            <button className="btn btn-sm" type="button" onClick={() => window.print()}>
+              <Icon name="book" /> Print / save PDF
+            </button>
+            <button className="btn btn-sm" type="button" onClick={() => go('procedures')}>
+              <Icon name="list" /> All practice
+            </button>
+          </div>
         </div>
         <ul className="record-list">
-          {PROCEDURES.map((pr) => {
+          {[
+            ...PROCEDURES.map((pr) => ({ id: pr.id, title: pr.title, kind: pr.kind === 'mop' ? 'MOP' : 'Drill' })),
+            { id: 'drill-surprise', title: 'Surprise drill', kind: 'Drill' },
+            ...ROUNDS.map((r) => ({ id: r.id, title: `Rounds: ${r.title}`, kind: 'Rounds' })),
+          ].map((pr) => {
             const best = p.progress.procs[pr.id];
+            const time = p.progress.times[pr.id];
             return (
               <li key={pr.id} className={best === undefined ? 'todo' : ''}>
                 <span className={`record-grade${best === undefined ? '' : ` g-${grade(best).letter[0]!.toLowerCase()}`}`} aria-hidden="true">
@@ -192,13 +207,19 @@ export function HomeTab({ p, go, startTour }: Props) {
                 </span>
                 <span className="record-name">
                   {pr.title}
-                  <small>{pr.kind === 'mop' ? 'MOP' : 'Drill'} · {best === undefined ? 'not run yet' : `best ${best}/100`}</small>
+                  <small>
+                    {pr.kind} · {best === undefined ? 'not run yet' : `best ${best}/100`}
+                    {time !== undefined && ` · ${fmtSecs(time)}`}
+                  </small>
                 </span>
               </li>
             );
           })}
         </ul>
-        <p className="record-note">Saved only in this browser. Nothing is sent anywhere.</p>
+        <p className="record-note">
+          Saved only in this browser. Nothing is sent anywhere. This is a practice record from a free educational simulator, not a
+          qualification, certification or site authorization.
+        </p>
       </section>
 
       <div className="tip" role="note">

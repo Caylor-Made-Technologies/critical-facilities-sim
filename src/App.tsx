@@ -26,6 +26,7 @@ import { HomeTab } from './ui/tabs/HomeTab';
 import { Coach, LearnTab, type LessonState } from './ui/tabs/LearnTab';
 import { NeverDoTab } from './ui/tabs/NeverDoTab';
 import { ProceduresTab } from './ui/tabs/ProceduresTab';
+import { surpriseDrill } from './content/procedures';
 import { DesignsTab } from './ui/tabs/DesignsTab';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { QuizTab } from './ui/tabs/QuizTab';
@@ -57,7 +58,7 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [guideId, setGuideId] = useState<string | null>(null);
   const [lesson, setLesson] = useState<LessonState | null>(null);
-  const [proc, setProc] = useState<{ p: Procedure; run: ProcRun } | null>(null);
+  const [proc, setProc] = useState<{ p: Procedure; run: ProcRun; started: number; secs?: number } | null>(null);
   const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
 
   useEffect(() => {
@@ -129,7 +130,7 @@ export function App() {
     setSelected(null);
     setProcFb(null);
     const run = startRun(p, sim);
-    setProc({ p, run });
+    setProc({ p, run, started: Date.now() });
     focusStep(p, run.step);
     setTab('sim');
   };
@@ -144,14 +145,16 @@ export function App() {
       // On a phone the coach may be scrolled out of view, so confirm with a toast too.
       if (!next.done) showToast(`Step ${proc.run.step + 1} done. Next: ${proc.p.steps[next.step]!.title}`);
     }
-    setProc({ p: proc.p, run: next });
+    setProc({ ...proc, run: next });
     if (next.step !== proc.run.step) focusStep(proc.p, next.step);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [h.version]);
   // Save the best score when a run finishes.
   useEffect(() => {
     if (proc?.run.done) {
-      p.finishProcedure(proc.p.id, proc.run.score);
+      const secs = (Date.now() - proc.started) / 1000;
+      setProc({ ...proc, secs });
+      p.finishProcedure(proc.p.id, proc.run.score, secs);
       h.setRunning(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,13 +164,16 @@ export function App() {
     const before = proc.run;
     const after = h.act(() => fn(before));
     setProcFb(fb ? fb(before, after) : null);
-    setProc({ p: proc.p, run: after });
+    setProc({ ...proc, run: after });
     if (after.step !== before.step) focusStep(proc.p, after.step);
   };
   const procCoach = proc ? (
     <ProcedureCoach
       proc={proc.p}
       run={proc.run}
+      started={proc.started}
+      secs={proc.secs}
+      bestSecs={p.progress.times[proc.p.id]}
       feedback={procFb}
       onConfirm={() => procAct((r) => confirmStep(proc.p, r, h.sim), (b) => ({ ok: true, text: `Confirmed: ${proc.p.steps[b.step]!.confirm}.` }))}
       onChoose={(i) =>
@@ -181,7 +187,7 @@ export function App() {
       }
       onHint={() => procAct(takeHint)}
       onShowMe={() => focusStep(proc.p, proc.run.step)}
-      onRetry={() => startProc(proc.p)}
+      onRetry={() => startProc(proc.p.id === 'drill-surprise' ? surpriseDrill() : proc.p)}
       onExit={() => {
         setProc(null);
         setProcFb(null);
@@ -322,7 +328,9 @@ export function App() {
                 showSim={() => setTab('sim')}
               />
             )}
-            {tab === 'procedures' && <ProceduresTab best={p.progress.procs} start={startProc} />}
+            {tab === 'procedures' && (
+              <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} onRound={(id, score) => p.finishProcedure(id, score)} />
+            )}
             {tab === 'designs' && <DesignsTab sim={h.sim} version={h.version} units={prefs.units} onTry={(t) => { setProc(null); setLesson(null); h.reset(t); setSelected(null); setTab('sim'); }} />}
             {tab === 'quiz' && <QuizTab p={p} />}
             {tab === 'equipment' && <EquipmentTab openId={guideId} onShowInSim={showKindInSim} onRead={p.readGuide} />}

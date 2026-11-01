@@ -212,9 +212,28 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Pro
               UPS {upsSystem} to static bypass
             </button>
           ))}
+        {n.kind === 'generator' &&
+          (n.state.manualRun ? (
+            <button className="btn" type="button" onClick={() => run((s) => s.testGenerator(id, false))}>
+              Stop test run
+            </button>
+          ) : (
+            n.state.genState === 'off' &&
+            n.status !== 'failed' &&
+            n.status !== 'maintenance' && (
+              <button className="btn" type="button" onClick={() => run((s) => s.testGenerator(id, true))}>
+                Start test run
+              </button>
+            )
+          ))}
+        {(n.status === 'online' || n.status === 'standby') && n.kind !== 'rack' && n.domain !== 'life-safety' && (
+          <button className="btn" type="button" onClick={() => run((s) => s.setMaintenance(id))}>
+            Take out of service
+          </button>
+        )}
         {n.status === 'failed' || n.status === 'maintenance' ? (
           <button className="btn btn-primary" type="button" onClick={() => run((s) => s.restore(id))}>
-            Restore
+            {n.status === 'maintenance' ? 'Return to service' : 'Restore'}
           </button>
         ) : (
           <button className="btn btn-danger" type="button" onClick={() => run((s) => s.fail(id))}>

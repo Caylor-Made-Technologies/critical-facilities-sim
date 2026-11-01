@@ -3569,3 +3569,150 @@ ul.checklist li::after {
   color: var(--text-muted);
 }
 .btn-sm { padding: 6px 12px; font-size: 0.85rem; min-height: 36px; }
+
+/* ---------- Practice hub ---------- */
+.next-up {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 14px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text-body);
+  border-color: color-mix(in srgb, var(--blue) 50%, var(--border));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--blue) 14%, var(--surface)), var(--surface));
+  transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.next-up:hover { transform: translateY(-2px); border-color: var(--blue-glow); }
+.next-up > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.next-up strong { color: var(--text-heading); font-size: 1.05rem; }
+.next-up small { color: var(--text-muted); }
+.next-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--grad);
+  color: #fff;
+}
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.filter-chip {
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-body);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.filter-chip[aria-pressed='true'] {
+  background: var(--blue-button);
+  border-color: var(--blue-button);
+  color: #fff;
+}
+.proc-tile.surprise {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--warn) 60%, var(--border));
+}
+.stopwatch {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-body);
+}
+.grade-time {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Rounds practice ---------- */
+.rounds-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  margin-top: 14px;
+}
+.round-help { color: var(--text-muted); font-size: 0.9rem; margin: 6px 0 10px; }
+.readings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.reading-btn {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunk);
+  color: var(--text-body);
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+.reading-btn:disabled { cursor: default; }
+.reading-flag { color: var(--text-muted); display: grid; place-items: center; }
+.reading-btn.flagged {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+}
+.reading-btn.flagged .reading-flag { color: var(--warn); }
+.reading-value { color: var(--text-heading); text-align: right; }
+.reading.right .reading-btn { border-color: var(--ok); }
+.reading.wrong .reading-btn { border-color: var(--alarm); }
+.reading-why {
+  margin: 4px 2px 8px;
+  font-size: 0.88rem;
+  animation: fadeUp 0.25s var(--ease);
+}
+.reading.right .reading-why strong { color: var(--ok); }
+.reading.wrong .reading-why strong { color: var(--alarm); }
+.round-score {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--text-heading);
+}
+.record-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- Print: only the practice record ---------- */
+.print-only { display: none; }
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    position: absolute;
+    inset: 0 0 auto 0;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .print-area * { color: #000 !important; }
+  .print-only { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+  .no-print { display: none !important; }
+  .record-list li { background: #fff !important; border: 1px solid #999; break-inside: avoid; }
+  .record-grade { border: 1px solid #000 !important; background: none !important; }
+}

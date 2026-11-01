@@ -1,7 +1,8 @@
 /** Coach card for MOP practice and emergency drills, shown above the simulator. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { grade, SCORE, type Procedure, type ProcRun } from '../../sim';
 import { Icon } from '../icons';
+import { fmtSecs } from '../progress';
 
 export interface ProcFeedback {
   ok: boolean;
@@ -11,6 +12,11 @@ export interface ProcFeedback {
 interface Props {
   proc: Procedure;
   run: ProcRun;
+  /** When the run started (ms since epoch). */
+  started: number;
+  /** Finish time in seconds, once done. */
+  secs?: number;
+  bestSecs?: number;
   feedback: ProcFeedback | null;
   onConfirm: () => void;
   onChoose: (i: number) => void;
@@ -21,9 +27,16 @@ interface Props {
   onBrowse: () => void;
 }
 
-export function ProcedureCoach({ proc, run, feedback, onConfirm, onChoose, onHint, onShowMe, onRetry, onExit, onBrowse }: Props) {
+export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, onConfirm, onChoose, onHint, onShowMe, onRetry, onExit, onBrowse }: Props) {
   const [whyOpen, setWhyOpen] = useState(false);
   const kindLabel = proc.kind === 'mop' ? 'MOP practice' : 'Emergency drill';
+  // Live stopwatch (real time), ticking once a second while the run is open.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (run.done) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [run.done]);
 
   if (run.done) {
     const g = grade(run.score);
@@ -47,6 +60,12 @@ export function ProcedureCoach({ proc, run, feedback, onConfirm, onChoose, onHin
               {run.score} <span>/ 100</span>
             </div>
             <p className="grade-label">{g.label}</p>
+            {secs !== undefined && (
+              <p className="grade-time">
+                <Icon name="pulse" /> Finished in {fmtSecs(secs)}
+                {bestSecs !== undefined && ` · best ${fmtSecs(Math.min(bestSecs, secs))}`}
+              </p>
+            )}
           </div>
         </div>
         <h3 className="h-sub">What cost points</h3>
@@ -91,6 +110,9 @@ export function ProcedureCoach({ proc, run, feedback, onConfirm, onChoose, onHin
             {kindLabel} · Step {run.step + 1} of {proc.steps.length}
           </div>
           <h2 id="proc-h">{s.title}</h2>
+        </div>
+        <div className="stopwatch" aria-label={`Time ${fmtSecs((now - started) / 1000)}`}>
+          {fmtSecs((now - started) / 1000)}
         </div>
         <div className="score-pill" aria-label={`Score ${run.score} of 100`}>
           <span key={run.score}>{run.score}</span>

@@ -240,6 +240,229 @@ export const MOPS: Procedure[] = [
       'Check capacity before you double up the load on one service.',
     ],
   },
+  {
+    id: 'mop-gen-test',
+    kind: 'mop',
+    title: 'Monthly generator test run',
+    summary: 'Start a standby generator, check it runs right, and put it back in automatic. The test that proves the backup will be there.',
+    level: 'Beginner',
+    minutes: 4,
+    topology: '2N',
+    run: true,
+    steps: [
+      PRE_JOB,
+      {
+        title: 'Walk down the generator before you start it',
+        detail: 'Before any start, walk around the unit. What are you looking for?',
+        why: 'Most failed starts are found on a walkdown: a closed fuel valve, a dead battery charger, a leak.',
+        focus: 'GEN-A1',
+        choices: [
+          { text: 'Fuel level and valves, oil and coolant levels, battery charger on, no leaks, nothing loose or blocking the air flow', correct: true, why: 'Right. Five minutes of looking prevents a failed start during a real outage.' },
+          { text: 'Nothing, the controller would alarm if something was wrong', correct: false, why: 'Controllers miss closed manual valves, rags in the radiator and slow leaks. Eyes on the unit, every time.' },
+          { text: 'Just the fuel gauge', correct: false, why: 'Fuel matters, but so do oil, coolant, batteries and air flow.' },
+        ],
+      },
+      {
+        title: 'Start GEN-A1 for a test run',
+        detail: 'Select GEN-A1 and press "Start test run". It runs unloaded; the utility still carries the plant.',
+        why: 'An unloaded run proves the engine starts and reaches speed. Load bank tests (separately scheduled) prove it can carry real load.',
+        hint: 'Tap GEN-A1 on the one-line, then "Start test run". Keep the clock running.',
+        focus: 'GEN-A1',
+        check: (s) => s.graph.get('GEN-A1').state.genState === 'running' && !!s.graph.get('GEN-A1').state.manualRun,
+      },
+      {
+        title: 'Record the readings',
+        detail: 'Log oil pressure, coolant temperature, voltage, frequency and battery charge against the expected ranges.',
+        why: 'Trends catch problems early: a coolant temperature creeping up month after month is a radiator or thermostat on its way out.',
+        confirm: 'Readings logged and in range',
+      },
+      {
+        title: 'Stop the test run',
+        detail: 'Press "Stop test run". The generator cools down and goes back to automatic standby.',
+        why: 'Leaving a generator in manual or off after a test is a classic way to lose the backup without anyone knowing.',
+        hint: 'Tap GEN-A1, then "Stop test run".',
+        focus: 'GEN-A1',
+        check: (s) => s.graph.get('GEN-A1').state.genState === 'off' && !s.graph.get('GEN-A1').state.manualRun,
+      },
+      {
+        title: 'Back in automatic',
+        detail: 'Confirm the controller is in AUTO, top up the day tank if needed, and log the test as complete.',
+        why: 'The test is only useful if the generator ends it ready for the next real outage.',
+        confirm: 'Controller in AUTO, fuel checked, test logged',
+      },
+    ],
+    debrief: [
+      'Walk down the unit before every start.',
+      'Record readings every month, because the trend is what catches failing parts.',
+      'End every test in AUTO. A generator left in manual is no backup at all.',
+    ],
+  },
+  {
+    id: 'mop-tie-return',
+    kind: 'mop',
+    title: 'Return switchboard A to its own utility',
+    summary: 'Utility work is done. Open the tie, move the key home, and close Main A, without ever paralleling the two services.',
+    level: 'Advanced',
+    minutes: 5,
+    topology: '2N',
+    setup: (s) => {
+      s.openBreaker('MB-A');
+      s.removeKey('L-MB-A');
+      s.insertKey('K-MTM-1', 'L-TIE-AB');
+      s.closeBreaker('TIE-AB');
+      s.advance(30);
+    },
+    steps: [
+      {
+        title: 'Utility clearance returned',
+        detail: 'The utility crew has released their clearance and confirms service A is energized and normal.',
+        why: 'Never switch toward a source someone else still has locked out.',
+        confirm: 'Utility clearance released, service A verified energized',
+      },
+      {
+        title: 'Open transition or closed?',
+        detail: 'To move switchboard A back, you will open the tie, then close Main A. What does that mean for the load?',
+        why: 'Knowing what the load will see before you switch is how you avoid surprises.',
+        choices: [
+          { text: 'A short break on switchboard A; UPS A and the battery yard carry it for a few seconds', correct: true, why: 'Right. Open transition, break before make. The UPS is there for exactly this.' },
+          { text: 'Nothing, close Main A first so there is no break', correct: false, why: 'That would tie utility A and utility B together. The interlock blocks it because it can cause a huge fault.' },
+          { text: 'Every rack drops for a moment', correct: false, why: 'The racks are on UPS power. They never see the gap.' },
+        ],
+      },
+      {
+        title: 'Open the tie breaker',
+        detail: 'Open TIE-AB.',
+        why: 'Break first. Switchboard A goes dead for a moment and UPS A rides on battery.',
+        hint: 'Tap TIE-AB, then "Open breaker".',
+        focus: 'TIE-AB',
+        check: (s) => !isClosed(s, 'TIE-AB'),
+      },
+      {
+        title: 'Move the key from the tie back to Main A',
+        detail: 'Remove key MTM from the tie lock and insert it into the Main A lock.',
+        why: 'The tie is now locked open, so the two services can never be tied by mistake.',
+        hint: 'Tap TIE-AB, "Remove key". Tap MB-A, "Insert key MTM".',
+        focus: 'TIE-AB',
+        check: (s) => keyIn(s, 'L-MB-A'),
+      },
+      {
+        title: 'Close Main A',
+        detail: 'Close MB-A. Switchboard A is back on its own utility.',
+        why: 'Move quickly but carefully: the UPS battery is covering the gap.',
+        hint: 'Tap MB-A, then "Close breaker".',
+        focus: 'MB-A',
+        check: (s) => isClosed(s, 'MB-A') && s.solution.energized.has('MSB-A'),
+      },
+      {
+        title: 'Back to normal',
+        detail: 'Check both switchboards are on their own utility, the tie is open with its lock empty, and alarms are clear.',
+        why: 'The plant is only back to normal when it looks exactly like the normal one-line.',
+        confirm: 'Normal line-up verified, MOP closed out',
+      },
+    ],
+    debrief: [
+      'Never switch toward a source until its owner releases it.',
+      'Break before make on main-tie-main. The UPS covers the gap.',
+      'Finish with the normal line-up: both mains closed, tie open, keys home.',
+    ],
+  },
+  {
+    id: 'mop-chiller-pm',
+    kind: 'mop',
+    title: 'Take a chiller out for maintenance',
+    summary: 'Lock out the lead chiller for PM and confirm the plant stages around it without the data hall warming up.',
+    level: 'Intermediate',
+    minutes: 5,
+    topology: '2N',
+    run: true,
+    steps: [
+      PRE_JOB,
+      {
+        title: 'Check the plant can run without CH-01',
+        detail: 'CH-01 is the lead chiller. What do you check before you take it out?',
+        why: 'Taking out a chiller turns N+1 into N. You want to know that before, not after.',
+        view: 'mechanical',
+        focus: 'CH-01',
+        choices: [
+          { text: 'The other chillers are available, the storage tank is full, and the weather forecast is mild', correct: true, why: 'Right. Spares, stored cooling and the weather decide how much risk you are taking.' },
+          { text: 'Nothing, the BMS will sort it out', correct: false, why: 'The BMS can only use what is available. You check that it is.' },
+          { text: 'Shut every chiller down so the plant is quiet for the tech', correct: false, why: 'That would heat the data hall in minutes. Only the unit being worked on comes out.' },
+        ],
+      },
+      {
+        title: 'Take CH-01 out of service',
+        detail: 'Select CH-01 and press "Take out of service". The BMS starts the next chiller; the storage tank covers the gap.',
+        why: 'A chiller takes about two minutes to start. That gap is what the storage tank is for.',
+        hint: 'In the Mechanical view, tap CH-01, then "Take out of service".',
+        view: 'mechanical',
+        focus: 'CH-01',
+        check: (s) => s.graph.get('CH-01').status === 'maintenance',
+      },
+      {
+        title: 'Watch the next chiller take the load',
+        detail: 'Let the clock run until the BMS has another chiller running.',
+        why: 'Do not leave until you have seen the plant settle on its new line-up.',
+        hint: 'Press Run, or set 10× speed.',
+        view: 'mechanical',
+        check: (s) => Object.entries(s.thermal.readout.chillers).some(([id, m]) => id !== 'CH-01' && m === 'running') && s.thermal.readout.tesDischargeKwt === 0,
+      },
+      {
+        title: 'Lock out and isolate',
+        detail: 'Apply your lock at the chiller disconnect, close and tag the water valves, and verify zero energy before the tech opens anything.',
+        why: 'Water and refrigerant are stored energy too. Electrical LOTO alone is not enough on a chiller.',
+        confirm: 'Electrical and water isolation locked, tagged and verified',
+      },
+    ],
+    debrief: [
+      'Check spares, stored cooling and weather before you take capacity out.',
+      'Watch the plant settle before you walk away.',
+      'Mechanical LOTO covers water and refrigerant, not just the breaker.',
+    ],
+  },
+  {
+    id: 'mop-crah-filters',
+    kind: 'mop',
+    title: 'Air handler filter change',
+    summary: 'Take one air handler out for a filter change, confirm the hall stays in range, and bring it back.',
+    level: 'Beginner',
+    minutes: 3,
+    topology: '2N',
+    run: true,
+    steps: [
+      PRE_JOB,
+      {
+        title: 'Take CRAH-101 out of service',
+        detail: 'Select CRAH-101 and press "Take out of service".',
+        why: 'With spare air handlers (N+2 here), one out for an hour changes nothing. Still, it is a change, so it is planned.',
+        hint: 'In the Mechanical view, tap CRAH-101, then "Take out of service".',
+        view: 'mechanical',
+        focus: 'CRAH-101',
+        check: (s) => s.graph.get('CRAH-101').status === 'maintenance',
+      },
+      {
+        title: 'Change the filters',
+        detail: 'Fan off and locked out, swap the filters, and write the date on the new ones.',
+        why: 'Dirty filters cut air flow, so the fans work harder and the hall runs warmer.',
+        confirm: 'Filters changed and dated',
+      },
+      {
+        title: 'Return CRAH-101 to service',
+        detail: 'Remove your lock, then press "Return to service".',
+        why: 'An air handler left off after maintenance silently removes your spare.',
+        hint: 'Tap CRAH-101, then "Return to service".',
+        view: 'mechanical',
+        focus: 'CRAH-101',
+        check: (s) => s.graph.get('CRAH-101').status !== 'maintenance',
+      },
+      {
+        title: 'Check the hall',
+        detail: 'Confirm the rack inlet temperature is in the ASHRAE range and the unit shows no alarms.',
+        why: 'Every job ends with checking that the plant is back to normal.',
+        confirm: 'Inlet in range, no alarms, work order closed',
+      },
+    ],
+    debrief: ['Small jobs still get planned and closed out.', 'Return equipment to service the moment the work is done.', 'Date your filters so the next tech knows the history.'],
+  },
 ];
 
 export const DRILLS: Procedure[] = [
@@ -443,6 +666,333 @@ export const DRILLS: Procedure[] = [
       'Never parallel unsynchronized sources, even in an emergency.',
     ],
   },
+  {
+    id: 'drill-cdu',
+    kind: 'drill',
+    title: 'Liquid cooling unit (CDU) failure',
+    summary: 'The coolant unit for GPU row 1 stops. The chips heat up in seconds, not minutes. Act fast.',
+    level: 'Intermediate',
+    minutes: 3,
+    topology: '2N',
+    run: true,
+    setup: (s) => {
+      s.fail('CDU-1');
+    },
+    steps: [
+      {
+        title: 'Alarm: CDU-1 fault, GPU row 1 temperature rising',
+        detail: 'The coolant unit for GPU row 1 has stopped pumping. What do you do first?',
+        why: 'Cold plates hold very little heat. GPUs throttle in about 30 seconds and shut down soon after.',
+        view: 'mechanical',
+        focus: 'CDU-1',
+        choices: [
+          { text: 'Go to the CDU, switch to the standby pump, and warn the customer their GPUs may throttle', correct: true, why: 'Right. Speed matters here, and the customer needs to know their jobs may slow down.' },
+          { text: 'Turn up the air handlers to cool the GPUs', correct: false, why: 'Liquid-cooled GPUs reject most of their heat to water. Air cannot make up for it.' },
+          { text: 'Wait and see if it clears on its own', correct: false, why: 'You have seconds. Waiting means tripped GPUs and lost customer work.' },
+        ],
+        after: (s) => {
+          s.restore('CDU-1');
+        },
+      },
+      {
+        title: 'Standby pump running: watch row 1 recover',
+        detail: 'Coolant is flowing again. Let the clock run until the row 1 GPUs are back to normal temperature.',
+        why: 'Confirm the fix worked before you call it done.',
+        hint: 'Keep the clock running.',
+        view: 'mechanical',
+        check: (s) => s.thermal.readout.gpuRows.every((r) => !r.throttled && !r.tripped && r.tempC < 70),
+      },
+      {
+        title: 'Follow-up',
+        detail: 'The lead pump failed and you are on the standby. What now?',
+        why: 'You just lost your spare pump.',
+        choices: [
+          { text: 'Open a priority work order, report the lost redundancy, and check coolant level and filters', correct: true, why: 'Right. Running on the spare is running at N.' },
+          { text: 'Nothing, it works now', correct: false, why: 'If the standby pump fails, there is no backup left.' },
+        ],
+      },
+    ],
+    debrief: ['Liquid cooling gives you seconds. Know where the standby pump switch is before you need it.', 'Tell the customer early.', 'Running on a spare means you have lost redundancy. Report it.'],
+  },
+  {
+    id: 'drill-ups-room',
+    kind: 'drill',
+    title: 'UPS room cooling lost',
+    summary: 'The air conditioner for the UPS and battery room fails. Batteries hate heat. What do you do?',
+    level: 'Beginner',
+    minutes: 3,
+    topology: '2N',
+    run: true,
+    setup: (s) => {
+      s.fail('CRAC-201');
+    },
+    steps: [
+      {
+        title: 'Alarm: CRAC-201 failed, UPS room warming',
+        detail: 'The UPS room temperature is climbing slowly. Why does it matter?',
+        why: 'UPS rooms hold batteries, and battery life is very sensitive to heat.',
+        view: 'mechanical',
+        focus: 'CRAC-201',
+        choices: [
+          { text: 'Hot batteries age fast (about half the life for every 8–10 °C above 25 °C) and the UPS can overheat', correct: true, why: 'Right. A hot week can cost years of battery life.' },
+          { text: 'It does not, UPSs are rated for heat', correct: false, why: 'Electronics derate and batteries age much faster when hot.' },
+          { text: 'Only because the room gets uncomfortable', correct: false, why: 'The equipment is the concern, not comfort.' },
+        ],
+      },
+      {
+        title: 'Your response',
+        detail: 'A technician is on the way. What do you do meanwhile?',
+        why: 'You buy time and watch the temperature trend.',
+        choices: [
+          { text: 'Set up approved temporary cooling, keep doors closed unless the plan says otherwise, and watch room and battery temperatures', correct: true, why: 'Right. Follow the site plan and keep an eye on the trend.' },
+          { text: 'Put the UPS on bypass to make less heat', correct: false, why: 'That removes battery protection from the load. Not for a slow temperature rise.' },
+          { text: 'Open the battery cabinets to let the heat out', correct: false, why: 'Opening energized battery cabinets is a shock and arc-flash hazard.' },
+        ],
+        after: (s) => {
+          s.restore('CRAC-201');
+        },
+      },
+      {
+        title: 'CRAC repaired: watch the room recover',
+        detail: 'The technician reset the unit. Let the clock run until the UPS room is back near 75 °F (24 °C).',
+        why: 'Confirm the fix with the trend, not the technician\'s word alone.',
+        hint: 'Set 60× speed and press Run.',
+        view: 'mechanical',
+        check: (s) => s.thermal.readout.upsRoomC < 24.5,
+      },
+    ],
+    debrief: ['Batteries age fast in heat. UPS room cooling is critical cooling.', 'Never open energized battery cabinets to cool them.', 'Confirm repairs with the temperature trend.'],
+  },
+  {
+    id: 'drill-fire',
+    kind: 'drill',
+    title: 'Fire alarm in the data hall',
+    summary: 'A smoke detector in the data hall goes into alarm. Make the calls that keep people safe first.',
+    level: 'Intermediate',
+    minutes: 4,
+    topology: '2N',
+    steps: [
+      {
+        title: 'Alarm: smoke detector, data hall',
+        detail: 'One smoke detector in the data hall is in alarm. The pre-action sprinkler system has armed but no water has been released. First move?',
+        why: 'Life safety comes first, then the equipment.',
+        focus: 'FACP-01',
+        choices: [
+          { text: 'Follow the site fire plan: notify the control room and fire department as required, and investigate only if it is safe and you are trained to', correct: true, why: 'Right. People first, by the plan.' },
+          { text: 'Silence and reset the panel so the alarm stops', correct: false, why: 'Never silence or reset a fire alarm you have not investigated. That is for the fire department or the plan to decide.' },
+          { text: 'Press the EPO to cut power to the hall', correct: false, why: 'EPO is not a fire response by reflex. Your site plan says when, and it is rarely the first move.' },
+        ],
+      },
+      {
+        title: 'Clean agent warning in the UPS room',
+        detail: 'A second alarm: the clean agent system in the UPS room is in its pre-discharge countdown, horns and strobes on. You are in that room.',
+        why: 'Clean agent systems flood the room in seconds.',
+        choices: [
+          { text: 'Leave immediately and close the door behind you', correct: true, why: 'Right. Get out, and do not go back in until the room is cleared.' },
+          { text: 'Press the abort button so you can finish your round', correct: false, why: 'Abort is only used per the site procedure, when there is clearly no fire. Never to keep working.' },
+          { text: 'Find the source of the smoke first', correct: false, why: 'Not inside a room that is about to discharge. Leave.' },
+        ],
+      },
+      {
+        title: 'After the fire department clears the building',
+        detail: 'It was an overheated power supply in one rack. Who decides when systems are reset?',
+        why: 'Resetting fire systems is controlled for a reason.',
+        choices: [
+          { text: 'The fire department and the fire system contractor, per the plan, then the system is restored and tested', correct: true, why: 'Right. Fire systems go back into service through the proper people.' },
+          { text: 'Whoever is on shift, to get things back to normal quickly', correct: false, why: 'A discharged or impaired fire system needs qualified restoration and an impairment notice.' },
+        ],
+      },
+      {
+        title: 'Report',
+        detail: 'Log the event, file the impairment notice if any system was out of service, and send the incident report.',
+        why: 'Fire events are reportable to the owner, the insurer and sometimes the authority having jurisdiction.',
+        confirm: 'Event logged, impairments filed, report sent',
+      },
+    ],
+    debrief: ['Life safety first, by the site fire plan.', 'Never silence or reset an alarm you have not investigated.', 'Leave a room in clean agent pre-discharge immediately.'],
+  },
+  {
+    id: 'drill-towers',
+    kind: 'drill',
+    title: 'Two cooling towers lost on a 105 °F day',
+    summary: 'Tower fans trip on a scorching afternoon. Condenser water climbs, chillers trip. Get the plant back.',
+    level: 'Advanced',
+    minutes: 6,
+    topology: '2N',
+    weather: 'hot-dry',
+    run: true,
+    setup: (s) => {
+      s.fail('CT-01');
+      s.fail('CT-02');
+    },
+    steps: [
+      {
+        title: 'Alarm: CT-01 and CT-02 fans tripped',
+        detail: 'Condenser water temperature is climbing fast. What happens next if nothing changes?',
+        why: 'Towers reject the heat the chillers pull out of the building. Without them, heat has nowhere to go.',
+        view: 'mechanical',
+        focus: 'CT-01',
+        choices: [
+          { text: 'Head pressure rises and the water-cooled chillers trip; the tank and the air-cooled chiller carry the load', correct: true, why: 'Right. That is why sites keep a different kind of backup, like an air-cooled chiller.' },
+          { text: 'Nothing, the chillers will just run slower', correct: false, why: 'Chillers protect themselves. High head pressure trips them off.' },
+          { text: 'The data hall loses power', correct: false, why: 'Power is fine. This is a cooling problem.' },
+        ],
+      },
+      {
+        title: 'Let the backup plant take over',
+        detail: 'Let the clock run until the storage tank stops discharging (the backup chillers are carrying the load).',
+        why: 'Trust the backup and confirm it, before you start fixing the cause.',
+        hint: 'Set 10× speed and press Run.',
+        view: 'mechanical',
+        check: (s) => s.thermal.readout.tesDischargeKwt === 0 && Object.values(s.thermal.readout.chillers).filter((m) => m === 'running').length >= 2,
+      },
+      {
+        title: 'Tower fans reset',
+        detail: 'A tech finds both fan motors tripped on overload and resets them. Before you restart the tripped chillers, what do you check?',
+        why: 'A restart into the same condition just trips again.',
+        view: 'mechanical',
+        choices: [
+          { text: 'Towers running and condenser water back in range, then reset the chillers one at a time', correct: true, why: 'Right. Fix the cause, then restart in steps.' },
+          { text: 'Reset everything at once to get back to normal faster', correct: false, why: 'Restarting everything at once can trip it all again, or overload the electrical service.' },
+        ],
+        after: (s) => {
+          s.restore('CT-01');
+          s.restore('CT-02');
+        },
+      },
+      {
+        title: 'Reset the tripped chillers',
+        detail: 'Towers are back. Reset CH-01 and CH-02 (select each one and press "Restore").',
+        why: 'A tripped chiller needs a manual reset after you understand why it tripped.',
+        hint: 'In the Mechanical view, tap CH-01 and press "Restore", then do the same for CH-02.',
+        view: 'mechanical',
+        focus: 'CH-01',
+        check: (s) => s.graph.get('CH-01').status !== 'failed' && s.graph.get('CH-02').status !== 'failed',
+      },
+    ],
+    debrief: ['Towers are critical cooling, so watch their fans and water on hot days.', 'Keep a different kind of backup (air-cooled) for when the whole condenser loop struggles.', 'Fix the cause, then restart chillers one at a time.'],
+  },
+  {
+    id: 'drill-fuel',
+    kind: 'drill',
+    title: 'Long outage: fuel math',
+    summary: 'A storm takes both utilities for hours. The generators are fine, so now it is about fuel.',
+    level: 'Intermediate',
+    minutes: 4,
+    topology: '2N',
+    run: true,
+    setup: (s) => {
+      s.fail('UTIL-A');
+      s.fail('UTIL-B');
+    },
+    steps: [
+      {
+        title: 'Wait for both sides to reach generator',
+        detail: 'Let the clock run until both transfer switches are on generator.',
+        why: 'Confirm the automation first.',
+        hint: 'Press Run or "+10s".',
+        check: (s) => s.graph.get('ATS-A').state.selected === 'emergency' && s.graph.get('ATS-B').state.selected === 'emergency',
+      },
+      {
+        title: 'How long will the fuel last?',
+        detail: 'Each generator has a 1,000 L day tank and is burning about 150 L per hour at this load. Ignoring the bulk tank, about how long until a day tank runs dry?',
+        why: 'Fuel math is the core of every long outage plan.',
+        focus: 'GEN-A1',
+        choices: [
+          { text: 'About 6½ hours (1,000 ÷ 150)', correct: true, why: 'Right. In real life the bulk tank refills the day tanks, so it is the bulk tank and the deliveries you watch next.' },
+          { text: 'About 1½ hours', correct: false, why: 'Check the division: 1,000 ÷ 150 is about 6.7.' },
+          { text: 'Days, generators barely use fuel', correct: false, why: 'Large generators burn hundreds of litres an hour under load.' },
+        ],
+      },
+      {
+        title: 'Your fuel plan',
+        detail: 'The forecast says utility could be out for two days.',
+        why: 'Deliveries take time to arrange, especially during a regional storm.',
+        choices: [
+          { text: 'Confirm the bulk tank level and transfer pumps, call the fuel supplier under the emergency contract now, and track burn rate hourly', correct: true, why: 'Right. Order early, verify the transfer system, and measure.' },
+          { text: 'Wait until the tank is half empty before calling for fuel', correct: false, why: 'During a storm everyone calls at once. Order early.' },
+          { text: 'Shut down half the generators to stretch the fuel', correct: false, why: 'That removes redundancy and the remaining units burn more each. Never trade redundancy for fuel without a plan.' },
+        ],
+      },
+      {
+        title: 'Hand off',
+        detail: 'Log fuel levels and delivery times, and brief the next shift on the burn rate and the plan.',
+        why: 'Long outages cross shift changes. The handoff is where plans get lost.',
+        confirm: 'Fuel log started, next shift briefed',
+      },
+    ],
+    debrief: ['Fuel math: tank size ÷ burn rate.', 'Order fuel early under the emergency contract.', 'Brief every shift change during a long outage.'],
+  },
 ];
 
 export const PROCEDURES: Procedure[] = [...MOPS, ...DRILLS];
+
+/** Failures the surprise drill can pick from: what fails, and what an operator sees first. */
+const SURPRISES: { id: string; clue: string }[] = [
+  { id: 'UTIL-A', clue: 'UPS A on battery, generators A starting' },
+  { id: 'UTIL-B', clue: 'UPS B on battery, generators B starting' },
+  { id: 'CH-01', clue: 'Chilled water supply temperature rising, storage tank discharging' },
+  { id: 'CDU-2', clue: 'GPU row 2 coolant temperature climbing' },
+  { id: 'CRAC-201', clue: 'UPS room temperature slowly rising' },
+  { id: 'CHWP-01', clue: 'Chilled water flow alarm, standby pump starting' },
+  { id: 'TX-A', clue: 'Switchboard A lost normal power, ATS A timing' },
+  { id: 'DOAS-01', clue: 'Hall dew point and pressure drifting' },
+];
+
+/**
+ * Surprise drill: a random failure, found from the event log and the
+ * plant, then repaired. `pick` chooses the failure (random by default).
+ */
+export function surpriseDrill(pick: number = Math.floor(Math.random() * SURPRISES.length)): Procedure {
+  const k = ((pick % SURPRISES.length) + SURPRISES.length) % SURPRISES.length;
+  const target = SURPRISES[k]!;
+  const others = SURPRISES.filter((x) => x.id !== target.id);
+  // Three distractors, spread through the list so the answer moves around.
+  const distractors = [others[k % others.length]!, others[(k + 2) % others.length]!, others[(k + 5) % others.length]!];
+  const options = [target, ...distractors].sort((a, b) => a.id.localeCompare(b.id));
+  const mech = !['UTIL-A', 'UTIL-B', 'TX-A'].includes(target.id);
+  return {
+    id: 'drill-surprise',
+    kind: 'drill',
+    title: 'Surprise drill',
+    summary: 'Something random fails. Read the event log and the plant, find it, and get it repaired.',
+    level: 'Advanced',
+    minutes: 4,
+    topology: '2N',
+    run: true,
+    setup: (s) => {
+      s.fail(target.id);
+    },
+    steps: [
+      {
+        title: 'Something just failed',
+        detail: `Alarms are coming in: ${target.clue}. Read the event log and the status bar. What failed?`,
+        why: 'The first alarm in the log is usually closest to the root cause. Later alarms are the plant reacting.',
+        view: mech ? 'mechanical' : 'electrical',
+        choices: options.map((o) => ({
+          text: o.id,
+          correct: o.id === target.id,
+          why: o.id === target.id ? `Right. The first critical line in the event log names ${target.id}.` : `${o.id} would show "${o.clue}". Look for the first FAILED line in the log.`,
+        })),
+      },
+      {
+        title: `Get ${target.id} repaired`,
+        detail: `A technician has fixed ${target.id}. Return it to service: select it and press "Restore".`,
+        why: 'Equipment only comes back once someone has found and fixed the cause.',
+        hint: `Tap ${target.id} (${mech ? 'Mechanical' : 'Electrical'} view), then "Restore".`,
+        view: mech ? 'mechanical' : 'electrical',
+        focus: target.id,
+        check: (s) => s.graph.get(target.id).status !== 'failed',
+      },
+      {
+        title: 'Close out',
+        detail: 'Confirm alarms are clearing, log what failed and when, and open a work order for the root cause.',
+        why: 'Every failure gets logged, even the ones the plant rode through.',
+        confirm: 'Alarms clearing, event logged, work order opened',
+      },
+    ],
+    debrief: ['Find the first alarm, not the loudest one.', 'The status bar tells you what is wrong now; the event log tells you what happened first.', 'Log every failure, even when nothing went down.'],
+  };
+}
+
+export const SURPRISE_COUNT = SURPRISES.length;

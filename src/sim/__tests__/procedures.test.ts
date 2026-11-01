@@ -19,8 +19,8 @@ function play(p: Procedure, actions: Record<number, (s: Simulation) => void> = {
       actions[i]?.(sim);
       if (p.run) sim.advance(10);
       run = evaluate(p, run, sim);
-      if (run.step === i && p.run) {
-        sim.advance(400);
+      for (let k = 0; k < 6 && run.step === i && p.run; k++) {
+        sim.advance(300);
         run = evaluate(p, run, sim);
       }
     }
@@ -104,6 +104,62 @@ describe('MOP practice', () => {
   });
 });
 
+describe('new MOPs', () => {
+  const cases: Record<string, Record<number, (s: Simulation) => void>> = {
+    'mop-gen-test': { 2: (s) => s.testGenerator('GEN-A1', true), 4: (s) => s.testGenerator('GEN-A1', false) },
+    'mop-tie-return': {
+      2: (s) => s.openBreaker('TIE-AB'),
+      3: (s) => (s.removeKey('L-TIE-AB'), s.insertKey('K-MTM-1', 'L-MB-A')),
+      4: (s) => s.closeBreaker('MB-A'),
+    },
+    'mop-chiller-pm': { 2: (s) => s.setMaintenance('CH-01') },
+    'mop-crah-filters': { 1: (s) => s.setMaintenance('CRAH-101'), 3: (s) => s.restore('CRAH-101') },
+  };
+  for (const [id, acts] of Object.entries(cases)) {
+    it(`${id}: done right, full score, no racks down`, () => {
+      const { sim, run } = play(byId(id), acts);
+      expect(run.done).toBe(true);
+      expect(run.score).toBe(SCORE.start);
+      expect(sim.droppedRacks()).toEqual([]);
+    });
+  }
+  it('tie return ends in the normal line-up', () => {
+    const { sim } = play(byId('mop-tie-return'), cases['mop-tie-return']);
+    expect(sim.graph.get('MB-A').state.closed && sim.graph.get('MB-B').state.closed && !sim.graph.get('TIE-AB').state.closed).toBe(true);
+  });
+  it('closing Main A before opening the tie is blocked and costs points', () => {
+    const p = byId('mop-tie-return');
+    const sim = procedureSim(p);
+    let run = startRun(p, sim);
+    sim.closeBreaker('MB-A');
+    run = evaluate(p, run, sim);
+    expect(run.score).toBe(SCORE.start - SCORE.blocked);
+  });
+});
+
+describe('operator actions for practice', () => {
+  it('generator test run starts unloaded and stops back to standby', () => {
+    const p = byId('mop-gen-test');
+    const sim = procedureSim(p);
+    expect(sim.testGenerator('GEN-A1', true).ok).toBe(true);
+    sim.advance(30);
+    expect(sim.graph.get('GEN-A1').state.genState).toBe('running');
+    expect(sim.solution.sourceKw.get('GEN-A1') ?? 0).toBe(0);
+    expect(sim.testGenerator('GEN-A1', false).ok).toBe(true);
+    expect(sim.graph.get('GEN-A1').status).toBe('standby');
+  });
+  it('a running generator cannot be locked out', () => {
+    const sim = procedureSim(byId('mop-gen-test'));
+    sim.testGenerator('GEN-A1', true);
+    sim.advance(30);
+    expect(sim.setMaintenance('GEN-A1').ok).toBe(false);
+  });
+  it('an energized breaker cannot be declared out of service', () => {
+    const sim = procedureSim(byId('mop-gen-test'));
+    expect(sim.setMaintenance('UOB-A').ok).toBe(false);
+  });
+});
+
 describe('drills', () => {
   for (const p of DRILLS) {
     it(`${p.title}: right calls finish with full score and no racks down`, () => {
@@ -125,4 +181,34 @@ describe('drills', () => {
     expect(run.score).toBe(SCORE.start - SCORE.wrongChoice);
   });
   it('MOPs exist', () => expect(MOPS.length).toBeGreaterThanOrEqual(3));
+});
+
+import { SURPRISE_COUNT, surpriseDrill } from '../../content/procedures';
+describe('surprise drill', () => {
+  it('every possible failure has one right answer, can be repaired, and finishes clean', () => {
+    for (let i = 0; i < SURPRISE_COUNT; i++) {
+      const p = surpriseDrill(i);
+      const c = p.steps[0]!.choices!;
+      expect(c.filter((x) => x.correct)).toHaveLength(1);
+      expect(new Set(c.map((x) => x.text)).size).toBe(4);
+      const target = p.steps[1]!.focus!;
+      const { sim, run } = play(p, { 1: (s) => s.restore(target) });
+      expect(run.done, target).toBe(true);
+      expect(run.score).toBe(SCORE.start);
+      expect(sim.graph.get(target).status).not.toBe('failed');
+    }
+  });
+});
+
+import { ROUNDS } from '../../content/rounds';
+describe('rounds practice', () => {
+  it('every sheet mixes good and bad readings, each with a range and a reason', () => {
+    for (const r of ROUNDS) {
+      expect(r.readings.some((x) => x.bad), r.id).toBe(true);
+      expect(r.readings.some((x) => !x.bad), r.id).toBe(true);
+      for (const x of r.readings) expect(x.normal.length > 0 && x.why.length > 3).toBe(true);
+    }
+    const ids = [...ROUNDS.map((r) => r.id), ...PROCEDURES.map((p) => p.id), 'drill-surprise'];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });

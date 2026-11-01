@@ -14,9 +14,11 @@ export interface Progress {
   guides: string[];
   /** Procedure / drill id → best score (0–100). */
   procs: Record<string, number>;
+  /** Procedure / drill id → fastest finish in seconds (real time). */
+  times: Record<string, number>;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {} };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {} };
 
 export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40 } as const;
 
@@ -41,6 +43,10 @@ function load(): Progress {
         p.procs && typeof p.procs === 'object'
           ? Object.fromEntries(Object.entries(p.procs).filter(([, v]) => typeof v === 'number' && v >= 0 && v <= 100))
           : {},
+      times:
+        p.times && typeof p.times === 'object'
+          ? Object.fromEntries(Object.entries(p.times).filter(([, v]) => typeof v === 'number' && v > 0 && v < 1e6))
+          : {},
     };
   } catch {
     return EMPTY;
@@ -53,6 +59,11 @@ function save(p: Progress): void {
   } catch {
     /* storage blocked: progress lasts for this visit only */
   }
+}
+
+export function fmtSecs(s: number): string {
+  const t = Math.max(0, Math.round(s));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 }
 
 export function xpOf(p: Progress): number {
@@ -110,11 +121,17 @@ export function useProgress(onGain?: (msg: string) => void) {
     [commit],
   );
   const finishProcedure = useCallback(
-    (id: string, score: number) =>
-      commit(
-        (p) => ((p.procs[id] ?? -1) >= score ? null : { ...p, procs: { ...p.procs, [id]: score } }),
-        `New best: ${score} / 100`,
-      ),
+    (id: string, score: number, seconds?: number) =>
+      commit((p) => {
+        const betterScore = (p.procs[id] ?? -1) < score;
+        const betterTime = seconds !== undefined && seconds > 0 && (p.times[id] === undefined || seconds < p.times[id]!);
+        if (!betterScore && !betterTime) return null;
+        return {
+          ...p,
+          procs: betterScore ? { ...p.procs, [id]: score } : p.procs,
+          times: betterTime ? { ...p.times, [id]: Math.round(seconds!) } : p.times,
+        };
+      }, `Saved: ${score} / 100${seconds ? ` in ${fmtSecs(seconds)}` : ''}`),
     [commit],
   );
   const reset = useCallback(() => {

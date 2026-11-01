@@ -6,7 +6,7 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** All build phases done (1–10): electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
+**Status:** All build phases done (1–25): electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
@@ -15,7 +15,7 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 |---|---|
 | **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
 | **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, °F/°C, Explore and Failure modes, event log. |
-| **Procedures & Drills** | Scored practice on the live plant. **MOP practice:** UPS to maintenance bypass, return from maintenance bypass, main-tie-main transfer. **Emergency drills:** utility loss, chiller trip on a 105 °F day, both utilities lost with a generator failure. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. Best scores go on the Home training record. |
+| **Procedures & Drills** | Scored practice on the live plant. **7 MOPs:** UPS to maintenance bypass and back, main-tie-main transfer and return, monthly generator test run, chiller out for PM, air handler filter change. **8 emergency drills:** utility loss, chiller trip at 105 °F, both utilities plus a generator, CDU failure, UPS room cooling loss, fire alarm, two towers lost at 105 °F, long-outage fuel math. **Surprise drill:** one of 8 random failures to find from the event log and repair. **Rounds:** 4 round sheets where you spot the readings that need action. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. A stopwatch saves best times, filters and a "recommended next" pick what to do, and Home has a printable practice record. |
 | **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
 | **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
@@ -60,7 +60,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 111 unit tests (electrical, thermal, procedures, designs, lessons, content)
+npm test           # 126 unit tests (electrical, thermal, procedures, designs, lessons, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.

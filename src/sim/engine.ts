@@ -158,7 +158,7 @@ export class Simulation {
     const users = this.graph.downstream(busId, 'power').filter((a) => a.kind === 'ats' && a.state.selected === 'emergency');
     if (users.length) return;
     for (const gen of this.graph.upstream(busId, 'power')) {
-      if (gen.kind !== 'generator' || gen.state.genState === 'off') continue;
+      if (gen.kind !== 'generator' || gen.state.genState === 'off' || gen.state.manualRun) continue;
       gen.state.genState = 'off';
       if (gen.status === 'online') gen.status = 'standby';
       this.log('info', gen.tag, `${gen.tag} cooled down and shut off. Back in automatic standby.`);
@@ -331,11 +331,51 @@ export class Simulation {
    */
   setMaintenance(id: string): ActionResult {
     const n = this.graph.get(id);
-    if (this.solution.energized.has(id)) {
-      return { ok: false, reason: `${n.tag} is still energized. Isolate it (open its input and output breakers) before declaring it out of service.` };
+    const block = (reason: string): ActionResult => {
+      this.log('warning', n.tag, `Blocked: ${reason}`);
+      return { ok: false, reason };
+    };
+    if (n.status === 'maintenance') return { ok: false, reason: `${n.tag} is already out of service.` };
+    if (n.status === 'failed') return block(`${n.tag} is failed. Restore it before changing its service state.`);
+    if (n.kind === 'rack' || n.domain === 'life-safety') return block(`${n.tag} is not taken out of service from here.`);
+    if (n.kind === 'generator') {
+      if (n.state.genState !== 'off') return block(`${n.tag} is running. Stop it (or wait for cooldown) before locking it out.`);
+    } else if (n.domain === 'mechanical') {
+      // Mechanical units are locked out at their own disconnect; the BMS runs the plant without them.
+    } else if (this.solution.energized.has(id)) {
+      return block(`${n.tag} is still energized. Isolate it (open its input and output breakers) before declaring it out of service.`);
     }
     n.status = 'maintenance';
-    this.log('info', n.tag, `${n.tag} tagged out for maintenance.`);
+    if (n.kind === 'generator') n.state.manualRun = false;
+    this.log('info', n.tag, n.domain === 'mechanical' ? `${n.tag} shut down and locked out for maintenance. The BMS will run the plant without it.` : `${n.tag} tagged out for maintenance.`);
+    this.resolve();
+    return { ok: true };
+  }
+
+  /** Start or stop a generator test run. Unloaded unless an ATS calls for it. */
+  testGenerator(id: string, on: boolean): ActionResult {
+    const g = this.graph.get(id);
+    if (g.kind !== 'generator') return { ok: false, reason: `${g.tag} is not a generator.` };
+    if (on) {
+      if (g.status === 'failed' || g.status === 'maintenance') return { ok: false, reason: `${g.tag} is ${g.status}. Return it to service first.` };
+      if (g.state.genState !== 'off') return { ok: false, reason: `${g.tag} is already ${g.state.genState}.` };
+      g.state.genState = 'cranking';
+      g.state.genTimer = PHYSICS.genStartDelayS;
+      g.state.manualRun = true;
+      this.log('info', g.tag, `${g.tag} test run: start command from the control panel, cranking.`);
+      return { ok: true };
+    }
+    if (!g.state.manualRun) return { ok: false, reason: `${g.tag} was not started for a test run.` };
+    const bus = this.graph.downstream(g.id).find((n) => n.kind === 'paralleling-bus');
+    const inUse = bus && this.graph.downstream(bus.id).some((a) => a.kind === 'ats' && a.state.selected === 'emergency');
+    g.state.manualRun = false;
+    if (inUse) {
+      this.log('warning', g.tag, `${g.tag} test run ended, but the generator stays on: an ATS is using this generator bus.`);
+      return { ok: true };
+    }
+    g.state.genState = 'off';
+    if (g.status === 'online') g.status = 'standby';
+    this.log('info', g.tag, `${g.tag} test run complete: cooled down and back in automatic standby.`);
     this.resolve();
     return { ok: true };
   }
