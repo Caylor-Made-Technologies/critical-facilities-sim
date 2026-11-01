@@ -1,6 +1,6 @@
 /** Simulator tab: Explore and Failure modes over the electrical one-line and the mechanical plant. */
 import type { ReactNode } from 'react';
-import { describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, type Component, type Topology, type WeatherId } from '../../sim';
+import { BATTERY_AGES, describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, type BatteryAge, type Component, type Topology, type WeatherId } from '../../sim';
 import { fmtTemp } from '../format';
 import { Icon, type IconName } from '../icons';
 import { PageHead } from '../common';
@@ -152,6 +152,16 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
                 {(Object.keys(WEATHER) as WeatherId[]).map((w) => (
                   <option key={w} value={w}>
                     {WEATHER[w].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              UPS battery age
+              <select value={sim.batteryAge} onChange={(e) => h.act((s) => s.setBatteryAge(e.target.value as BatteryAge))}>
+                {(Object.keys(BATTERY_AGES) as BatteryAge[]).map((a) => (
+                  <option key={a} value={a}>
+                    {BATTERY_AGES[a].label}
                   </option>
                 ))}
               </select>

@@ -10,6 +10,7 @@ import { grade } from '../../sim';
 import { Icon } from '../icons';
 import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
+import { BadgeWall, DailyCard, InstallButton } from './HomeExtras';
 
 const TIPS = [
   'The first alarm in the event log usually points closest to the root cause.',
@@ -75,9 +76,10 @@ interface Props {
   p: ProgressHandle;
   go: (t: Tab) => void;
   startTour: () => void;
+  startProc: (id: string) => void;
 }
 
-export function HomeTab({ p, go, startTour }: Props) {
+export function HomeTab({ p, go, startTour, startProc }: Props) {
   const lvl = levelOf(p.xp);
   const lessonsDone = p.progress.lessons.length;
   const quizRight = Object.values(p.progress.quiz).filter(Boolean).length;
@@ -104,6 +106,7 @@ export function HomeTab({ p, go, startTour }: Props) {
             <button className="btn btn-lg" type="button" onClick={() => go('sim')}>
               <Icon name="bolt" /> Open the simulator
             </button>
+            <InstallButton />
           </div>
           <ul className="hero-stats" aria-label="What's inside">
             <li>
@@ -134,17 +137,25 @@ export function HomeTab({ p, go, startTour }: Props) {
         </span>
         <div>
           <div className="eyebrow" id="new-h">
-            New: Safety Center
+            New: Field Tools, Career, badges & daily streaks
           </div>
           <p>
-            Ten golden rules, walk-up-to-live-gear boundaries, LOTO order drills, hazard hunts, emergency cards, and a
-            printable pre-task brief. Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or tap Search) to jump anywhere.
+            Calculators for amps, runtime, fuel and cooling. Interview practice and a shift handoff that reads the live
+            plant. A timed exam, glossary flashcards, UPS battery aging, and the Safety Center. Press <kbd>Ctrl</kbd> +{' '}
+            <kbd>K</kbd> (or tap Search) to jump anywhere.
           </p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => go('safety')}>
-          Open Safety Center <Icon name="arrow-right" />
-        </button>
+        <div className="whats-new-btns">
+          <button className="btn btn-primary" type="button" onClick={() => go('tools')}>
+            Field Tools <Icon name="arrow-right" />
+          </button>
+          <button className="btn" type="button" onClick={() => go('career')}>
+            Career
+          </button>
+        </div>
       </section>
+
+      <DailyCard p={p} go={go} startProc={startProc} />
 
       <section className="grid growth" aria-labelledby="growth-h">
         <div className="card level-card">
@@ -191,6 +202,8 @@ export function HomeTab({ p, go, startTour }: Props) {
           </div>
         </div>
       </section>
+
+      <BadgeWall p={p} />
 
       <section className="card record print-area" aria-labelledby="record-h">
         <div className="print-only print-head">

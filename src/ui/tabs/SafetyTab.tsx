@@ -172,7 +172,7 @@ function BoundaryExplorer() {
           <input type="range" min={0} max={max} step={0.5} value={dist} onChange={(e) => setDist(Number(e.target.value))} />
         </label>
         <div className="seg-row">
-          <fieldset className="seg">
+          <fieldset className="radio-seg">
             <legend>Example label</legend>
             {LABEL_EXAMPLES.map((l) => (
               <label key={l.id} className={labelId === l.id ? 'on' : ''}>
@@ -181,7 +181,7 @@ function BoundaryExplorer() {
               </label>
             ))}
           </fieldset>
-          <fieldset className="seg">
+          <fieldset className="radio-seg">
             <legend>You are</legend>
             {(
               [

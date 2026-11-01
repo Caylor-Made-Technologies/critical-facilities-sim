@@ -15,15 +15,15 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 | 9 | Dark patterns | None: no sign-ups, upsells, or timers that pressure the user. |
 | 10 | Hidden fees | N/A: free. |
 | 11 | Fake reviews | No testimonials section. |
-| 12 | Unsupported claims | Safety Center arc flash label values are marked as made-up examples; boundary, emergency and first-response content says it is awareness, not training, and to follow the label and site plan. The pre-task brief says it is a practice aid, not an official form. Tier descriptions are generic, plain-language explanations and say "Tier-style". No claim of certification, code compliance, or engineering accuracy. The footer disclaimer says it is not a site procedure. |
+| 12 | Unsupported claims | Field Tools say they are rules of thumb, not engineering design; the career path says titles and requirements vary; the shift handoff is labeled a practice report. Safety Center arc flash label values are marked as made-up examples; boundary, emergency and first-response content says it is awareness, not training, and to follow the label and site plan. The pre-task brief says it is a practice aid, not an official form. Tier descriptions are generic, plain-language explanations and say "Tier-style". No claim of certification, code compliance, or engineering accuracy. The footer disclaimer says it is not a site procedure. |
 | 13 | Alt text | Logo has alt text; the diagram has a title and every component is a labeled button announcing its tag, name, and state. Rack tiles announce power and cord status. |
 | 14 | Color contrast | WCAG AA verified with axe in both themes (0 violations). Status is always also shown as text ("FAILED", "open", "BATT 92%"). |
 | 15 | Keyboard navigation | Quick search opens with Ctrl/⌘+K or `/` and works by arrow keys and Enter; section tabs move with the arrow keys. Skip link, visible focus ring, every component and control tabbable, Escape closes panels. |
 | 16 | Business details | Footer and About page: Caylor Made Technologies, Hereford, TX, email, website, source link. |
 | 17 | Kids' data | Not directed at children. No data is collected. |
 | 18 | Unsubscribe link | N/A: no email. |
-| 19 | Licensed fonts / images | Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
-| 20 | Data deletion | Nothing stored server-side. "Clear my saved settings & progress" on the About page wipes local data. Feedback emails are deleted within 45 days of a request. |
+| 19 | Licensed fonts / images | The app icon is original artwork drawn in SVG for this project. Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
+| 20 | Data deletion | Nothing stored server-side. Progress backups are files the user downloads to their own device; restoring validates the file and changes nothing if it isn't a valid backup. "Clear my saved settings & progress" on the About page wipes local data. Feedback emails are deleted within 45 days of a request. |
 
 ## Security
 - Strict Content Security Policy meta tag: `default-src 'self'`, no inline scripts, no `eval`, `connect-src 'none'`.

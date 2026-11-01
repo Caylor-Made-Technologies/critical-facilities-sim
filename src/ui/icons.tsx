@@ -53,7 +53,9 @@ export type IconName =
   | 'people'
   | 'flame'
   | 'print'
-  | 'command';
+  | 'command'
+  | 'calc'
+  | 'clock';
 
 const paths: Record<IconName, ReactElement> = {
   clipboard: <path d="M9 4h6v3H9zM7 5.5H5V21h14V5.5h-2M8.5 12h7M8.5 16h5" />,
@@ -156,6 +158,8 @@ const paths: Record<IconName, ReactElement> = {
   flame: <path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.6 1.4-4 2.5-5.2.2 1.7 1 2.7 2 3.2C11 8.5 11.3 5.5 12 3z" />,
   print: <path d="M7 8V3h10v5M7 17H4V9h16v8h-3M7 14h10v7H7z" />,
   command: <path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" />,
+  calc: <path d="M6 3h12v18H6zM9 7h6M9 11h.01M12 11h.01M15 11h.01M9 14.5h.01M12 14.5h.01M15 14.5V18M9 18h.01M12 18h.01" />,
+  clock: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3.5 2" />,
   star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
 };
 

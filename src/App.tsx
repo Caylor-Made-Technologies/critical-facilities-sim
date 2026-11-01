@@ -19,6 +19,8 @@ import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
 import { AboutTab } from './ui/tabs/AboutTab';
 import { ArticlesTab } from './ui/tabs/ArticlesTab';
 import { SafetyTab } from './ui/tabs/SafetyTab';
+import { FieldToolsTab } from './ui/tabs/FieldToolsTab';
+import { CareerTab } from './ui/tabs/CareerTab';
 import { Palette } from './ui/Palette';
 import type { Jump } from './ui/search';
 import { useCountUp } from './ui/common';
@@ -312,7 +314,7 @@ export function App() {
             setTab('home');
           }}
         >
-          <img src={`${import.meta.env.BASE_URL}brand/logo-mark.png`} alt="Caylor Made Technologies logo" width={38} height={38} />
+          <img src={`${import.meta.env.BASE_URL}brand/app-mark.png`} alt="Critical Facilities Simulator logo" width={38} height={38} />
           <span className="brand-text">
             <span className="brand-title">Critical Facilities Simulator</span>
             <span className="brand-sub">Caylor Made Technologies</span>
@@ -378,7 +380,19 @@ export function App() {
 
         <div className="content">
           <main id="main" tabIndex={-1} aria-label={current.label} data-tab={tab}>
-            {tab === 'home' && <HomeTab p={p} go={setTab} startTour={startTour} />}
+            {tab === 'home' && (
+              <HomeTab
+                p={p}
+                go={setTab}
+                startTour={startTour}
+                startProc={(id) => {
+                  const pr = PROCEDURES.find((x) => x.id === id);
+                  if (pr) startProc(pr);
+                }}
+              />
+            )}
+            {tab === 'tools' && <FieldToolsTab />}
+            {tab === 'career' && <CareerTab sim={h.sim} version={h.version} units={prefs.units} boxes={p.progress.cards} onRate={p.rateCard} openSim={() => setTab('sim')} />}
             {tab === 'sim' && (
               <SimulatorTab
                 h={h}
@@ -447,7 +461,7 @@ export function App() {
             {tab === 'quiz' && <QuizTab p={p} />}
             {tab === 'equipment' && <EquipmentTab openId={guideId} onShowInSim={showKindInSim} onRead={p.readGuide} />}
             {tab === 'never' && <NeverDoTab />}
-            {tab === 'glossary' && <GlossaryTab key={glossaryQ} initialQuery={glossaryQ} />}
+            {tab === 'glossary' && <GlossaryTab key={glossaryQ} initialQuery={glossaryQ} boxes={p.progress.cards} onRate={p.rateCard} />}
             {tab === 'safety' && <SafetyTab key={safetyArticle ?? 'safety'} scores={p.progress.safety} onScore={p.finishSafety} openArticle={safetyArticle} />}
             {tab === 'codes' && (
               <ArticlesTab eyebrow="Codes & standards" title="The rulebook, decoded" intro="Who writes the rules and what each standard means for you on shift, split by electrical, mechanical, fire, and environmental." articles={CODES} />
@@ -466,6 +480,11 @@ export function App() {
             {tab === 'feedback' && <FeedbackTab />}
             {tab === 'about' && (
               <AboutTab
+                progress={p.progress}
+                onRestore={(next) => {
+                  p.restore(next);
+                  showToast('Progress restored.');
+                }}
                 onResetPrefs={() => {
                   resetPrefs();
                   p.reset();

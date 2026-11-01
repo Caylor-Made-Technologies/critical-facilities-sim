@@ -3,7 +3,7 @@
  * Pages: network first, so updates arrive as soon as you're online.
  * Hashed build files, fonts and images: cache first (their names change when they change).
  */
-const CACHE = 'cfs-v1';
+const CACHE = 'cfs-v2';
 const SCOPE = self.registration.scope;
 
 // Precache the page plus the build files and fonts it links to, so the very next visit works offline.
@@ -13,7 +13,7 @@ async function precache() {
   const html = await res.clone().text();
   await c.put(SCOPE, res);
   const linked = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css|woff2|png|ico|webmanifest))"/g)].map((m) => new URL(m[1], SCOPE).href);
-  const extra = ['brand/logo-mark.png', 'fonts/montserrat-latin-wght-normal.woff2', 'fonts/inter-latin-wght-normal.woff2'].map((p) => SCOPE + p);
+  const extra = ['brand/logo-mark.png', 'brand/app-mark.png', 'icon-192.png', 'fonts/montserrat-latin-wght-normal.woff2', 'fonts/inter-latin-wght-normal.woff2'].map((p) => SCOPE + p);
   await c.addAll([...new Set([...linked, ...extra])].filter((u) => u.startsWith(SCOPE)));
 }
 

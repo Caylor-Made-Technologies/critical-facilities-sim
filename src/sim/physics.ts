@@ -165,10 +165,71 @@ export function upsRuntimeS(loadFraction: number, soc = 1, p = PHYSICS): number 
  * How much state of charge a UPS battery loses in `dtS` seconds at a load.
  * Derived from the runtime curve so the countdown is consistent with it.
  */
-export function upsSocDrop(loadFraction: number, dtS: number, p = PHYSICS): number {
+export function upsSocDrop(loadFraction: number, dtS: number, p = PHYSICS, health = 1): number {
   if (loadFraction <= 0) return 0;
-  return dtS / upsRuntimeS(loadFraction, 1, p);
+  return dtS / (upsRuntimeS(loadFraction, 1, p) * Math.max(0.05, health));
 }
+
+/**
+ * Battery age presets. "Health" is usable capacity as a fraction of new.
+ * VRLA strings are commonly replaced at 80% capacity (end of life); past
+ * that, capacity falls off quickly. Teaching values.
+ */
+export type BatteryAge = 'new' | 'mid' | 'eol' | 'overdue';
+export const BATTERY_AGES: Record<BatteryAge, { label: string; health: number; note: string }> = {
+  new: { label: 'New (year 1)', health: 1, note: 'Full rated runtime.' },
+  mid: { label: 'Mid-life (year 3)', health: 0.92, note: 'Small capacity loss. Trend it on every PM.' },
+  eol: { label: 'End of life (80%)', health: 0.8, note: 'The usual replacement point. Plan the swap now.' },
+  overdue: { label: 'Overdue (60%)', health: 0.6, note: 'Runtime is badly short, and failure can come suddenly.' },
+};
+
+/**
+ * Expected battery service life at an average room temperature.
+ *   life = designLife × 0.5^((T − 25 °C) / 8.3)   (for T above 25 °C)
+ * The common rule of thumb: every ~8 °C (15 °F) above 25 °C (77 °F) halves
+ * the life of a lead-acid battery. Cooler than 25 °C doesn't extend it.
+ */
+export function batteryLifeYears(designYears: number, avgTempC: number): number {
+  if (avgTempC <= 25) return designYears;
+  return designYears * Math.pow(0.5, (avgTempC - 25) / 8.3);
+}
+
+// --- Field calculators (Field Tools tab) ------------------------------------
+
+/** Three-phase current: I = P / (√3 × V × PF). */
+export function threePhaseAmps(kw: number, volts: number, pf: number): number {
+  if (volts <= 0 || pf <= 0) return 0;
+  return (kw * 1000) / (Math.sqrt(3) * volts * pf);
+}
+
+/** Single-phase current: I = P / (V × PF). */
+export function singlePhaseAmps(kw: number, volts: number, pf: number): number {
+  if (volts <= 0 || pf <= 0) return 0;
+  return (kw * 1000) / (volts * pf);
+}
+
+/** Apparent power: kVA = kW / PF. */
+export const kva = (kw: number, pf: number): number => (pf > 0 ? kw / pf : 0);
+
+/** Chilled water flow in US gpm: gpm = tons × 24 / ΔT(°F)  (from Q = 500 × gpm × ΔT). */
+export function chwGpm(tons: number, deltaTF: number): number {
+  return deltaTF > 0 ? (tons * 24) / deltaTF : 0;
+}
+
+/** Airflow needed to carry a heat load: CFM = kW × 3412 / (1.08 × ΔT(°F)). */
+export function airflowCfm(kw: number, deltaTF: number): number {
+  return deltaTF > 0 ? (kw * 3412) / (1.08 * deltaTF) : 0;
+}
+
+/** UPS runtime in minutes for any battery: same Peukert curve, scaled to its own full-load runtime and health. */
+export function upsRuntimeMinFor(loadFraction: number, ratedFullLoadMin: number, health = 1, p = PHYSICS): number {
+  if (loadFraction <= 0 || ratedFullLoadMin <= 0) return 0;
+  const minutes = ratedFullLoadMin * Math.pow(1 / loadFraction, p.upsPeukert);
+  return Math.min(minutes, ratedFullLoadMin * (p.upsMaxRuntimeS / p.upsRatedRuntimeS)) * health;
+}
+
+/** Tons back to kW (1 ton of refrigeration = 3.517 kW). */
+export const tonsToKw = (tons: number): number => tons * 3.517;
 
 /** Power a UPS draws from its input to deliver `outputKw` (double conversion). */
 export function upsInputKw(outputKw: number, p = PHYSICS): number {

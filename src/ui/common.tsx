@@ -21,19 +21,23 @@ export function SectionTabs<T extends string>({
   // A pill glides to the selected tab. It is decorative; aria-selected carries the state.
   const wrap = useRef<HTMLDivElement>(null);
   const [ink, setInk] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  useLayoutEffect(() => {
+  const place = () => {
+    const b = wrap.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!b) return;
+    const next = { x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight };
+    setInk((cur) => (cur && cur.x === next.x && cur.y === next.y && cur.w === next.w && cur.h === next.h ? cur : next));
+  };
+  // Re-measure after every render (labels and counts can change width) and on resize.
+  useLayoutEffect(place);
+  useEffect(() => {
     const el = wrap.current;
-    if (!el) return;
-    const place = () => {
-      const b = el.querySelector<HTMLElement>('[aria-selected="true"]');
-      if (b) setInk({ x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight });
-    };
-    place();
-    if (typeof ResizeObserver === 'undefined') return;
+    if (!el || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(place);
     ro.observe(el);
+    el.querySelectorAll('button').forEach((b) => ro.observe(b));
     return () => ro.disconnect();
-  }, [value, sections.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.length]);
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     const i = sections.findIndex((s) => s.id === value);

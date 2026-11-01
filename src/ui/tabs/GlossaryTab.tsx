@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { GLOSSARY, type GlossarySection } from '../../content/glossary';
 import { PageHead, SectionTabs } from '../common';
+import { Flashcards } from '../Flashcards';
 
 type Filter = 'all' | GlossarySection;
 const SECTIONS: { id: Filter; label: string }[] = [
@@ -11,8 +12,9 @@ const SECTIONS: { id: Filter; label: string }[] = [
   { id: 'Operations & safety', label: 'Ops & safety' },
 ];
 
-export function GlossaryTab({ initialQuery = '' }: { initialQuery?: string }) {
+export function GlossaryTab({ initialQuery = '', boxes = {}, onRate }: { initialQuery?: string; boxes?: Record<string, number>; onRate?: (id: string, knew: boolean) => void }) {
   const [q, setQ] = useState(initialQuery);
+  const [mode, setMode] = useState<'list' | 'cards'>('list');
   const [section, setSection] = useState<Filter>('all');
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -26,7 +28,25 @@ export function GlossaryTab({ initialQuery = '' }: { initialQuery?: string }) {
       <PageHead eyebrow="Glossary" title="Speak the language">
         {`${GLOSSARY.length} terms you'll hear on the floor, in plain English.`}
       </PageHead>
+      <div className="mode-switch" role="group" aria-label="Glossary view">
+        <button type="button" aria-pressed={mode === 'list'} onClick={() => setMode('list')}>
+          List
+        </button>
+        <button type="button" aria-pressed={mode === 'cards'} onClick={() => setMode('cards')}>
+          Flashcards
+        </button>
+      </div>
       <SectionTabs label="Glossary sections" sections={SECTIONS} value={section} onChange={setSection} />
+      {mode === 'cards' && onRate ? (
+        <Flashcards
+          key={section}
+          label="Glossary flashcards"
+          boxes={boxes}
+          onRate={onRate}
+          cards={GLOSSARY.filter((t) => section === 'all' || t.section === section).map((t) => ({ id: `g:${t.term}`, front: t.term, back: t.def, tag: t.section }))}
+        />
+      ) : (
+        <>
       <label className="visually-hidden" htmlFor="gl-search">
         Search terms
       </label>
@@ -42,6 +62,8 @@ export function GlossaryTab({ initialQuery = '' }: { initialQuery?: string }) {
         ))}
       </dl>
       {!list.length && <p style={{ color: 'var(--text-muted)' }}>No matching terms.</p>}
+        </>
+      )}
     </div>
   );
 }

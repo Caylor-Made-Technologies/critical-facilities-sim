@@ -12,7 +12,7 @@
 import { groupCapacity, type GroupCapacity } from './capacity';
 import type { PlantGraph } from './graph';
 import type { InterlockSystem } from './interlocks';
-import { bessSocDrop, genFuelLPerS, PHYSICS, pue, upsSocDrop } from './physics';
+import { BATTERY_AGES, bessSocDrop, genFuelLPerS, PHYSICS, pue, upsSocDrop, type BatteryAge } from './physics';
 import type { Plant, PlantMeta } from './plant/builder';
 import { loadFraction, solvePower, type PowerSolution } from './power';
 import { ThermalPlant, WEATHER, type WeatherId } from './thermal';
@@ -47,6 +47,8 @@ export class Simulation {
   solution: PowerSolution;
   /** Mechanical plant and thermal model (Phase 4). */
   thermal: ThermalPlant;
+  /** Age of every UPS battery string (sets usable capacity). */
+  batteryAge: BatteryAge = 'new';
   private atsTimers = new Map<string, AtsTimers>();
   /** Status each component had at build time, used by restore(). */
   private homeStatus = new Map<string, Status>();
@@ -70,6 +72,7 @@ export class Simulation {
   clone(): Simulation {
     const sim = new Simulation({ graph: this.graph.clone(), interlocks: this.interlocks.clone(), meta: this.meta });
     sim.t = this.t;
+    sim.batteryAge = this.batteryAge;
     sim.events = [...this.events];
     sim.homeStatus = new Map(this.homeStatus);
     sim.overloaded = new Set(this.overloaded);
@@ -224,7 +227,7 @@ export class Simulation {
       const mode = sol.upsMode.get(u.id);
       const s = u.state;
       if (mode === 'battery') {
-        s.soc = Math.max(0, (s.soc ?? 0) - upsSocDrop(loadFraction(this.graph, sol, u.id), dt));
+        s.soc = Math.max(0, (s.soc ?? 0) - upsSocDrop(loadFraction(this.graph, sol, u.id), dt, PHYSICS, BATTERY_AGES[this.batteryAge].health));
       } else if (mode === 'normal') {
         s.soc = Math.min(1, (s.soc ?? 0) + UPS_RECHARGE_PER_S * dt);
       }
@@ -500,7 +503,16 @@ export class Simulation {
     const u = this.graph.get(id);
     const frac = loadFraction(this.graph, this.solution, id);
     if (frac <= 0) return Infinity;
-    return (u.state.soc ?? 0) * (1 / upsSocDrop(frac, 1));
+    return (u.state.soc ?? 0) * (1 / upsSocDrop(frac, 1, PHYSICS, BATTERY_AGES[this.batteryAge].health));
+  }
+
+  /** Set the age of all UPS battery strings, which changes their runtime. */
+  setBatteryAge(age: BatteryAge): ActionResult {
+    if (!(age in BATTERY_AGES)) return { ok: false, reason: `Unknown battery age ${age}.` };
+    this.batteryAge = age;
+    const b = BATTERY_AGES[age];
+    this.log(age === 'overdue' ? 'warning' : 'info', 'UPS', `UPS batteries set to ${b.label}: ${Math.round(b.health * 100)}% capacity. ${b.note}`);
+    return { ok: true };
   }
 
   /** Change the outdoor conditions the mechanical plant works against. */

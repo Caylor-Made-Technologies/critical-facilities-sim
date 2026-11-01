@@ -4,6 +4,9 @@
  * every access guarded. Turned into XP and a level to make growth visible.
  */
 import { useCallback, useState } from 'react';
+import { earnedBadges } from './badges';
+import { today } from './dates';
+export { streakOf, today } from './dates';
 
 const KEY = 'cfs-progress-v1';
 
@@ -18,11 +21,17 @@ export interface Progress {
   times: Record<string, number>;
   /** Safety Center drill id → best score (0–100). */
   safety: Record<string, number>;
+  /** Daily challenge: YYYY-MM-DD → score (0–100). */
+  daily: Record<string, number>;
+  /** Flashcard id → Leitner box (0 = new/missed … 4 = mastered). */
+  cards: Record<string, number>;
+  /** Best exam score (0–100), or -1 if never taken. */
+  exam: number;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {} };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1 };
 
-export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20 } as const;
+export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
 
 export const LEVELS = [
   { xp: 0, name: 'Rookie', blurb: 'Every pro started here. Take the guided tour.' },
@@ -32,28 +41,31 @@ export const LEVELS = [
   { xp: 700, name: 'Critical Facilities Pro', blurb: 'You can teach this. Keep growing.' },
 ] as const;
 
+const numMap = (v: unknown, ok: (n: number) => boolean): Record<string, number> =>
+  v && typeof v === 'object' ? Object.fromEntries(Object.entries(v as Record<string, unknown>).filter((e): e is [string, number] => typeof e[1] === 'number' && ok(e[1]))) : {};
+
+/** Turn anything (saved data, an imported backup) into a valid Progress. */
+export function sanitize(raw: unknown): Progress {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof Progress, unknown>>;
+  const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const score = (n: number) => n >= 0 && n <= 100;
+  return {
+    lessons: strs(p.lessons),
+    quiz: p.quiz && typeof p.quiz === 'object' ? Object.fromEntries(Object.entries(p.quiz as Record<string, unknown>).filter((e): e is [string, boolean] => typeof e[1] === 'boolean')) : {},
+    guides: strs(p.guides),
+    procs: numMap(p.procs, score),
+    times: numMap(p.times, (n) => n > 0 && n < 1e6),
+    safety: numMap(p.safety, score),
+    daily: Object.fromEntries(Object.entries(numMap(p.daily, score)).filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))),
+    cards: numMap(p.cards, (n) => Number.isInteger(n) && n >= 0 && n <= 4),
+    exam: typeof p.exam === 'number' && p.exam >= -1 && p.exam <= 100 ? p.exam : -1,
+  };
+}
+
 function load(): Progress {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return EMPTY;
-    const p = JSON.parse(raw) as Partial<Progress>;
-    return {
-      lessons: Array.isArray(p.lessons) ? p.lessons.filter((x) => typeof x === 'string') : [],
-      quiz: p.quiz && typeof p.quiz === 'object' ? Object.fromEntries(Object.entries(p.quiz).filter(([, v]) => typeof v === 'boolean')) : {},
-      guides: Array.isArray(p.guides) ? p.guides.filter((x) => typeof x === 'string') : [],
-      procs:
-        p.procs && typeof p.procs === 'object'
-          ? Object.fromEntries(Object.entries(p.procs).filter(([, v]) => typeof v === 'number' && v >= 0 && v <= 100))
-          : {},
-      times:
-        p.times && typeof p.times === 'object'
-          ? Object.fromEntries(Object.entries(p.times).filter(([, v]) => typeof v === 'number' && v > 0 && v < 1e6))
-          : {},
-      safety:
-        p.safety && typeof p.safety === 'object'
-          ? Object.fromEntries(Object.entries(p.safety).filter(([, v]) => typeof v === 'number' && v >= 0 && v <= 100))
-          : {},
-    };
+    return raw ? sanitize(JSON.parse(raw)) : EMPTY;
   } catch {
     return EMPTY;
   }
@@ -80,7 +92,9 @@ export function xpOf(p: Progress): number {
     quiz.filter((v) => !v).length * XP.quizTried +
     p.guides.length * XP.guide +
     Object.keys(p.procs).length * XP.procedure +
-    Object.keys(p.safety ?? {}).length * XP.safety
+    Object.keys(p.safety ?? {}).length * XP.safety +
+    Object.keys(p.daily ?? {}).length * XP.daily +
+    ((p.exam ?? -1) >= 80 ? XP.exam : 0)
   );
 }
 
@@ -102,11 +116,14 @@ export function useProgress(onGain?: (msg: string) => void) {
         const next = fn(p);
         if (!next) return p;
         save(next);
-        if (msg && onGain) {
+        if (onGain) {
           const before = levelOf(xpOf(p));
           const after = levelOf(xpOf(next));
+          const had = new Set(earnedBadges(p).map((b) => b.id));
+          const fresh = earnedBadges(next).filter((b) => !had.has(b.id));
+          const text = after.index > before.index ? `Level up! You're now a ${after.name}.` : fresh.length ? `Badge earned: ${fresh[0]!.name}` : msg;
           // Defer so the toast isn't set during render.
-          queueMicrotask(() => onGain(after.index > before.index ? `Level up! You're now a ${after.name}.` : msg));
+          if (text) queueMicrotask(() => onGain(text));
         }
         return next;
       });
@@ -150,6 +167,28 @@ export function useProgress(onGain?: (msg: string) => void) {
       }, `Safety drill saved: ${score} / 100`),
     [commit],
   );
+  const finishDaily = useCallback(
+    (score: number) =>
+      commit((p) => {
+        const d = today();
+        if ((p.daily[d] ?? -1) >= score) return null;
+        return { ...p, daily: { ...p.daily, [d]: score } };
+      }, `+${XP.daily} XP · daily challenge done`),
+    [commit],
+  );
+  const rateCard = useCallback(
+    (id: string, knew: boolean) => commit((p) => ({ ...p, cards: { ...p.cards, [id]: knew ? Math.min(4, (p.cards[id] ?? 0) + 1) : 0 } })),
+    [commit],
+  );
+  const finishExam = useCallback(
+    (score: number) => commit((p) => (p.exam >= score ? null : { ...p, exam: score }), score >= 80 ? 'Exam passed. Best score saved.' : 'Exam score saved.'),
+    [commit],
+  );
+  /** Replace progress with an imported backup (already sanitized). */
+  const restore = useCallback((next: Progress) => {
+    save(next);
+    setProgress(next);
+  }, []);
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(KEY);
@@ -159,7 +198,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

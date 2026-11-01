@@ -13,6 +13,8 @@ export type Tab =
   | 'never'
   | 'glossary'
   | 'safety'
+  | 'tools'
+  | 'career'
   | 'codes'
   | 'uptime'
   | 'change'
@@ -34,8 +36,10 @@ export const NAV: NavItem[] = [
   { id: 'learn', label: 'Learn', short: 'Learn', icon: 'book', group: 'Practice', desc: 'Step-by-step walkthroughs, electrical and mechanical.' },
   { id: 'procedures', label: 'Procedures & Drills', short: 'MOPs', icon: 'list', group: 'Practice', desc: 'Run MOPs and emergency drills on the live plant. Scored.' },
   { id: 'cases', label: 'Case Studies', short: 'Cases', icon: 'clipboard', group: 'Practice', desc: 'Six incidents, root-caused. Timeline, five whys, and what changed.' },
-  { id: 'quiz', label: 'Quiz', short: 'Quiz', icon: 'target', group: 'Practice', desc: 'Test yourself. Wrong answers explain why.' },
+  { id: 'career', label: 'Career', short: 'Career', icon: 'people', group: 'Practice', desc: 'Interview practice, the career path, and a shift handoff from the live plant.' },
+  { id: 'quiz', label: 'Quiz', short: 'Quiz', icon: 'target', group: 'Practice', desc: 'Test yourself, or take the timed exam. Wrong answers explain why.' },
   { id: 'equipment', label: 'Equipment', short: 'Gear', icon: 'wrench', group: 'Know your gear', desc: 'Rounds, PM, troubleshooting for every component.' },
+  { id: 'tools', label: 'Field Tools', short: 'Tools', icon: 'calc', group: 'Know your gear', desc: 'Calculators: amps, UPS runtime, fuel, cooling, PUE, battery life.' },
   { id: 'designs', label: 'Designs & PUE', short: 'Designs', icon: 'layers', group: 'Know your gear', desc: 'Compare redundancy designs side by side, and see where the power goes.' },
   { id: 'never', label: 'Never Do', short: 'Never', icon: 'warning', group: 'Know your gear', desc: 'Hard stops you must never cross.' },
   { id: 'glossary', label: 'Glossary', short: 'Terms', icon: 'search', group: 'Know your gear', desc: 'The words you\'ll hear on the floor.' },

@@ -6,23 +6,25 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** Phase 100 release (2026-11-01): Safety Center, quick search, and a motion pass on top of phases 1–25: electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
+**Status:** Full app release (2026-11-01): new app icon, Field Tools, Career, daily challenge with streaks, badges, timed exam, flashcards, UPS battery aging, backup/restore and install button, on top of the Phase 100 Safety Center, quick search and motion pass, and phases 1–25: electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
 
 | Tab | What it does |
 |---|---|
-| **Home** | Hero, your growth path (XP and 5 levels), tip of the day, and a door into every subject. |
-| **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, °F/°C, Explore and Failure modes, event log. |
+| **Home** | Hero with an **Install the app** button, the **daily challenge** (3 questions, the same for everyone that day, with a streak counter and a suggested drill), your growth path (XP and 5 levels), **15 badges**, the printable practice record, and a door into every subject. |
+| **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, UPS battery age (new, mid-life, end of life, overdue: runtime drops to match), °F/°C, Explore and Failure modes, event log. |
 | **Procedures & Drills** | Scored practice on the live plant. **7 MOPs:** UPS to maintenance bypass and back, main-tie-main transfer and return, monthly generator test run, chiller out for PM, air handler filter change. **8 emergency drills:** utility loss, chiller trip at 105 °F, both utilities plus a generator, CDU failure, UPS room cooling loss, fire alarm, two towers lost at 105 °F, long-outage fuel math. **Surprise drill:** one of 8 random failures to find from the event log and repair. **Rounds:** 4 round sheets where you spot the readings that need action. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. A stopwatch saves best times, filters and a "recommended next" pick what to do, and Home has a printable practice record. **Wrong answers are simulated:** the choice runs on a copy of the live plant and shows what would really have happened (e.g. the EPO drops all 36 racks, the interlock refuses the tie). Every result screen ends with **Think deeper** questions and model answers. |
+| **Career** | **Interview prep:** 20 common critical facilities interview questions as practice cards (say it out loud, flip, check the points a strong answer hits) or a full list. **Career path:** technician to chief engineer, what each role does and what to learn next. **Shift handoff:** a turnover report that fills itself in from the live simulator (status, gear out of normal, generators, recent alarms) plus your notes, ready to print. |
 | **Case Studies** | Six composite incidents (bypass not closed, generator left in OFF, fuel gauge stuck, heat wave and fouled tubes, dual-corded racks on one side, alarm fatigue). Each has a timeline, a step-by-step "5 whys" to the root cause, contributing factors, what changed afterwards, discussion questions, and a link to practice the lesson. |
+| **Field Tools** | Calculators: load to amps (3-phase and single-phase, kVA), UPS battery runtime by load and battery age, generator fuel runtime and burn rate, cooling tons / chilled-water gpm / airflow CFM, PUE, battery life vs room temperature, and °F/°C with the ASHRAE inlet band. Every formula is in `physics.ts` and shown under its calculator. |
 | **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
-| **Quiz** | 44 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
+| **Quiz** | 44 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. **Timed exam:** 20 random questions in 15 minutes, no hints until the end, then a review of every miss; 80 passes. |
 | **Equipment** | 19 equipment families split by Electrical / Mechanical / Life safety: how it works, rounds, PM, troubleshooting, hazards, MOC triggers, and a red NEVER list. |
 | **Never Do** | 38 hard stops in red with warning marks, each with the reason, by Everyone / Electrical / Mechanical / Life safety. |
-| **Glossary** | 63 searchable terms by section. |
+| **Glossary** | 63 searchable terms by section, plus **flashcards** that bring back the ones you miss (Leitner boxes). |
 | **Safety Center** | **Golden rules** (10 life-saving rules). **Library:** 18 articles in Electrical, Mechanical, Everyone and Life safety (arc flash, LOTO, energized work permits, switching and racking, batteries, generators and fuel, refrigerant and chemicals, stop work and pre-task briefs, heights, hot work, contractors, fire systems and impairments, EPO and evacuation, first response). **Practice:** walk up to live 480 V gear and see which approach boundaries you may cross, 3 LOTO order drills, 5 hazard hunts, 8 emergency cards, and a pre-task brief builder that flags gaps and prints. Drills are scored and add XP. |
 | **Codes & Standards** | Who writes the rules, then electrical, mechanical, fire & life safety, environmental, and tier-style ratings. |
 | **Uptime** | Where outages come from, human performance tools, electrical and mechanical practices, operations, emergencies. |
@@ -65,10 +67,14 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 154 unit tests (electrical, thermal, procedures, designs, lessons, safety drills, search, content)
+npm test           # 166 unit tests (electrical, thermal, battery aging, procedures, designs, calculators, safety drills, daily challenge, badges, search, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.
+
+**App icon:** drawn in code (`assets-src/icon.svg`, a bolt inside a blue/cyan circuit ring in the brand colors) and rendered to every size with `node assets-src/render.cjs`. Maskable icons keep the art inside the safe zone so Android can crop it to any shape.
+
+**Backup:** About → Download a backup saves your progress as a file on your device; Restore reads it back. The site never sees it.
 
 **Offline:** after the first visit a small service worker (`public/sw.js`) keeps this site's own files in the browser cache, so the app opens with no signal and can be added to a phone's home screen. Pages load network-first, so updates arrive as soon as you are online.
 
