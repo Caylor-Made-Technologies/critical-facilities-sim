@@ -1,5 +1,7 @@
 /** Small shared UI pieces. */
-import { useEffect, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import type React from 'react';
+import { createPortal } from 'react-dom';
 import type { NeverRule } from '../content/neverdo';
 
 /** Section switcher (Electrical / Mechanical / …) used at the top of tabs. */
@@ -16,14 +18,39 @@ export function SectionTabs<T extends string>({
   label: string;
   counts?: Partial<Record<T, string>>;
 }) {
+  // A pill glides to the selected tab. It is decorative; aria-selected carries the state.
+  const wrap = useRef<HTMLDivElement>(null);
+  const [ink, setInk] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const place = () => {
+      const b = el.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (b) setInk({ x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight });
+    };
+    place();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [value, sections.length]);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = sections.findIndex((s) => s.id === value);
+    const next = sections[(i + (e.key === 'ArrowRight' ? 1 : sections.length - 1)) % sections.length]!;
+    onChange(next.id);
+    requestAnimationFrame(() => wrap.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus());
+  };
   return (
-    <div className="section-tabs" role="tablist" aria-label={label}>
+    <div className={`section-tabs${ink ? ' has-ink' : ''}`} role="tablist" aria-label={label} ref={wrap} onKeyDown={onKey}>
+      {ink && <span className="section-ink" aria-hidden="true" style={{ transform: `translate(${ink.x}px, ${ink.y}px)`, width: ink.w, height: ink.h }} />}
       {sections.map((s) => (
         <button
           key={s.id}
           type="button"
           role="tab"
           aria-selected={value === s.id}
+          tabIndex={value === s.id ? 0 : -1}
           className={`section-tab sec-${s.id}`}
           onClick={() => onChange(s.id)}
         >
@@ -34,6 +61,72 @@ export function SectionTabs<T extends string>({
       ))}
     </div>
   );
+}
+
+/** A short burst of confetti for a perfect score. Decorative; off for reduced motion. */
+export function Confetti({ burst }: { burst: number }) {
+  const [live, setLive] = useState(0);
+  useEffect(() => {
+    if (!burst) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    setLive(burst);
+    const t = window.setTimeout(() => setLive(0), 1900);
+    return () => window.clearTimeout(t);
+  }, [burst]);
+  const bits = useMemo(
+    () =>
+      Array.from({ length: 36 }, (_, i) => ({
+        x: Math.round((Math.random() - 0.5) * 520),
+        y: Math.round(-140 - Math.random() * 220),
+        r: Math.round(Math.random() * 720 - 360),
+        d: Math.round(Math.random() * 180),
+        c: i % 4,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [live],
+  );
+  if (!live) return null;
+  // Portal to <body> so a transformed (animating) card can't trap the fixed position.
+  return createPortal(
+    <div className="confetti" aria-hidden="true">
+      {bits.map((b, i) => (
+        <span
+          key={i}
+          className={`bit c${b.c}`}
+          style={{ '--x': `${b.x}px`, '--y': `${b.y}px`, '--r': `${b.r}deg`, animationDelay: `${b.d}ms` } as React.CSSProperties}
+        />
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
+/** Counts smoothly from the previous value to the new one. */
+export function useCountUp(target: number, ms = 700): number {
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    const start = from.current;
+    if (start === target) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      from.current = target;
+      setShown(target);
+      return;
+    }
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / ms);
+      const eased = 1 - Math.pow(1 - k, 3);
+      const v = Math.round(start + (target - start) * eased);
+      setShown(v);
+      from.current = v;
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return shown;
 }
 
 /** Red warning mark: a filled triangle with an exclamation point. */

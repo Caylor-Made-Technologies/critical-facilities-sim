@@ -16,11 +16,13 @@ export interface Progress {
   procs: Record<string, number>;
   /** Procedure / drill id → fastest finish in seconds (real time). */
   times: Record<string, number>;
+  /** Safety Center drill id → best score (0–100). */
+  safety: Record<string, number>;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {} };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {} };
 
-export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40 } as const;
+export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20 } as const;
 
 export const LEVELS = [
   { xp: 0, name: 'Rookie', blurb: 'Every pro started here. Take the guided tour.' },
@@ -46,6 +48,10 @@ function load(): Progress {
       times:
         p.times && typeof p.times === 'object'
           ? Object.fromEntries(Object.entries(p.times).filter(([, v]) => typeof v === 'number' && v > 0 && v < 1e6))
+          : {},
+      safety:
+        p.safety && typeof p.safety === 'object'
+          ? Object.fromEntries(Object.entries(p.safety).filter(([, v]) => typeof v === 'number' && v >= 0 && v <= 100))
           : {},
     };
   } catch {
@@ -73,7 +79,8 @@ export function xpOf(p: Progress): number {
     quiz.filter(Boolean).length * XP.quizCorrect +
     quiz.filter((v) => !v).length * XP.quizTried +
     p.guides.length * XP.guide +
-    Object.keys(p.procs).length * XP.procedure
+    Object.keys(p.procs).length * XP.procedure +
+    Object.keys(p.safety ?? {}).length * XP.safety
   );
 }
 
@@ -134,6 +141,15 @@ export function useProgress(onGain?: (msg: string) => void) {
       }, `Saved: ${score} / 100${seconds ? ` in ${fmtSecs(seconds)}` : ''}`),
     [commit],
   );
+  const finishSafety = useCallback(
+    (id: string, score: number) =>
+      commit((p) => {
+        const first = !(id in p.safety);
+        if (!first && p.safety[id]! >= score) return null;
+        return { ...p, safety: { ...p.safety, [id]: score } };
+      }, `Safety drill saved: ${score} / 100`),
+    [commit],
+  );
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(KEY);
@@ -143,7 +159,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

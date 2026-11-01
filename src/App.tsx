@@ -8,7 +8,6 @@ import { CHANGE } from './content/change';
 import { CODES } from './content/codes';
 import { guideForKind } from './content/equipment';
 import { LESSONS, simForStep, type Lesson } from './content/lessons';
-import { SAFETY } from './content/safety';
 import { UPTIME } from './content/uptime';
 import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
@@ -19,6 +18,10 @@ import { levelOf, useProgress } from './ui/progress';
 import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
 import { AboutTab } from './ui/tabs/AboutTab';
 import { ArticlesTab } from './ui/tabs/ArticlesTab';
+import { SafetyTab } from './ui/tabs/SafetyTab';
+import { Palette } from './ui/Palette';
+import type { Jump } from './ui/search';
+import { useCountUp } from './ui/common';
 import { EquipmentTab } from './ui/tabs/EquipmentTab';
 import { FeedbackTab } from './ui/tabs/FeedbackTab';
 import { GlossaryTab } from './ui/tabs/GlossaryTab';
@@ -61,6 +64,56 @@ export function App() {
   const [lesson, setLesson] = useState<LessonState | null>(null);
   const [proc, setProc] = useState<{ p: Procedure; run: ProcRun; started: number; secs?: number } | null>(null);
   const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [safetyArticle, setSafetyArticle] = useState<string | null>(null);
+  const [glossaryQ, setGlossaryQ] = useState('');
+  const [caseOpen, setCaseOpen] = useState<string | null>(null);
+  const xpShown = useCountUp(p.xp);
+
+  // Ctrl/⌘+K, or "/" outside a text field, opens quick search.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      } else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Cards light up softly under a mouse pointer (laptops only). Sets CSS
+  // custom properties through the CSSOM, so it works under the strict CSP.
+  useEffect(() => {
+    if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    let last: PointerEvent | null = null;
+    const paint = () => {
+      raf = 0;
+      const e = last;
+      if (!e) return;
+      const card = (e.target as Element | null)?.closest?.('.card, .topic-card') as HTMLElement | null;
+      if (!card) return;
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      card.style.setProperty('--my', `${e.clientY - r.top}px`);
+    };
+    const onMove = (e: PointerEvent) => {
+      last = e;
+      if (!raf) raf = requestAnimationFrame(paint);
+    };
+    document.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      document.removeEventListener('pointermove', onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   useEffect(() => {
     const on = () => setTabState(tabFromHash());
@@ -212,6 +265,35 @@ export function App() {
     setTab('sim');
   };
 
+  const jump = (j: Jump) => {
+    setSafetyArticle(null);
+    setGlossaryQ('');
+    setCaseOpen(null);
+    if (j.kind === 'tab') setTab(j.tab);
+    else if (j.kind === 'lesson') {
+      const l = LESSONS.find((x) => x.id === j.id);
+      if (l) {
+        startLesson(l);
+        setTab(drivesSim(l) ? 'sim' : 'learn');
+      }
+    } else if (j.kind === 'proc') {
+      const pr = PROCEDURES.find((x) => x.id === j.id);
+      if (pr) startProc(pr);
+    } else if (j.kind === 'guide') {
+      setGuideId(j.id);
+      setTab('equipment');
+    } else if (j.kind === 'case') {
+      setCaseOpen(j.id);
+      setTab('cases');
+    } else if (j.kind === 'safety') {
+      setSafetyArticle(j.id);
+      setTab('safety');
+    } else {
+      setGlossaryQ(j.term);
+      setTab('glossary');
+    }
+  };
+
   const lvl = levelOf(p.xp);
   const current = NAV.find((n) => n.id === tab)!;
   const simLesson = lesson && drivesSim(lesson.lesson) ? lesson : null;
@@ -237,15 +319,32 @@ export function App() {
           </span>
         </a>
         <div className="header-actions">
+          <button className="search-btn" type="button" onClick={() => setPaletteOpen(true)} aria-label="Quick search (Control K)">
+            <Icon name="search" />
+            <span className="search-btn-text">Search</span>
+            <kbd className="search-kbd" aria-hidden="true">Ctrl K</kbd>
+          </button>
           <button className="xp-pill" type="button" onClick={() => setTab('home')} aria-label={`Level ${lvl.name}, ${p.xp} XP. Go to Home.`}>
             <Icon name="star" />
             <span className="xp-pill-level">{lvl.name}</span>
-            <span className="xp-pill-xp">{p.xp} XP</span>
+            <span className="xp-pill-xp">{xpShown} XP</span>
           </button>
           <button
             className="btn btn-icon btn-ghost"
             type="button"
-            onClick={() => update({ theme: resolvedTheme === 'dark' ? 'light' : 'dark' })}
+            onClick={(e) => {
+              const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+              const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+              const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+              if (!doc.startViewTransition || calm) return update({ theme: next });
+              // Reveal the new theme in a circle growing from the button.
+              const r = e.currentTarget.getBoundingClientRect();
+              const root = document.documentElement;
+              root.style.setProperty('--vt-x', `${r.left + r.width / 2}px`);
+              root.style.setProperty('--vt-y', `${r.top + r.height / 2}px`);
+              root.classList.add('theme-vt');
+              doc.startViewTransition(() => flushSync(() => update({ theme: next }))).finished.finally(() => root.classList.remove('theme-vt'));
+            }}
             aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
           >
             <Icon name={resolvedTheme === 'dark' ? 'sun' : 'moon'} />
@@ -278,7 +377,7 @@ export function App() {
         </nav>
 
         <div className="content">
-          <main id="main" tabIndex={-1} aria-label={current.label}>
+          <main id="main" tabIndex={-1} aria-label={current.label} data-tab={tab}>
             {tab === 'home' && <HomeTab p={p} go={setTab} startTour={startTour} />}
             {tab === 'sim' && (
               <SimulatorTab
@@ -335,6 +434,8 @@ export function App() {
             )}
             {tab === 'cases' && (
               <CasesTab
+                key={caseOpen ?? 'cases'}
+                initialOpen={caseOpen}
                 onPractice={(id) => {
                   const pr = PROCEDURES.find((x) => x.id === id);
                   if (pr) startProc(pr);
@@ -346,10 +447,8 @@ export function App() {
             {tab === 'quiz' && <QuizTab p={p} />}
             {tab === 'equipment' && <EquipmentTab openId={guideId} onShowInSim={showKindInSim} onRead={p.readGuide} />}
             {tab === 'never' && <NeverDoTab />}
-            {tab === 'glossary' && <GlossaryTab />}
-            {tab === 'safety' && (
-              <ArticlesTab eyebrow="Safety" title="Go home the way you came in" intro="Electrical and mechanical hazards, lockout/tagout, and the PPE basics, in plain English." articles={SAFETY} />
-            )}
+            {tab === 'glossary' && <GlossaryTab key={glossaryQ} initialQuery={glossaryQ} />}
+            {tab === 'safety' && <SafetyTab key={safetyArticle ?? 'safety'} scores={p.progress.safety} onScore={p.finishSafety} openArticle={safetyArticle} />}
             {tab === 'codes' && (
               <ArticlesTab eyebrow="Codes & standards" title="The rulebook, decoded" intro="Who writes the rules and what each standard means for you on shift, split by electrical, mechanical, fire, and environmental." articles={CODES} />
             )}
@@ -466,6 +565,8 @@ export function App() {
           </div>
         </>
       )}
+
+      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
 
       <div className="toast-region" aria-live="polite">
         {toast && (

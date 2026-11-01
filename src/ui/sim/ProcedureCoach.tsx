@@ -1,6 +1,7 @@
 /** Coach card for MOP practice and emergency drills, shown above the simulator. */
 import { useEffect, useRef, useState } from 'react';
 import { grade, SCORE, type Consequence, type Procedure, type ProcChoice, type ProcRun } from '../../sim';
+import { Confetti } from '../common';
 import { Icon } from '../icons';
 import { fmtSecs } from '../progress';
 
@@ -69,6 +70,7 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, p
             <Icon name="close" />
           </button>
         </div>
+        <Confetti burst={run.score === 100 ? 1 : 0} />
         <div className="grade-row">
           <div className={`grade-badge g-${g.letter[0]!.toLowerCase()}`} aria-hidden="true">
             {g.letter}

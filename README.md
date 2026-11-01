@@ -6,7 +6,7 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** All build phases done (1–25): electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
+**Status:** Phase 100 release (2026-11-01): Safety Center, quick search, and a motion pass on top of phases 1–25: electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
@@ -19,15 +19,19 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 | **Case Studies** | Six composite incidents (bypass not closed, generator left in OFF, fuel gauge stuck, heat wave and fouled tubes, dual-corded racks on one side, alarm fatigue). Each has a timeline, a step-by-step "5 whys" to the root cause, contributing factors, what changed afterwards, discussion questions, and a link to practice the lesson. |
 | **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
-| **Quiz** | 38 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
+| **Quiz** | 44 questions in Electrical, Mechanical, Safety, and Change sections. A wrong answer drops the explanation down automatically. |
 | **Equipment** | 19 equipment families split by Electrical / Mechanical / Life safety: how it works, rounds, PM, troubleshooting, hazards, MOC triggers, and a red NEVER list. |
-| **Never Do** | 34 hard stops in red with warning marks, each with the reason, by Everyone / Electrical / Mechanical / Life safety. |
-| **Glossary** | 57 searchable terms by section. |
-| **Safety** | Shock and arc flash, LOTO, battery rooms, mechanical hazards and isolation, PPE basics. |
+| **Never Do** | 38 hard stops in red with warning marks, each with the reason, by Everyone / Electrical / Mechanical / Life safety. |
+| **Glossary** | 63 searchable terms by section. |
+| **Safety Center** | **Golden rules** (10 life-saving rules). **Library:** 18 articles in Electrical, Mechanical, Everyone and Life safety (arc flash, LOTO, energized work permits, switching and racking, batteries, generators and fuel, refrigerant and chemicals, stop work and pre-task briefs, heights, hot work, contractors, fire systems and impairments, EPO and evacuation, first response). **Practice:** walk up to live 480 V gear and see which approach boundaries you may cross, 3 LOTO order drills, 5 hazard hunts, 8 emergency cards, and a pre-task brief builder that flags gaps and prints. Drills are scored and add XP. |
 | **Codes & Standards** | Who writes the rules, then electrical, mechanical, fire & life safety, environmental, and tier-style ratings. |
 | **Uptime** | Where outages come from, human performance tools, electrical and mechanical practices, operations, emergencies. |
 | **Change Mgmt** | Management of change: lifecycle, risk rating, MOP anatomy, records, change windows. |
 | **Feedback** | Builds a message and opens it in your own email app or as a GitHub issue. The site itself sends and stores nothing. |
+
+## Motion and quick search
+- **Quick search:** press Ctrl/⌘ + K, `/`, or tap Search to jump to any tab, walkthrough, MOP, drill, equipment guide, case study, safety topic or glossary term.
+- **Motion:** section tabs slide a pill to the selected tab, cards rise in as you scroll and light up under a mouse, a scroll bar fills under the header, the theme switch grows from the button, XP counts up, and perfect scores get confetti. All of it is CSS or tiny DOM effects and turns off with reduced motion.
 
 ## What the engine models
 - **Electrical chain:** two utility feeds → MV switchgear → transformers → ATS → main-tie-main switchboards → BESS → UPS systems (rectifier/inverter, battery, static bypass, maintenance bypass) → STS → busway/PDU/RPP → 36 racks (2,100 kW, including 130 kW GPU racks).
@@ -61,7 +65,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 140 unit tests (electrical, thermal, procedures, designs, lessons, content)
+npm test           # 154 unit tests (electrical, thermal, procedures, designs, lessons, safety drills, search, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.

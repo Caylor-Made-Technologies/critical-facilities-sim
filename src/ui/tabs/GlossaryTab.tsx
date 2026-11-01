@@ -11,8 +11,8 @@ const SECTIONS: { id: Filter; label: string }[] = [
   { id: 'Operations & safety', label: 'Ops & safety' },
 ];
 
-export function GlossaryTab() {
-  const [q, setQ] = useState('');
+export function GlossaryTab({ initialQuery = '' }: { initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
   const [section, setSection] = useState<Filter>('all');
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();

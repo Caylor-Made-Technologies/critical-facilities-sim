@@ -14,20 +14,27 @@ interface Props {
   articles: Article[];
   /** Extra content shown under a given article id. */
   extras?: Record<string, ReactNode>;
+  /** Skip the page header (when the tab is embedded in a bigger page). */
+  bare?: boolean;
+  /** Open this article first. */
+  openId?: string | null;
 }
 
-export function ArticlesTab({ eyebrow, title, intro, articles, extras }: Props) {
+export function ArticlesTab({ eyebrow, title, intro, articles, extras, bare, openId }: Props) {
   const groups = [...new Set(articles.map((a) => a.group))];
-  const [group, setGroup] = useState(groups[0]!);
-  const [current, setCurrent] = useState(articles[0]!.id);
+  const first = articles.find((a) => a.id === openId) ?? articles[0]!;
+  const [group, setGroup] = useState(first.group);
+  const [current, setCurrent] = useState(first.id);
   const inGroup = articles.filter((a) => a.group === group);
   const art = inGroup.find((a) => a.id === current) ?? inGroup[0]!;
 
   return (
-    <div className="tab-panel">
-      <PageHead eyebrow={eyebrow} title={title}>
-        {intro}
-      </PageHead>
+    <div className={bare ? '' : 'tab-panel'}>
+      {!bare && (
+        <PageHead eyebrow={eyebrow} title={title}>
+          {intro}
+        </PageHead>
+      )}
       <SectionTabs
         label={`${title} sections`}
         sections={groups.map((g) => ({ id: g, label: g }))}

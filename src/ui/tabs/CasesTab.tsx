@@ -121,9 +121,9 @@ function CaseView({ c, onBack, onPractice }: { c: CaseStudy; onBack: () => void;
   );
 }
 
-export function CasesTab({ onPractice }: { onPractice: (id: string) => void }) {
+export function CasesTab({ onPractice, initialOpen = null }: { onPractice: (id: string) => void; initialOpen?: string | null }) {
   const [section, setSection] = useState<Section>('all');
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpen);
   const open = CASES.find((c) => c.id === openId);
   return (
     <div className="tab-panel">

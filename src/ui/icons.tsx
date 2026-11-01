@@ -46,7 +46,14 @@ export type IconName =
   | 'pulse'
   | 'chat'
   | 'menu'
-  | 'star';
+  | 'star'
+  | 'lock'
+  | 'eye'
+  | 'stop'
+  | 'people'
+  | 'flame'
+  | 'print'
+  | 'command';
 
 const paths: Record<IconName, ReactElement> = {
   clipboard: <path d="M9 4h6v3H9zM7 5.5H5V21h14V5.5h-2M8.5 12h7M8.5 16h5" />,
@@ -142,6 +149,13 @@ const paths: Record<IconName, ReactElement> = {
   pulse: <path d="M3 12h4l2-5 4 10 2-5h6" />,
   chat: <path d="M4 5h16v11H9l-5 4z" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  lock: <path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3M12 15v2.5" />,
+  eye: <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z" />,
+  stop: <path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3zM8 12h8" />,
+  people: <path d="M9 11a3.2 3.2 0 1 0 0-6.4A3.2 3.2 0 0 0 9 11zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.8a3.2 3.2 0 0 1 0 6M17.5 14.3c2.1.7 3.5 2.9 3.5 5.7" />,
+  flame: <path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.6 1.4-4 2.5-5.2.2 1.7 1 2.7 2 3.2C11 8.5 11.3 5.5 12 3z" />,
+  print: <path d="M7 8V3h10v5M7 17H4V9h16v8h-3M7 14h10v7H7z" />,
+  command: <path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" />,
   star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
 };
 

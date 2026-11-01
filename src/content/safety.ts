@@ -91,7 +91,55 @@ export const SAFETY: Article[] = [
         'An eyewash station must be ready wherever corrosive electrolyte is present (OSHA 1910.151).',
         'Lithium-ion can go into thermal runaway: know the alarm response, never open a container in alarm, and follow NFPA 855 site plans.',
         'Battery strings stay energized even with the UPS off. Open the battery disconnect and verify.',
+        'Lithium-ion off-gas or smoke means leave the area, keep doors shut, call the fire department, and tell them the battery type. The gases can be toxic and flammable.',
+        'Batteries are heavy: a single block can weigh 60 lb or more. Use lifting aids.',
       ] },
+    ],
+  },
+
+  {
+    id: 'eewp',
+    group: 'Electrical',
+    title: 'Energized work permits (when de-energizing isn\'t possible)',
+    intro: 'Energized work is the exception, not the plan. When it truly can\'t be avoided, NFPA 70E expects a written permit that forces the team to think it through first.',
+    blocks: [
+      { h: 'Valid reasons (and the one that isn\'t)' },
+      { ul: [
+        'De-energizing would create a greater hazard (for example, it would shut off life-safety ventilation or alarms).',
+        'De-energizing is infeasible because of the equipment design or the task itself (for example, some diagnostic testing).',
+        'Not a valid reason: "the customer doesn\'t want the downtime" or "it\'s faster". Redundancy exists so you can de-energize.',
+      ] },
+      { h: 'What a permit covers' },
+      { ol: [
+        'The circuit and equipment, and where it is.',
+        'What work will be done, and why it must be done energized.',
+        'The safe work practices that will be used.',
+        'Shock risk: voltage, limited and restricted approach boundaries, and the shock PPE.',
+        'Arc flash risk: incident energy or PPE category, the arc flash boundary, and the arc-rated PPE.',
+        'How unqualified people will be kept out (barricades, attendant).',
+        'Proof a job briefing was held, including what to do if something goes wrong.',
+        'Approval signatures from the people your program names.',
+      ] },
+      { callout: 'Testing, troubleshooting and voltage measuring by qualified people usually don\'t need a permit, but they still need a risk assessment, the right PPE, and boundaries.', title: 'Testing is different', tone: 'info' },
+      { callout: 'Many programs simply forbid energized work above a set incident energy (often 40 cal/cm²). There is no PPE that makes that safe. De-energize.', title: 'Too much energy', tone: 'danger' },
+    ],
+  },
+  {
+    id: 'switching',
+    group: 'Electrical',
+    title: 'Switching & racking safely',
+    intro: 'Operating breakers, racking them in and out, and closing transfer switches are the moments an arc flash is most likely. These habits keep you out of the blast.',
+    blocks: [
+      { ol: [
+        'Have the approved switching order in hand. Read each step out loud, and have a second person check the device tag before you touch it.',
+        'Look at the arc flash label and put on the PPE it calls for before you open a door or operate.',
+        'Use remote racking tools and remote operators wherever they are provided. Distance is the best PPE.',
+        'Stand to the side of the device, not in front of it, where the procedure allows.',
+        'Keep doors closed and latched for operations designed to be done that way.',
+        'After each step, verify the result on the meter, indicator or EPMS, not just the handle position.',
+        'If anything sounds, smells or looks wrong (buzzing, burning, a stuck handle), stop and back away. Don\'t force it.',
+      ] },
+      { callout: 'A breaker that won\'t rack or close is telling you something. Forcing it is how arcs start. Stop and call your lead.', title: 'Never force it', tone: 'danger' },
     ],
   },
 
@@ -134,6 +182,41 @@ export const SAFETY: Article[] = [
     ],
   },
 
+  {
+    id: 'generator-fuel',
+    group: 'Mechanical',
+    title: 'Generators & diesel fuel',
+    intro: 'Standby generators can start on their own at any second, run hot and loud, and sit next to thousands of gallons of fuel.',
+    blocks: [
+      { ul: [
+        'Assume a generator in AUTO can start at any moment: a utility blip or a test schedule will start it with you on the engine.',
+        'Before hands-on work, put the controller in OFF, lock it out, and open the starter battery or charger supply as the procedure says.',
+        'Exhaust contains carbon monoxide. Never run an engine with the enclosure or exhaust path blocked, and never sleep in or near a running unit.',
+        'Exhaust, turbochargers and manifolds stay hot long after a run. Let them cool.',
+        'Diesel spills are slip and fire hazards. Use the spill kit, keep containment drains closed, and report spills.',
+        'Fuel deliveries follow a written procedure with someone watching the fill the whole time. Overfilled tanks spill.',
+        'Wear hearing protection near running units. A generator can be loud enough to damage hearing in minutes.',
+      ] },
+      { callout: 'Ending a test or job in OFF instead of AUTO leaves the site with no backup. Ending it in AUTO while someone is still on the engine can kill them. Every job ends with a deliberate, checked return to AUTO.', title: 'OFF vs AUTO', tone: 'warn' },
+    ],
+  },
+  {
+    id: 'refrigerant-chem',
+    group: 'Mechanical',
+    title: 'Refrigerant & water treatment chemicals',
+    intro: 'Chiller rooms and tower yards hold chemicals that can choke, burn or poison you, often with no warning smell.',
+    blocks: [
+      { ul: [
+        'Most refrigerants are heavier than air and pool low. A big leak can push out the oxygen in a chiller room.',
+        'On a refrigerant alarm: leave, close the door, let the emergency exhaust run, and report it. Don\'t go back in to "find the leak".',
+        'Liquid refrigerant causes frostbite on contact. Only certified technicians open refrigerant circuits.',
+        'Water treatment chemicals (biocides, inhibitors, acids) need the PPE on their safety data sheet, usually goggles, face shield and chemical gloves.',
+        'Never mix treatment chemicals or pour one container into another. Some combinations release toxic gas.',
+        'Every container is labeled. An unlabeled jug is treated as unknown and reported.',
+      ] },
+    ],
+  },
+
   // -------------------------------- Everyone --------------------------------
   {
     id: 'other-hazards',
@@ -154,6 +237,136 @@ export const SAFETY: Article[] = [
       } },
       { h: 'Personal protective equipment basics' },
       { ul: ['Safety glasses everywhere on the plant floor.', 'Hearing protection in posted areas.', 'Arc-rated clothing and gear per the label for electrical work.', 'Gloves matched to the task (cut, chemical, insulating).', 'Hard hat where overhead work or hazards exist.'] },
+    ],
+  },
+  {
+    id: 'stop-work',
+    group: 'Everyone',
+    title: 'Stop work & the pre-task brief',
+    intro: 'Most injuries happen on routine jobs where something changed and nobody stopped to talk about it.',
+    blocks: [
+      { h: 'Stop-work authority' },
+      { p: 'Anyone on site, on their first day or their thousandth, can stop a job they believe is unsafe. No one is punished for a good-faith stop. Stopping is part of the job, not a failure.' },
+      { h: 'When to stop' },
+      { ul: [
+        'The procedure doesn\'t match what you see (wrong tag, extra breaker, different valve).',
+        'Something changed: new people, new tools, the scope grew, weather turned.',
+        'You don\'t know how to do the next step, or you\'re rushed, tired or distracted.',
+        'Someone is inside a boundary without the right PPE or training.',
+      ] },
+      { h: 'The pre-task brief (2 to 5 minutes)' },
+      { ol: [
+        'What are we doing, and what is the worst thing that could happen?',
+        'Which energy sources are here, and how is each one controlled?',
+        'What PPE, boundaries and permits does this need?',
+        'Who does what, and how do we talk (radio channel, hand signals, read-back)?',
+        'Where are the exits, eyewash, extinguisher and AED? What is the emergency number?',
+        'What will make us stop?',
+      ] },
+      { callout: 'The Practice section has a pre-task brief builder you can fill in and print.', title: 'Try it' },
+    ],
+  },
+  {
+    id: 'heights',
+    group: 'Everyone',
+    title: 'Ladders, lifts & roofs',
+    intro: 'Falls are one of the most common causes of serious injury at work, and data centers have ladders, raised floors, lifts and roofs.',
+    blocks: [
+      { ul: [
+        'Use non-conductive (fiberglass) ladders near electrical equipment. Never a metal ladder.',
+        'Set extension ladders at about 1 foot out for every 4 feet up, extended 3 feet above the landing, and tied off.',
+        'Keep three points of contact. Carry tools in a belt or hoist them, not in your hands.',
+        'Aerial and scissor lifts need training. Wear a harness where the lift type or site rules require it.',
+        'On roofs, stay behind guardrails or use fall protection near the edge. Watch for skylights.',
+        'Open floor tiles are holes: barricade them and never leave one open and unattended.',
+      ] },
+    ],
+  },
+  {
+    id: 'hot-work',
+    group: 'Everyone',
+    title: 'Hot work permits',
+    intro: 'Welding, cutting, brazing and grinding throw sparks that can smolder for an hour before they catch. Hot work in a live facility needs a permit.',
+    blocks: [
+      { ol: [
+        'Ask first: can the work be done another way (cold cutting, bolting) or moved outside?',
+        'Get a hot work permit signed by the person your program names.',
+        'Move or cover combustibles within 35 feet, and cover floor and wall openings.',
+        'If detectors must be covered to prevent false alarms, that is a fire system impairment: follow the impairment process and notifications.',
+        'Have a charged extinguisher and a trained fire watch during the work.',
+        'Keep the fire watch for at least 30 minutes after the work ends (many sites require 60), then check the area again later.',
+      ] },
+      { callout: 'Ending the fire watch when the welding stops. Sparks that landed out of sight are the classic cause of hot-work fires.', title: 'Most common mistake', tone: 'warn' },
+    ],
+  },
+  {
+    id: 'escort',
+    group: 'Everyone',
+    title: 'Contractors, escorts & visitors',
+    intro: 'Vendors and visitors don\'t know your plant. Whoever escorts them owns their safety.',
+    blocks: [
+      { ul: [
+        'Every contractor job has an approved MOP or work order, a pre-task brief, and the site safety orientation.',
+        'Contractors apply their own locks too, alongside yours, on every isolation point they work behind.',
+        'Keep visitors out of limited approach boundaries, battery rooms and generator enclosures unless the job requires it.',
+        'Watch for tailgating at secure doors. Safety and security go together.',
+        'If a contractor does something unsafe, stop the job. Their schedule doesn\'t outrank anyone\'s safety.',
+      ] },
+    ],
+  },
+
+  // -------------------------------- Life safety --------------------------------
+  {
+    id: 'fire-systems',
+    group: 'Life safety',
+    title: 'Fire detection & suppression',
+    intro: 'Data halls usually have very early smoke detection, pre-action sprinklers, and sometimes a clean-agent gas system. Each one changes what you do in an alarm.',
+    blocks: [
+      { table: {
+        head: ['System', 'What it does', 'What you do'],
+        rows: [
+          ['Aspirating smoke detection', 'Samples air through pipes and spots smoke long before a normal detector.', 'Treat an alert as real. Investigate with a partner and follow the alarm procedure.'],
+          ['Pre-action sprinklers', 'Pipes stay dry until detection opens a valve, then a head must also open from heat.', 'Never hang anything from or bump sprinkler heads. Report damaged heads.'],
+          ['Clean agent (gas)', 'Floods a room with agent that stops a fire without water damage.', 'Leave on the pre-discharge alarm. Close doors behind you. Don\'t re-enter until it is cleared.'],
+          ['Fire alarm panel', 'Collects alarms and calls for help; may shut down air handlers.', 'Only trained people silence or reset, and only per procedure.'],
+        ],
+      } },
+      { h: 'Impairments' },
+      { p: 'Any time a fire system is out of service (a covered detector, a closed valve, a disabled panel zone), it is an impairment. It needs a permit, notifications (fire alarm monitoring, often the fire department and insurer), extra precautions such as a fire watch, and a record of when it was restored.' },
+      { callout: 'Clean-agent and inert-gas discharges can make a room unsafe to breathe. Wait for responders to clear and ventilate the room.', title: 'After a discharge', tone: 'danger' },
+    ],
+  },
+  {
+    id: 'epo-evac',
+    group: 'Life safety',
+    title: 'EPO buttons & evacuation',
+    intro: 'The emergency power off (EPO) button drops power to a whole room. It is for saving lives, and pressing it by accident is one of the classic causes of outages.',
+    blocks: [
+      { ul: [
+        'Use the EPO only when someone is in danger (for example, someone being shocked, or fire with people at risk) and it is the fastest safe way to remove power.',
+        'Know where every EPO is, and keep its cover in place so it can\'t be bumped.',
+        'If an EPO is pressed by accident, say so right away. Quick, honest reporting gets the load back faster.',
+        'Know two ways out of every room you work in, and where the muster point is.',
+        'On an evacuation alarm, walk out, close doors behind you, and report to the muster point so you can be counted.',
+        'Never go back in for tools, phones or to "finish up".',
+      ] },
+    ],
+  },
+  {
+    id: 'first-response',
+    group: 'Life safety',
+    title: 'First response basics',
+    intro: 'Know your site emergency number, where the AED and first-aid kits are, and who is trained in CPR. The Emergency cards in Practice walk through common events.',
+    blocks: [
+      { ol: [
+        'Make sure the scene is safe for you first. Two victims don\'t help anyone.',
+        'Call for help: 911 and your site emergency number, or have someone else call while you act.',
+        'Remove the hazard if you safely can (open the breaker, stop the machine).',
+        'Give the care you are trained to give: CPR, AED, bleeding control.',
+        'Send someone to meet responders at the door and guide them in.',
+        'Afterwards, report it and preserve the scene for the investigation.',
+      ] },
+      { callout: 'This is general awareness, not first-aid training. Take a certified first aid, CPR and AED course.', title: 'Get trained', tone: 'info' },
     ],
   },
 ];

@@ -128,6 +128,24 @@ export function HomeTab({ p, go, startTour }: Props) {
         </div>
       </section>
 
+      <section className="card whats-new" aria-labelledby="new-h">
+        <span className="new-badge" aria-hidden="true">
+          <Icon name="shield" />
+        </span>
+        <div>
+          <div className="eyebrow" id="new-h">
+            New: Safety Center
+          </div>
+          <p>
+            Ten golden rules, walk-up-to-live-gear boundaries, LOTO order drills, hazard hunts, emergency cards, and a
+            printable pre-task brief. Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or tap Search) to jump anywhere.
+          </p>
+        </div>
+        <button className="btn btn-primary" type="button" onClick={() => go('safety')}>
+          Open Safety Center <Icon name="arrow-right" />
+        </button>
+      </section>
+
       <section className="grid growth" aria-labelledby="growth-h">
         <div className="card level-card">
           <Ring pct={lvl.pct} label={`${Math.round(lvl.pct * 100)} percent to the next level`} />
