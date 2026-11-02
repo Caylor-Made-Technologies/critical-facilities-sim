@@ -4,10 +4,14 @@ import { PROCEDURES } from '../../content/procedures';
 import { HAZARD_HUNTS } from '../../content/safetyTools';
 import { BADGES } from '../badges';
 import { Confetti } from '../common';
+import { buzz } from '../haptics';
 import { dailyChallenge } from '../daily';
 import { Icon } from '../icons';
 import { streakOf, today, type ProgressHandle } from '../progress';
-import type { Tab } from '../nav';
+import { NAV, type Tab } from '../nav';
+import type React from 'react';
+import { TIPS, tipOfDay } from '../../content/tips';
+import { TipCard } from './TipsTab';
 
 export function DailyCard({ p, go, startProc }: { p: ProgressHandle; go: (t: Tab) => void; startProc: (id: string) => void }) {
   const date = today();
@@ -23,6 +27,7 @@ export function DailyCard({ p, go, startProc }: { p: ProgressHandle; go: (t: Tab
 
   const pick = (qi: number, oi: number) => {
     if (picks[qi] !== null) return;
+    buzz(oi === ch.questions[qi]!.answer ? 20 : [40, 60, 40]);
     const next = picks.map((x, i) => (i === qi ? oi : x));
     setPicks(next);
     if (next.every((x) => x !== null)) {
@@ -170,5 +175,96 @@ export function InstallButton() {
         </p>
       )}
     </div>
+  );
+}
+
+const LAST_KEY = 'cfs-last-tab';
+
+/** Remember the last tab someone used (local only) so Home can offer "Jump back in". */
+export function rememberTab(t: Tab): void {
+  if (t === 'home' || t === 'about' || t === 'feedback') return;
+  try {
+    localStorage.setItem(LAST_KEY, t);
+  } catch {
+    /* storage blocked */
+  }
+}
+
+function lastTab(): Tab | null {
+  try {
+    const t = localStorage.getItem(LAST_KEY);
+    return t && NAV.some((n) => n.id === t) ? (t as Tab) : null;
+  } catch {
+    return null;
+  }
+}
+
+const QUICK: { tab: Tab; emoji: string; title: string; text: string }[] = [
+  { tab: 'learn', emoji: '📘', title: 'Learn the basics', text: 'Step-by-step walkthroughs' },
+  { tab: 'procedures', emoji: '🎯', title: 'Practice a drill', text: 'Scored MOPs and emergencies' },
+  { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${TIPS.length} tricks for a pinch` },
+  { tab: 'tools', emoji: '🧮', title: 'Do the math', text: 'Amps, runtime, tons, fuel' },
+  { tab: 'sim', emoji: '⚡', title: 'Break the plant', text: 'Fail things, watch backups' },
+  { tab: 'safety', emoji: '🦺', title: 'Stay safe', text: 'Rules, drills, emergency cards' },
+];
+
+export function QuickStart({ go }: { go: (t: Tab) => void }) {
+  const last = lastTab();
+  const lastNav = last ? NAV.find((n) => n.id === last) : null;
+  return (
+    <section className="quick" aria-labelledby="quick-h">
+      <h2 id="quick-h" className="quick-h">
+        What do you want to do?
+      </h2>
+      {lastNav && (
+        <button type="button" className="jump-back" onClick={() => go(lastNav.id)}>
+          <span className="jump-icon" aria-hidden="true">
+            <Icon name={lastNav.icon} />
+          </span>
+          <span>
+            <strong>Jump back in</strong>
+            <span>{lastNav.label}</span>
+          </span>
+          <Icon name="arrow-right" />
+        </button>
+      )}
+      <div className="quick-grid">
+        {QUICK.map((q, i) => (
+          <button key={q.tab} type="button" className="quick-tile" style={{ '--i': i } as React.CSSProperties} onClick={() => go(q.tab)}>
+            <span className="quick-emoji" aria-hidden="true">
+              {q.emoji}
+            </span>
+            <strong>{q.title}</strong>
+            <span>{q.text}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function TipOfDay({ p, go }: { p: ProgressHandle; go: (t: Tab) => void }) {
+  const [offset, setOffset] = useState(0);
+  const base = TIPS.indexOf(tipOfDay(today()));
+  const tip = TIPS[(base + offset) % TIPS.length]!;
+  return (
+    <section className="tip-day" aria-labelledby="tipday-h">
+      <div className="roll-head">
+        <h2 id="tipday-h" className="h-card">
+          <span aria-hidden="true">💡</span> {offset === 0 ? 'Tip of the day' : 'Another tip'}
+        </h2>
+        <div className="whats-new-btns">
+          <button className="btn btn-sm" type="button" onClick={() => setOffset(offset + 1)}>
+            <Icon name="reset" /> Next tip
+          </button>
+          <button className="btn btn-sm btn-ghost" type="button" onClick={() => go('tips')}>
+            All {TIPS.length} <Icon name="arrow-right" />
+          </button>
+        </div>
+      </div>
+      <div className="roll-card" key={tip.id} aria-live="polite">
+        <TipCard tip={tip} saved={p.progress.favTips.includes(tip.id)} onSave={() => p.toggleTip(tip.id)} />
+      </div>
+    </section>
   );
 }

@@ -10,12 +10,17 @@ export type Units = 'F' | 'C';
 
 const KEY = 'cfs-prefs-v1';
 
+export type TextSize = 's' | 'm' | 'l' | 'xl';
+export const TEXT_SIZES: TextSize[] = ['s', 'm', 'l', 'xl'];
+export const TEXT_SCALE: Record<TextSize, number> = { s: 0.9, m: 1, l: 1.12, xl: 1.25 };
+
 interface Prefs {
   theme: ThemePref;
   units: Units;
+  text: TextSize;
 }
 
-const DEFAULTS: Prefs = { theme: 'system', units: 'F' };
+const DEFAULTS: Prefs = { theme: 'system', units: 'F', text: 'm' };
 
 function load(): Prefs {
   try {
@@ -25,6 +30,7 @@ function load(): Prefs {
     return {
       theme: p.theme === 'light' || p.theme === 'dark' ? p.theme : 'system',
       units: p.units === 'C' ? 'C' : 'F',
+      text: TEXT_SIZES.includes(p.text as TextSize) ? (p.text as TextSize) : 'm',
     };
   } catch {
     return DEFAULTS;
@@ -43,6 +49,7 @@ function save(p: Prefs): void {
 export function clearPrefs(): void {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem('cfs-last-tab');
   } catch {
     /* nothing to clear */
   }
@@ -68,6 +75,11 @@ export function usePrefs() {
   useEffect(() => {
     document.documentElement.dataset.theme = resolved;
   }, [resolved]);
+  // Text size: scale the root font so every rem-based size grows together (CSSOM, so it works under the CSP).
+  useEffect(() => {
+    document.documentElement.style.fontSize = prefs.text === 'm' ? '' : `${TEXT_SCALE[prefs.text] * 100}%`;
+    document.documentElement.dataset.text = prefs.text;
+  }, [prefs.text]);
 
   const update = useCallback((patch: Partial<Prefs>) => {
     setPrefs((p) => {

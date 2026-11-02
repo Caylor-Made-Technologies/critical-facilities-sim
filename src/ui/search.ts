@@ -9,6 +9,7 @@ import { GLOSSARY } from '../content/glossary';
 import { LESSONS } from '../content/lessons';
 import { PROCEDURES } from '../content/procedures';
 import { SAFETY } from '../content/safety';
+import { TIPS, TIP_CATS } from '../content/tips';
 import { NAV, type Tab } from './nav';
 
 export type Jump =
@@ -18,7 +19,8 @@ export type Jump =
   | { kind: 'guide'; id: string }
   | { kind: 'case'; id: string }
   | { kind: 'safety'; id: string }
-  | { kind: 'term'; term: string };
+  | { kind: 'term'; term: string }
+  | { kind: 'tip'; id: string };
 
 export interface SearchItem {
   title: string;
@@ -37,6 +39,7 @@ export const SEARCH_INDEX: SearchItem[] = [
   ...CASES.map((c) => ({ title: c.title, type: 'Case study', extra: c.summary, jump: { kind: 'case', id: c.id } as Jump })),
   ...SAFETY.map((a) => ({ title: a.title, type: 'Safety', extra: `${a.group} ${a.intro}`, jump: { kind: 'safety', id: a.id } as Jump })),
   ...GLOSSARY.map((t) => ({ title: t.term, type: 'Term', extra: t.def, jump: { kind: 'term', term: t.term } as Jump })),
+  ...TIPS.map((t) => ({ title: t.title, type: 'Tip', extra: `${TIP_CATS.find((c) => c.id === t.cat)!.label} ${t.text}`, jump: { kind: 'tip', id: t.id } as Jump })),
 ];
 
 /** Best matches first: title prefix, then word prefix in title, then anywhere. */

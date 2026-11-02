@@ -6,18 +6,19 @@ An interactive, offline simulator of a generic hyperscale-style data center: how
 
 **Live:** https://caylor-made-technologies.github.io/critical-facilities-sim/
 
-**Status:** Full app release (2026-11-01): new app icon, Field Tools, Career, daily challenge with streaks, badges, timed exam, flashcards, UPS battery aging, backup/restore and install button, on top of the Phase 100 Safety Center, quick search and motion pass, and phases 1–25: electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
+**Status:** Tips & UI release (2026-11-02): Tips & Tricks tab (219 tips), quick-start grid, jump back in, text size, phone vibration on answers. Before that, the full app release (2026-11-01): new app icon, Field Tools, Career, daily challenge with streaks, badges, timed exam, flashcards, UPS battery aging, backup/restore and install button, on top of the Phase 100 Safety Center, quick search and motion pass, and phases 1–25: electrical and mechanical simulators, Kirk-key operation, scored MOP practice and emergency drills, design comparison and PUE breakdown, 14 walkthroughs, quiz, equipment guide, safety, codes, uptime, change management, offline install, and smooth page transitions.
 
 ## What's in the app
 Every subject has its own tab, and inside each tab the electrical and mechanical sides have their own sections.
 
 | Tab | What it does |
 |---|---|
-| **Home** | Hero with an **Install the app** button, the **daily challenge** (3 questions, the same for everyone that day, with a streak counter and a suggested drill), your growth path (XP and 5 levels), **15 badges**, the printable practice record, and a door into every subject. |
+| **Home** | A **What do you want to do?** grid of big buttons, a **Jump back in** card for the last section you used, tip of the day (tap for the next one), hero with an **Install the app** button, the **daily challenge** (3 questions, the same for everyone that day, with a streak counter and a suggested drill), your growth path (XP and 5 levels), **15 badges**, the printable practice record, and a door into every subject. |
 | **Simulator** | Two views. **Electrical:** pan/zoom one-line from utility to rack with animated power flow, breaker and Kirk-key operation, 7 redundancy designs. **Mechanical:** towers, pumps, chillers, free-cooling HX, storage tank, CRAHs, CDUs, DOAS, with pipes colored by water temperature. A BMS panel has an inlet trend against the ASHRAE band. Weather presets, UPS battery age (new, mid-life, end of life, overdue: runtime drops to match), °F/°C, Explore and Failure modes, event log. |
 | **Procedures & Drills** | Scored practice on the live plant. **7 MOPs:** UPS to maintenance bypass and back, main-tie-main transfer and return, monthly generator test run, chiller out for PM, air handler filter change. **8 emergency drills:** utility loss, chiller trip at 105 °F, both utilities plus a generator, CDU failure, UPS room cooling loss, fire alarm, two towers lost at 105 °F, long-outage fuel math. **Surprise drill:** one of 8 random failures to find from the event log and repair. **Rounds:** 4 round sheets where you spot the readings that need action. Steps tick off when the engine sees the plant reach the right state; blocked actions, hints, wrong calls and dropped load cost points. A stopwatch saves best times, filters and a "recommended next" pick what to do, and Home has a printable practice record. **Wrong answers are simulated:** the choice runs on a copy of the live plant and shows what would really have happened (e.g. the EPO drops all 36 racks, the interlock refuses the tie). Every result screen ends with **Think deeper** questions and model answers. |
 | **Career** | **Interview prep:** 20 common critical facilities interview questions as practice cards (say it out loud, flip, check the points a strong answer hits) or a full list. **Career path:** technician to chief engineer, what each role does and what to learn next. **Shift handoff:** a turnover report that fills itself in from the live simulator (status, gear out of normal, generators, recent alarms) plus your notes, ready to print. |
 | **Case Studies** | Six composite incidents (bypass not closed, generator left in OFF, fuel gauge stuck, heat wave and fouled tubes, dual-corded racks on one side, alarm fatigue). Each has a timeline, a step-by-step "5 whys" to the root cause, contributing factors, what changed afterwards, discussion questions, and a link to practice the lesson. |
+| **Tips & Tricks** | 219 quick tips in 16 topics: memory aids (CCME for the refrigeration cycle, BOY/BRB wire colors, LOTO order, PASS, RACE), in-a-pinch moves (EC fans going to full speed on a lost signal, VFD bypass, rinsing air-cooled coils, stretching fuel), quick math, electrical, meters, UPS, generators, refrigeration, air, water, towers, controls, troubleshooting, safety, rounds and career. Search, topic chips, a random-tip roller, and saved favorites. Risky moves carry an amber caution. Also in quick search. |
 | **Field Tools** | Calculators: load to amps (3-phase and single-phase, kVA), UPS battery runtime by load and battery age, generator fuel runtime and burn rate, cooling tons / chilled-water gpm / airflow CFM, PUE, battery life vs room temperature, and °F/°C with the ASHRAE inlet band. Every formula is in `physics.ts` and shown under its calculator. |
 | **Designs & PUE** | All 7 designs built and broken side by side (lose a module, lose a whole UPS system), the four-level tier idea in plain words, and a live PUE breakdown (IT, cooling by equipment group, losses). |
 | **Learn** | 14 step-by-step walkthroughs in Electrical, Mechanical, and Safety sections. Electrical lessons drive the simulator; mechanical lessons use an animated refrigeration-cycle cutaway and heat-path figure. Every step has "I don't get it, explain simpler". |
@@ -30,6 +31,11 @@ Every subject has its own tab, and inside each tab the electrical and mechanical
 | **Uptime** | Where outages come from, human performance tools, electrical and mechanical practices, operations, emergencies. |
 | **Change Mgmt** | Management of change: lifecycle, risk rating, MOP anatomy, records, change windows. |
 | **Feedback** | Builds a message and opens it in your own email app or as a GitHub issue. The site itself sends and stores nothing. |
+
+## Easy to use
+- **Text size:** the **Aa** button in the header steps through small, normal, large and extra large; the whole app scales with it.
+- **Phone bottom bar:** Home, Sim, Learn, Tips, and More (everything else, including Quiz).
+- **Vibration:** a short buzz on right and wrong answers on phones that support it (off with reduced motion).
 
 ## Motion and quick search
 - **Quick search:** press Ctrl/⌘ + K, `/`, or tap Search to jump to any tab, walkthrough, MOP, drill, equipment guide, case study, safety topic or glossary term.
@@ -67,7 +73,7 @@ src/sim/
 ```
 npm install
 npm run dev        # local dev server
-npm test           # 166 unit tests (electrical, thermal, battery aging, procedures, designs, calculators, safety drills, daily challenge, badges, search, content)
+npm test           # 171 unit tests (electrical, thermal, battery aging, procedures, designs, calculators, safety drills, tips, daily challenge, badges, search, content)
 npm run build      # production build in dist/
 ```
 Pushing to `main` runs the tests and deploys to GitHub Pages.

@@ -36,6 +36,7 @@ export const BADGES: Badge[] = [
   { id: 'streak-7', name: 'Week strong', how: 'Do the daily challenge 7 days in a row.', icon: 'flame', earned: (p) => streakOf(p.daily) >= 7 },
   { id: 'cards-20', name: 'Word smith', how: 'Master 20 flashcards.', icon: 'search', earned: (p) => Object.values(p.cards).filter((b) => b >= 3).length >= 20 },
   { id: 'cards-all', name: 'Fluent', how: 'Master every glossary flashcard.', icon: 'chat', earned: (p) => GLOSSARY.every((t) => (p.cards[`g:${t.term}`] ?? 0) >= 3) },
+  { id: 'tips-10', name: 'Tip collector', how: 'Save 10 tips to your favorites.', icon: 'star', earned: (p) => p.favTips.length >= 10 },
   { id: 'gear-10', name: 'Gearhead', how: 'Read 10 equipment guides.', icon: 'wrench', earned: (p) => p.guides.length >= 10 },
 ];
 

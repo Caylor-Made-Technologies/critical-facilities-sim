@@ -10,17 +10,9 @@ import { grade } from '../../sim';
 import { Icon } from '../icons';
 import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
-import { BadgeWall, DailyCard, InstallButton } from './HomeExtras';
+import { BadgeWall, DailyCard, InstallButton, QuickStart, TipOfDay } from './HomeExtras';
 
-const TIPS = [
-  'The first alarm in the event log usually points closest to the root cause.',
-  'In 2N, keep each side below 50% so the survivor never overloads.',
-  'A Kirk key is not your lockout. Your own lock is.',
-  'Rising chiller approach temperature is an early warning of fouled tubes.',
-  'Live-dead-live: prove the meter before and after you test for voltage.',
-  'GPU cold plates give you seconds, not minutes. Watch CDU flow on every round.',
-  'Never work from memory on critical gear. Read the step, do the step, check it off.',
-];
+
 
 function CircuitArt() {
   // Decorative circuit traces, in the spirit of the CM brand mark (original artwork).
@@ -83,7 +75,6 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
   const lvl = levelOf(p.xp);
   const lessonsDone = p.progress.lessons.length;
   const quizRight = Object.values(p.progress.quiz).filter(Boolean).length;
-  const tip = TIPS[new Date().getDate() % TIPS.length]!;
   const neverCount = Object.values(NEVER).reduce((n, l) => n + l.length, 0);
 
   return (
@@ -131,26 +122,28 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </div>
       </section>
 
+      <QuickStart go={go} />
+
       <section className="card whats-new" aria-labelledby="new-h">
         <span className="new-badge" aria-hidden="true">
           <Icon name="shield" />
         </span>
         <div>
           <div className="eyebrow" id="new-h">
-            New: Field Tools, Career, badges & daily streaks
+            New: Tips & Tricks
           </div>
           <p>
-            Calculators for amps, runtime, fuel and cooling. Interview practice and a shift handoff that reads the live
-            plant. A timed exam, glossary flashcards, UPS battery aging, and the Safety Center. Press <kbd>Ctrl</kbd> +{' '}
-            <kbd>K</kbd> (or tap Search) to jump anywhere.
+            Over 200 quick tips: CCME for the refrigeration cycle, BOY and BRB for wire colors, quick math, and safe
+            in-a-pinch moves. Plus Field Tools, Career, badges and daily streaks. Tap <strong>Aa</strong> up top to change
+            the text size, or press <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere.
           </p>
         </div>
         <div className="whats-new-btns">
-          <button className="btn btn-primary" type="button" onClick={() => go('tools')}>
-            Field Tools <Icon name="arrow-right" />
+          <button className="btn btn-primary" type="button" onClick={() => go('tips')}>
+            Open Tips <Icon name="arrow-right" />
           </button>
-          <button className="btn" type="button" onClick={() => go('career')}>
-            Career
+          <button className="btn" type="button" onClick={() => go('tools')}>
+            Field Tools
           </button>
         </div>
       </section>
@@ -253,9 +246,7 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </p>
       </section>
 
-      <div className="tip" role="note">
-        <span className="tip-label">Tip of the day</span> {tip}
-      </div>
+      <TipOfDay p={p} go={go} />
 
       <section aria-labelledby="explore-h">
         <h2 id="explore-h" className="section-title">

@@ -14,6 +14,7 @@ export type Tab =
   | 'glossary'
   | 'safety'
   | 'tools'
+  | 'tips'
   | 'career'
   | 'codes'
   | 'uptime'
@@ -39,6 +40,7 @@ export const NAV: NavItem[] = [
   { id: 'career', label: 'Career', short: 'Career', icon: 'people', group: 'Practice', desc: 'Interview practice, the career path, and a shift handoff from the live plant.' },
   { id: 'quiz', label: 'Quiz', short: 'Quiz', icon: 'target', group: 'Practice', desc: 'Test yourself, or take the timed exam. Wrong answers explain why.' },
   { id: 'equipment', label: 'Equipment', short: 'Gear', icon: 'wrench', group: 'Know your gear', desc: 'Rounds, PM, troubleshooting for every component.' },
+  { id: 'tips', label: 'Tips & Tricks', short: 'Tips', icon: 'star', group: 'Know your gear', desc: 'Over 200 quick tips, memory aids like CCME and BOY, and in-a-pinch moves.' },
   { id: 'tools', label: 'Field Tools', short: 'Tools', icon: 'calc', group: 'Know your gear', desc: 'Calculators: amps, UPS runtime, fuel, cooling, PUE, battery life.' },
   { id: 'designs', label: 'Designs & PUE', short: 'Designs', icon: 'layers', group: 'Know your gear', desc: 'Compare redundancy designs side by side, and see where the power goes.' },
   { id: 'never', label: 'Never Do', short: 'Never', icon: 'warning', group: 'Know your gear', desc: 'Hard stops you must never cross.' },
@@ -53,7 +55,7 @@ export const NAV: NavItem[] = [
 
 export const GROUPS = ['Start', 'Practice', 'Know your gear', 'Work safe', 'Connect'] as const;
 
-/** Phone bottom bar: the four most-used tabs plus "More". */
-export const BOTTOM: Tab[] = ['home', 'sim', 'learn', 'quiz'];
+/** Phone bottom bar: the four most-used tabs plus "More" (Quiz lives in More). */
+export const BOTTOM: Tab[] = ['home', 'sim', 'learn', 'tips'];
 
 export const TAB_IDS = NAV.map((n) => n.id);

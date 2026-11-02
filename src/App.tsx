@@ -13,7 +13,7 @@ import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startR
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
 import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
-import { usePrefs } from './ui/prefs';
+import { TEXT_SIZES, usePrefs } from './ui/prefs';
 import { levelOf, useProgress } from './ui/progress';
 import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
 import { AboutTab } from './ui/tabs/AboutTab';
@@ -21,6 +21,9 @@ import { ArticlesTab } from './ui/tabs/ArticlesTab';
 import { SafetyTab } from './ui/tabs/SafetyTab';
 import { FieldToolsTab } from './ui/tabs/FieldToolsTab';
 import { CareerTab } from './ui/tabs/CareerTab';
+import { TipsTab } from './ui/tabs/TipsTab';
+import { TIPS } from './content/tips';
+import { rememberTab } from './ui/tabs/HomeExtras';
 import { Palette } from './ui/Palette';
 import type { Jump } from './ui/search';
 import { useCountUp } from './ui/common';
@@ -69,6 +72,7 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [safetyArticle, setSafetyArticle] = useState<string | null>(null);
   const [glossaryQ, setGlossaryQ] = useState('');
+  const [tipQ, setTipQ] = useState('');
   const [caseOpen, setCaseOpen] = useState<string | null>(null);
   const xpShown = useCountUp(p.xp);
 
@@ -117,6 +121,7 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => rememberTab(tab), [tab]);
   useEffect(() => {
     const on = () => setTabState(tabFromHash());
     window.addEventListener('hashchange', on);
@@ -270,6 +275,7 @@ export function App() {
   const jump = (j: Jump) => {
     setSafetyArticle(null);
     setGlossaryQ('');
+    setTipQ('');
     setCaseOpen(null);
     if (j.kind === 'tab') setTab(j.tab);
     else if (j.kind === 'lesson') {
@@ -290,6 +296,9 @@ export function App() {
     } else if (j.kind === 'safety') {
       setSafetyArticle(j.id);
       setTab('safety');
+    } else if (j.kind === 'tip') {
+      setTipQ(TIPS.find((t) => t.id === j.id)?.title ?? '');
+      setTab('tips');
     } else {
       setGlossaryQ(j.term);
       setTab('glossary');
@@ -316,7 +325,10 @@ export function App() {
         >
           <img src={`${import.meta.env.BASE_URL}brand/app-mark.png`} alt="Critical Facilities Simulator logo" width={38} height={38} />
           <span className="brand-text">
-            <span className="brand-title">Critical Facilities Simulator</span>
+            <span className="brand-title">
+              <span className="brand-full">Critical Facilities Simulator</span>
+              <span className="brand-short" aria-hidden="true">CF Simulator</span>
+            </span>
             <span className="brand-sub">Caylor Made Technologies</span>
           </span>
         </a>
@@ -330,6 +342,20 @@ export function App() {
             <Icon name="star" />
             <span className="xp-pill-level">{lvl.name}</span>
             <span className="xp-pill-xp">{xpShown} XP</span>
+          </button>
+          <button
+            className="btn btn-icon btn-ghost text-size-btn"
+            type="button"
+            onClick={() => {
+              const next = TEXT_SIZES[(TEXT_SIZES.indexOf(prefs.text) + 1) % TEXT_SIZES.length]!;
+              update({ text: next });
+              showToast(`Text size: ${{ s: 'small', m: 'normal', l: 'large', xl: 'extra large' }[next]}`);
+            }}
+            aria-label={`Text size: ${{ s: 'small', m: 'normal', l: 'large', xl: 'extra large' }[prefs.text]}. Tap to change.`}
+          >
+            <span aria-hidden="true" className={`aa aa-${prefs.text}`}>
+              Aa
+            </span>
           </button>
           <button
             className="btn btn-icon btn-ghost"
@@ -392,6 +418,7 @@ export function App() {
               />
             )}
             {tab === 'tools' && <FieldToolsTab />}
+            {tab === 'tips' && <TipsTab key={tipQ} p={p} initialQuery={tipQ} />}
             {tab === 'career' && <CareerTab sim={h.sim} version={h.version} units={prefs.units} boxes={p.progress.cards} onRate={p.rateCard} openSim={() => setTab('sim')} />}
             {tab === 'sim' && (
               <SimulatorTab

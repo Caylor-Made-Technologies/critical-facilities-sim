@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { QUIZ, QUIZ_SECTIONS, type QuizQuestion, type QuizSection } from '../../content/quiz';
 import { Confetti, PageHead, SectionTabs } from '../common';
 import { Icon } from '../icons';
+import { buzz } from '../haptics';
 import type { ProgressHandle } from '../progress';
 
 function Question({ item, n, onAnswer }: { item: QuizQuestion; n: number; onAnswer: (correct: boolean) => void }) {
@@ -19,6 +20,7 @@ function Question({ item, n, onAnswer }: { item: QuizQuestion; n: number; onAnsw
     setPicked(i);
     const ok = i === item.answer;
     setWhyOpen(!ok); // drop the explanation down when they get it wrong
+    buzz(ok ? 20 : [40, 60, 40]);
     onAnswer(ok);
   };
 

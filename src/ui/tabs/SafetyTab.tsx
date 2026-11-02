@@ -29,6 +29,7 @@ import {
 } from '../../content/safetyTools';
 import { Confetti, DangerMark, PageHead, SectionTabs } from '../common';
 import { Icon } from '../icons';
+import { buzz } from '../haptics';
 import { ArticlesTab } from './ArticlesTab';
 
 type Section = 'rules' | 'library' | 'boundaries' | 'loto' | 'hunt' | 'emergency' | 'brief';
@@ -262,6 +263,7 @@ function LotoGame({ drill, onScore }: { drill: LotoDrill; onScore: (id: string, 
     } else {
       setWrong((w) => w + 1);
       setMiss({ i, n: Date.now() });
+      buzz([40, 60, 40]);
     }
   };
   const restart = () => {

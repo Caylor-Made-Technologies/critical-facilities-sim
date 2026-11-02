@@ -27,9 +27,11 @@ export interface Progress {
   cards: Record<string, number>;
   /** Best exam score (0–100), or -1 if never taken. */
   exam: number;
+  /** Saved (starred) tip ids. */
+  favTips: string[];
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1 };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [] };
 
 export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
 
@@ -59,6 +61,7 @@ export function sanitize(raw: unknown): Progress {
     daily: Object.fromEntries(Object.entries(numMap(p.daily, score)).filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))),
     cards: numMap(p.cards, (n) => Number.isInteger(n) && n >= 0 && n <= 4),
     exam: typeof p.exam === 'number' && p.exam >= -1 && p.exam <= 100 ? p.exam : -1,
+    favTips: strs(p.favTips).slice(0, 500),
   };
 }
 
@@ -184,6 +187,10 @@ export function useProgress(onGain?: (msg: string) => void) {
     (score: number) => commit((p) => (p.exam >= score ? null : { ...p, exam: score }), score >= 80 ? 'Exam passed. Best score saved.' : 'Exam score saved.'),
     [commit],
   );
+  const toggleTip = useCallback(
+    (id: string) => commit((p) => ({ ...p, favTips: p.favTips.includes(id) ? p.favTips.filter((x) => x !== id) : [...p.favTips, id] })),
+    [commit],
+  );
   /** Replace progress with an imported backup (already sanitized). */
   const restore = useCallback((next: Progress) => {
     save(next);
@@ -198,7 +205,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, restore, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;
