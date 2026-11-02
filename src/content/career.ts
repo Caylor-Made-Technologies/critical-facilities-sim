@@ -1,6 +1,6 @@
 /**
- * Career track: interview practice, a generic career path, and the shift
- * handoff. Generic and public: no employer, site or vendor names.
+ * Career track: interview practice. The career ladder and branches live
+ * in ladder.ts. Generic and public: no employer, site or vendor names.
  */
 
 export type InterviewCat = 'Electrical' | 'Mechanical' | 'Safety' | 'Operations' | 'Behavioral';
@@ -43,18 +43,3 @@ export const INTERVIEW: InterviewQ[] = [
 ];
 
 export const INTERVIEW_CATS: InterviewCat[] = ['Electrical', 'Mechanical', 'Safety', 'Operations', 'Behavioral'];
-
-export interface CareerStep {
-  role: string;
-  years: string;
-  focus: string[];
-  learn: string[];
-}
-
-export const CAREER_PATH: CareerStep[] = [
-  { role: 'Facilities / maintenance technician', years: '0–2 yrs', focus: ['Rounds and readings', 'Basic PM (filters, belts, lubrication)', 'Following procedures and LOTO'], learn: ['OSHA 10 or 30', 'CPR / AED / first aid', 'Basic electrical theory'] },
-  { role: 'Critical facilities technician', years: '1–4 yrs', focus: ['Switching under a MOP', 'UPS, generator and ATS operation', 'Chiller plant and BMS alarms'], learn: ['NFPA 70E electrical safety training', 'EPA Section 608 (refrigerant)', 'Reading one-lines and controls drawings'] },
-  { role: 'Building / critical facilities engineer', years: '3–7 yrs', focus: ['Writing and reviewing MOPs', 'Troubleshooting and root cause', 'Leading vendors and contractors'], learn: ['State electrical license (where it applies)', 'Advanced controls and power quality', 'Data center operations courses'] },
-  { role: 'Lead / shift supervisor', years: '5–10 yrs', focus: ['Running a shift and emergencies', 'Change management and approvals', 'Training new techs'], learn: ['Incident command basics', 'Risk assessment', 'Coaching and communication'] },
-  { role: 'Chief engineer / facility manager', years: '8+ yrs', focus: ['Budgets, staffing and lifecycle planning', 'Customer and audit relationships', 'Reliability programs'], learn: ['Asset management', 'Project management', 'Reliability engineering'] },
-];

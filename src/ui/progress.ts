@@ -29,9 +29,13 @@ export interface Progress {
   exam: number;
   /** Saved (starred) tip ids. */
   favTips: string[];
+  /** Career ladder: the rung you marked "I'm here" ('' if none). */
+  careerRung: string;
+  /** Career ladder goals ticked off (rung id + index). */
+  careerChecks: string[];
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [] };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [] };
 
 export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
 
@@ -62,6 +66,8 @@ export function sanitize(raw: unknown): Progress {
     cards: numMap(p.cards, (n) => Number.isInteger(n) && n >= 0 && n <= 4),
     exam: typeof p.exam === 'number' && p.exam >= -1 && p.exam <= 100 ? p.exam : -1,
     favTips: strs(p.favTips).slice(0, 500),
+    careerRung: typeof p.careerRung === 'string' && /^r\d$/.test(p.careerRung) ? p.careerRung : '',
+    careerChecks: strs(p.careerChecks).filter((x) => /^r\d:\d+$/.test(x)).slice(0, 200),
   };
 }
 
@@ -191,6 +197,11 @@ export function useProgress(onGain?: (msg: string) => void) {
     (id: string) => commit((p) => ({ ...p, favTips: p.favTips.includes(id) ? p.favTips.filter((x) => x !== id) : [...p.favTips, id] })),
     [commit],
   );
+  const setCareerRung = useCallback((id: string) => commit((p) => (p.careerRung === id ? null : { ...p, careerRung: id }), 'Saved: this is where you are on the ladder.'), [commit]);
+  const toggleCareerCheck = useCallback(
+    (key: string) => commit((p) => ({ ...p, careerChecks: p.careerChecks.includes(key) ? p.careerChecks.filter((x) => x !== key) : [...p.careerChecks, key] })),
+    [commit],
+  );
   /** Replace progress with an imported backup (already sanitized). */
   const restore = useCallback((next: Progress) => {
     save(next);
@@ -205,7 +216,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, restore, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

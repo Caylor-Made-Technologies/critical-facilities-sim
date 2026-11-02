@@ -1,21 +1,24 @@
 /**
- * Career: interview practice (flashcards + full list), a generic career
- * path, and a shift handoff report built from the live simulator.
+ * Career: the career ladder (bottom rung up) with branches, interview
+ * practice (flashcards + full list), and a shift handoff report built from
+ * the live simulator.
  */
 import { useState } from 'react';
-import type React from 'react';
-import { CAREER_PATH, INTERVIEW, INTERVIEW_CATS, type InterviewCat } from '../../content/career';
+import { INTERVIEW, INTERVIEW_CATS, type InterviewCat } from '../../content/career';
 import { BATTERY_AGES, TOPOLOGIES, WEATHER, type Simulation } from '../../sim';
 import { PageHead, SectionTabs } from '../common';
 import { Flashcards } from '../Flashcards';
 import { Icon } from '../icons';
 import type { Units } from '../prefs';
 import { plantIssues } from '../sim/StatusBanner';
+import type { ProgressHandle } from '../progress';
+import { BranchesView, LadderView } from './CareerLadder';
 
-type Section = 'interview' | 'path' | 'handoff';
+type Section = 'ladder' | 'branches' | 'interview' | 'handoff';
 const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'ladder', label: 'Career ladder' },
+  { id: 'branches', label: 'Branch out' },
   { id: 'interview', label: 'Interview prep' },
-  { id: 'path', label: 'Career path' },
   { id: 'handoff', label: 'Shift handoff' },
 ];
 
@@ -26,20 +29,31 @@ interface Props {
   boxes: Record<string, number>;
   onRate: (id: string, knew: boolean) => void;
   openSim: () => void;
+  p: ProgressHandle;
 }
 
-export function CareerTab({ sim, units, boxes, onRate, openSim }: Props) {
-  const [sec, setSec] = useState<Section>('interview');
+export function CareerTab({ sim, units, boxes, onRate, openSim, p }: Props) {
+  const [sec, setSec] = useState<Section>('ladder');
+  const [branch, setBranch] = useState<string | null>(null);
   return (
     <div className="tab-panel">
       <PageHead eyebrow="Career" title="Get the job, grow in it">
-        Practice the questions critical facilities interviews ask, see a typical path from technician to chief engineer,
-        and write a shift handoff from the live plant.
+        Climb the ladder from technician to director, see what to do and which certifications to get at each step,
+        branch off into specialist roles, practice interview questions, and write a shift handoff from the live plant.
       </PageHead>
       <SectionTabs label="Career sections" sections={SECTIONS} value={sec} onChange={setSec} />
       <div className="safety-pane" key={sec}>
         {sec === 'interview' && <Interview boxes={boxes} onRate={onRate} />}
-        {sec === 'path' && <Path />}
+        {sec === 'ladder' && (
+          <LadderView
+            p={p}
+            openBranch={(id) => {
+              setBranch(id);
+              setSec('branches');
+            }}
+          />
+        )}
+        {sec === 'branches' && <BranchesView openId={branch} />}
         {sec === 'handoff' && <Handoff sim={sim} units={units} openSim={openSim} />}
       </div>
     </div>
@@ -114,47 +128,6 @@ function Interview({ boxes, onRate }: { boxes: Record<string, number>; onRate: (
           ))}
         </div>
       )}
-    </>
-  );
-}
-
-function Path() {
-  return (
-    <>
-      <ol className="career-path">
-        {CAREER_PATH.map((s, i) => (
-          <li key={s.role} className="card career-step" style={{ '--i': i } as React.CSSProperties}>
-            <span className="career-dot" aria-hidden="true">
-              {i + 1}
-            </span>
-            <div>
-              <div className="career-head">
-                <h2 className="h-card">{s.role}</h2>
-                <span className="chip">{s.years}</span>
-              </div>
-              <div className="career-cols">
-                <div>
-                  <h3>Day to day</h3>
-                  <ul>
-                    {s.focus.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3>Learn next</h3>
-                  <ul>
-                    {s.learn.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <p className="muted small">A typical path, not a promise. Titles, years and requirements vary by employer and state.</p>
     </>
   );
 }

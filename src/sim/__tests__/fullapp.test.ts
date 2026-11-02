@@ -1,4 +1,4 @@
-import { INTERVIEW, CAREER_PATH } from '../../content/career';
+import { INTERVIEW } from '../../content/career';
 import { BADGES, earnedBadges } from '../../ui/badges';
 import { dailyChallenge } from '../../ui/daily';
 import { streakOf, today } from '../../ui/dates';
@@ -99,13 +99,12 @@ describe('progress, badges, flashcards', () => {
 });
 
 describe('career content', () => {
-  it('every interview question has strong-answer points and a tip; the path has 5 steps', () => {
+  it('every interview question has strong-answer points and a tip; ', () => {
     for (const q of INTERVIEW) {
       expect(q.points.length, q.id).toBeGreaterThanOrEqual(2);
       expect(q.tip.length, q.id).toBeGreaterThan(10);
     }
     expect(new Set(INTERVIEW.map((q) => q.id)).size).toBe(INTERVIEW.length);
-    expect(CAREER_PATH.length).toBe(5);
   });
   it('quick search finds the new tabs', () => {
     expect(search('field tools')[0]!.title).toBe('Field Tools');
