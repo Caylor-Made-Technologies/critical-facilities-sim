@@ -433,3 +433,192 @@ export const DC_CERTS: DcCert[] = [
   { id: 'cdcmp', short: 'CDCMP', name: 'Certified Data Centre Management Professional', by: 'CNet Training', rung: 'r5', format: 'About a 5-day program', needs: 'Data center experience; often taken after CDCTP.', why: 'Management of the whole facility: operations, risk, capacity, budgets and people. Good preparation for chief engineer.' },
   { id: 'ats', short: 'ATS', name: 'Accredited Tier Specialist', by: 'Uptime Institute', rung: 'r6', format: 'Multi-day course, then an exam', needs: 'Check the issuer\'s eligibility rules.', why: 'Deep knowledge of Tier topology for design reviews, upgrades and talking with designers and customers.' },
 ];
+
+// ---------------------------------------------------------------------------
+// Rung details: the "variables" for each step of the ladder
+// ---------------------------------------------------------------------------
+export type PracticeTab = 'learn' | 'procedures' | 'safety' | 'tools' | 'quiz' | 'designs' | 'change' | 'tips' | 'sim' | 'cases' | 'equipment';
+
+export interface RungDetail {
+  reportsTo: string;
+  scope: string;
+  /** Typical time before people move up (varies a lot). */
+  nextIn: string;
+  schedule: string;
+  /** Rough mix of the job, 0–100 each (illustrative, varies by site). */
+  mix: { hands: number; planning: number; people: number; oncall: number };
+  day: { t: string; what: string }[];
+  tools: string[];
+  kpis: string[];
+  mistakes: string[];
+  practice: { label: string; tab: PracticeTab }[];
+  /** Interview question ids (content/career.ts) worth preparing at this rung. */
+  interview: string[];
+}
+
+export const RUNG_DETAILS: Record<string, RungDetail> = {
+  r1: {
+    reportsTo: 'Lead technician or chief engineer',
+    scope: 'Tasks assigned each shift; works under supervision',
+    nextIn: 'About 1 year of steady, safe work',
+    schedule: 'Day shift or rotating 8/12-hour shifts; some weekends',
+    mix: { hands: 80, planning: 10, people: 10, oncall: 10 },
+    day: [
+      { t: 'Start of shift', what: 'Read the log, join the handoff, get your assignments.' },
+      { t: 'Morning', what: 'Walk rounds and record readings: switchgear, UPS, chillers, air handlers.' },
+      { t: 'Midday', what: 'Help with PMs: filters, belts, lubrication, cleaning.' },
+      { t: 'Afternoon', what: 'Shadow a vendor PM or a MOP and take notes.' },
+      { t: 'End of shift', what: 'Log your work and report anything odd you saw.' },
+    ],
+    tools: ['Flashlight and notebook', 'Multimeter (basic)', 'Hand tools', 'Work order system (CMMS)', 'Radio'],
+    kpis: ['Rounds completed on time', 'PMs closed correctly', 'Zero safety incidents', 'Quality of log entries'],
+    mistakes: ['Checking boxes instead of writing real readings', 'Being afraid to ask "why"', 'Skipping PPE "just for a minute"', 'Not reporting a small leak or noise'],
+    practice: [
+      { label: 'Take the guided walkthroughs', tab: 'learn' },
+      { label: 'Practice rounds sheets', tab: 'procedures' },
+      { label: 'Learn the golden safety rules', tab: 'safety' },
+      { label: 'Memory aids like CCME and BOY', tab: 'tips' },
+    ],
+    interview: ['iv-why', 'iv-loto', 'iv-rounds'],
+  },
+  r2: {
+    reportsTo: 'Lead engineer or shift supervisor',
+    scope: 'Operates systems under MOPs; owns rounds and first response on shift',
+    nextIn: 'About 1–3 years',
+    schedule: 'Often rotating 12-hour shifts (days/nights, some weekends and holidays)',
+    mix: { hands: 70, planning: 15, people: 15, oncall: 25 },
+    day: [
+      { t: 'Start of shift', what: 'Handoff: plant status, open work, anything out of normal.' },
+      { t: 'Early', what: 'Rounds plus a check of BMS and EPMS alarms and trends.' },
+      { t: 'Mid shift', what: 'Run a MOP step with a peer check (e.g. generator test or a UPS transfer).' },
+      { t: 'Any time', what: 'First response to alarms: assess, make safe, escalate.' },
+      { t: 'End of shift', what: 'Write the handoff and update work orders.' },
+    ],
+    tools: ['Rated multimeter and clamp meter', 'IR camera', 'BMS and EPMS screens', 'MOP binder', 'LOTO kit'],
+    kpis: ['Alarm response time', 'MOPs done without errors', 'Rounds quality', 'Clear handoffs'],
+    mistakes: ['Resetting alarms without finding the cause', 'Freelancing outside the MOP', 'Leaving gear in HAND or OFF', 'Not escalating early when the load is at risk'],
+    practice: [
+      { label: 'Run the scored MOPs and drills', tab: 'procedures' },
+      { label: 'Break the plant in the simulator', tab: 'sim' },
+      { label: 'LOTO order drills', tab: 'safety' },
+      { label: 'Take the timed exam', tab: 'quiz' },
+    ],
+    interview: ['iv-ups', 'iv-ats', 'iv-redundancy', 'iv-alarm'],
+  },
+  r3: {
+    reportsTo: 'Chief engineer or facility manager',
+    scope: 'Owns one or more systems; writes MOPs; leads vendors',
+    nextIn: 'About 2–4 years',
+    schedule: 'Day shift with on-call rotation, or rotating shifts depending on site',
+    mix: { hands: 50, planning: 30, people: 20, oncall: 35 },
+    day: [
+      { t: 'Morning', what: 'Review overnight alarms and trends for your systems.' },
+      { t: 'Late morning', what: 'Write or review a MOP for upcoming work.' },
+      { t: 'Midday', what: 'Escort and oversee a vendor PM; check their report.' },
+      { t: 'Afternoon', what: 'Work an RCA or a reliability fix; update the CMMS.' },
+      { t: 'On call', what: 'Answer escalations and guide the shift tech by phone or on site.' },
+    ],
+    tools: ['Trending and reporting tools', 'One-lines and controls drawings', 'CMMS reports', 'Power quality meter', 'MOP templates'],
+    kpis: ['MOP approval rate', 'Repeat failures on your systems', 'PM compliance', 'Incident RCAs closed'],
+    mistakes: ['Writing MOPs without walking them down in the field', 'Trusting a vendor report without reading it', 'Fixing symptoms, not root causes', 'Not documenting what you know'],
+    practice: [
+      { label: 'Study the case studies and RCAs', tab: 'cases' },
+      { label: 'Change management and MOP anatomy', tab: 'change' },
+      { label: 'Compare the redundancy designs', tab: 'designs' },
+      { label: 'Field Tools calculators', tab: 'tools' },
+    ],
+    interview: ['iv-mop', 'iv-chiller', 'iv-kirk', 'iv-delta'],
+  },
+  r4: {
+    reportsTo: 'Chief engineer or operations manager',
+    scope: 'Expert on a discipline across the site; trains others; supports projects',
+    nextIn: 'About 2–4 years',
+    schedule: 'Mostly days, with on-call and project nights',
+    mix: { hands: 35, planning: 35, people: 30, oncall: 35 },
+    day: [
+      { t: 'Morning', what: 'Review the team\'s MOPs and catch risks.' },
+      { t: 'Late morning', what: 'Design or commissioning meeting for an upgrade.' },
+      { t: 'Afternoon', what: 'Teach a session or coach a newer tech in the field.' },
+      { t: 'Late day', what: 'Plan lifecycle replacements and spare parts.' },
+      { t: 'On call', what: 'Expert escalation for complex failures.' },
+    ],
+    tools: ['Studies and design documents', 'Commissioning scripts', 'Training materials', 'Capital planning spreadsheets'],
+    kpis: ['Team MOP quality', 'Training delivered', 'Project readiness', 'Reliability of your discipline'],
+    mistakes: ['Becoming the only person who knows something', 'Skipping documentation because you "just know"', 'Saying yes to every project at once', 'Talking over people\'s heads when teaching'],
+    practice: [
+      { label: 'Equipment deep dives', tab: 'equipment' },
+      { label: 'Designs & PUE breakdown', tab: 'designs' },
+      { label: 'Hard drills at 105 °F', tab: 'procedures' },
+      { label: 'Change management', tab: 'change' },
+    ],
+    interview: ['iv-gpu', 'iv-pue', 'iv-energized', 'iv-free'],
+  },
+  r5: {
+    reportsTo: 'Chief engineer or facility manager',
+    scope: 'Runs a shift or a team of techs; incident lead',
+    nextIn: 'About 3–5 years',
+    schedule: 'Shift lead on rotating shifts, or days with on-call leadership',
+    mix: { hands: 20, planning: 35, people: 45, oncall: 40 },
+    day: [
+      { t: 'Start of shift', what: 'Lead the handoff and set priorities.' },
+      { t: 'Early', what: 'Assign work and check that MOPs and permits are in order.' },
+      { t: 'Mid shift', what: 'Spot-check work quality and safety in the field.' },
+      { t: 'Any time', what: 'Incident lead: direct response, communicate with the customer.' },
+      { t: 'End of shift', what: 'Review KPIs, coach, and close out the shift.' },
+    ],
+    tools: ['Schedules and staffing plans', 'KPI dashboards', 'Incident command checklist', 'Change calendar'],
+    kpis: ['Shift safety record', 'Uptime during your shifts', 'PM completion', 'Team growth and retention'],
+    mistakes: ['Doing the work yourself instead of leading', 'Avoiding hard feedback', 'Approving changes you haven\'t read', 'Going quiet during incidents'],
+    practice: [
+      { label: 'Lead the emergency drills as incident lead', tab: 'procedures' },
+      { label: 'Case studies for team discussions', tab: 'cases' },
+      { label: 'Run surprise drills with your team', tab: 'procedures' },
+      { label: 'Safety Center practice tools', tab: 'safety' },
+    ],
+    interview: ['iv-handoff', 'iv-pressure', 'iv-stop', 'iv-mistake'],
+  },
+  r6: {
+    reportsTo: 'Operations director or regional manager',
+    scope: 'Owns a site: budget, staff, lifecycle, customer relationship',
+    nextIn: 'Often 4+ years',
+    schedule: 'Days, with on-call escalation for major incidents',
+    mix: { hands: 10, planning: 45, people: 45, oncall: 30 },
+    day: [
+      { t: 'Morning', what: 'Review incidents, KPIs and open risks.' },
+      { t: 'Late morning', what: 'Budget, purchasing and capital planning.' },
+      { t: 'Afternoon', what: 'Customer review or audit; hiring interviews.' },
+      { t: 'Late day', what: 'One-on-ones with leads; walk the site.' },
+      { t: 'Major incidents', what: 'Executive communication and decisions.' },
+    ],
+    tools: ['Budgets and forecasts', 'Asset lifecycle plans', 'Audit reports', 'Staffing plans'],
+    kpis: ['Site uptime', 'Safety record', 'Budget accuracy', 'Customer satisfaction', 'Staff retention'],
+    mistakes: ['Cutting PM to save money', 'Losing touch with the floor', 'Not building a successor', 'Hiding problems from customers'],
+    practice: [
+      { label: 'Designs & PUE for capital decisions', tab: 'designs' },
+      { label: 'Change management program', tab: 'change' },
+      { label: 'Case studies for leadership lessons', tab: 'cases' },
+    ],
+    interview: ['iv-pue', 'iv-alarm', 'iv-mop'],
+  },
+  r7: {
+    reportsTo: 'Vice president of operations',
+    scope: 'Several sites or a region; standards and strategy',
+    nextIn: 'Varies widely',
+    schedule: 'Days, travel between sites, escalation for major events',
+    mix: { hands: 5, planning: 50, people: 50, oncall: 20 },
+    day: [
+      { t: 'Morning', what: 'Regional KPI and incident review.' },
+      { t: 'Midday', what: 'Standards, training programs and new-build planning.' },
+      { t: 'Afternoon', what: 'Coach site managers; meet customers and design teams.' },
+      { t: 'Travel days', what: 'Site visits and audits.' },
+    ],
+    tools: ['Regional dashboards', 'Standard MOP templates', 'Strategy and budget plans'],
+    kpis: ['Region-wide uptime and safety', 'Consistency across sites', 'Leadership bench strength'],
+    mistakes: ['One-size-fits-all rules that ignore site differences', 'Too far from operations reality', 'Not investing in training'],
+    practice: [
+      { label: 'Compare designs for new builds', tab: 'designs' },
+      { label: 'Case studies for standards', tab: 'cases' },
+    ],
+    interview: ['iv-pue', 'iv-redundancy'],
+  },
+};

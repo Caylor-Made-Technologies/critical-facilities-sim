@@ -10,6 +10,7 @@ import { grade } from '../../sim';
 import { Icon } from '../icons';
 import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
+import { CountUp } from '../common';
 import { BadgeWall, DailyCard, InstallButton, QuickStart, TipOfDay } from './HomeExtras';
 
 
@@ -101,22 +102,22 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
           </div>
           <ul className="hero-stats" aria-label="What's inside">
             <li>
-              <strong>{LESSONS.length}</strong> walkthroughs
+              <strong><CountUp value={LESSONS.length} /></strong> walkthroughs
             </li>
             <li>
-              <strong>{PROCEDURES.length}</strong> scored MOPs and drills
+              <strong><CountUp value={PROCEDURES.length} /></strong> scored MOPs and drills
             </li>
             <li>
-              <strong>{QUIZ.length}</strong> quiz questions
+              <strong><CountUp value={QUIZ.length} /></strong> quiz questions
             </li>
             <li>
-              <strong>{EQUIPMENT.length}</strong> equipment guides
+              <strong><CountUp value={EQUIPMENT.length} /></strong> equipment guides
             </li>
             <li>
-              <strong>{GLOSSARY.length}</strong> terms
+              <strong><CountUp value={GLOSSARY.length} /></strong> terms
             </li>
             <li>
-              <strong>7</strong> redundancy designs
+              <strong><CountUp value={7} /></strong> redundancy designs
             </li>
           </ul>
         </div>

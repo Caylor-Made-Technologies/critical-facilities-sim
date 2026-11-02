@@ -419,7 +419,7 @@ export function App() {
             )}
             {tab === 'tools' && <FieldToolsTab />}
             {tab === 'tips' && <TipsTab key={tipQ} p={p} initialQuery={tipQ} />}
-            {tab === 'career' && <CareerTab sim={h.sim} version={h.version} units={prefs.units} boxes={p.progress.cards} onRate={p.rateCard} openSim={() => setTab('sim')} p={p} />}
+            {tab === 'career' && <CareerTab sim={h.sim} version={h.version} units={prefs.units} boxes={p.progress.cards} onRate={p.rateCard} openSim={() => setTab('sim')} p={p} go={setTab} />}
             {tab === 'sim' && (
               <SimulatorTab
                 h={h}

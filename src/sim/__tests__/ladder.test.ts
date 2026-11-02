@@ -54,3 +54,33 @@ describe('data center cert roadmap', () => {
     expect(BADGES.find((b) => b.id === 'dc-certified')!.earned(sanitize({ dcCerts: ['cdcp'] }))).toBe(true);
   });
 });
+
+describe('issuer credits and rung details', () => {
+  it('every certification names an issuer that is linked, unless it is a state, employer, school or generic provider', async () => {
+    const { DC_CERTS, RUNG_DETAILS } = await import('../../content/ladder');
+    const { ISSUERS, issuersFor } = await import('../../content/issuers');
+    const generic = /state|employer|college|university|provider|training body|equipment maker|cloud provider|course provider/i;
+    const all = [...LADDER.flatMap((r) => r.certs), ...BRANCHES.flatMap((b) => b.certs), ...DC_CERTS.map((c) => ({ name: c.name, by: c.by }))];
+    for (const c of all) {
+      if (issuersFor(c.by).length === 0) expect(c.by, `${c.name} needs an issuer link`).toMatch(generic);
+    }
+    for (const i of ISSUERS) {
+      expect(i.url, i.id).toMatch(/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/[\w\-/]*)?$/);
+      expect(i.url, i.id).not.toMatch(/epi\.org/); // a different organization
+    }
+    // Each data center cert links to its issuer.
+    for (const c of DC_CERTS) expect(issuersFor(c.by).length, c.id).toBeGreaterThan(0);
+    expect(issuersFor('EPI (exam by EXIN)').map((i) => i.id)).toEqual(['epi', 'exin']);
+    // Rung details
+    const { INTERVIEW } = await import('../../content/career');
+    const { NAV } = await import('../../ui/nav');
+    for (const r of LADDER) {
+      const d = RUNG_DETAILS[r.id]!;
+      expect(d, r.id).toBeDefined();
+      for (const v of Object.values(d.mix)) expect(v >= 0 && v <= 100, r.id).toBe(true);
+      expect(d.day.length && d.tools.length && d.kpis.length && d.mistakes.length && d.practice.length, r.id).toBeTruthy();
+      for (const id of d.interview) expect(INTERVIEW.some((q) => q.id === id), `${r.id} ${id}`).toBe(true);
+      for (const x of d.practice) expect(NAV.some((n) => n.id === x.tab), `${r.id} ${x.tab}`).toBe(true);
+    }
+  });
+});

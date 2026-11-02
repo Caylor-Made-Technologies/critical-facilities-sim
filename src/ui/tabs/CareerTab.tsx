@@ -12,6 +12,7 @@ import { Icon } from '../icons';
 import type { Units } from '../prefs';
 import { plantIssues } from '../sim/StatusBanner';
 import type { ProgressHandle } from '../progress';
+import type { Tab } from '../nav';
 import { BranchesView, CertRoadmap, LadderView } from './CareerLadder';
 
 type Section = 'ladder' | 'certs' | 'branches' | 'interview' | 'handoff';
@@ -31,9 +32,10 @@ interface Props {
   onRate: (id: string, knew: boolean) => void;
   openSim: () => void;
   p: ProgressHandle;
+  go: (t: Tab) => void;
 }
 
-export function CareerTab({ sim, units, boxes, onRate, openSim, p }: Props) {
+export function CareerTab({ sim, units, boxes, onRate, openSim, p, go }: Props) {
   const [sec, setSec] = useState<Section>('ladder');
   const [branch, setBranch] = useState<string | null>(null);
   return (
@@ -48,6 +50,7 @@ export function CareerTab({ sim, units, boxes, onRate, openSim, p }: Props) {
         {sec === 'ladder' && (
           <LadderView
             p={p}
+            go={go}
             openBranch={(id) => {
               setBranch(id);
               setSec('branches');

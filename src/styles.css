@@ -5033,19 +5033,7 @@ body.has-follow .toast-region { bottom: 84px; }
   font: 800 0.68rem var(--font-head);
   text-transform: uppercase;
 }
-.rung-climber {
-  position: absolute;
-  left: -23px;
-  top: 50%;
-  font-size: 1.2rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-  transform: translateY(-50%);
-  animation: climb 0.5s var(--ease);
-  z-index: 1;
-}
-@keyframes climb {
-  from { transform: translateY(20%); opacity: 0; }
-}
+
 .rung-detail { animation: fadeUp 0.35s var(--ease); scroll-margin-top: calc(var(--nav-h) + 10px); }
 .rung-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rung-detail h2 { margin: 6px 0 2px; }
@@ -5144,3 +5132,127 @@ body.has-follow .toast-region { bottom: 84px; }
 .road-facts dt { font: 700 0.72rem var(--font-head); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
 .road-facts dd { margin: 0; font-size: 0.88rem; }
 @media (prefers-reduced-motion: reduce) { .road-step, .road-step.on .road-badge { animation: none; } }
+
+/* ==========================================================================
+   Career ladder: details, climber, credits
+   ========================================================================== */
+.rungs-box { position: relative; }
+.rung-climber {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  font-size: 1.35rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.ladder-rungs li { animation: rungIn 0.5s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes rungIn {
+  from { transform: translateY(18px) scale(0.96); }
+}
+.rung.sel .rung-num { animation: pop 0.45s var(--ease); }
+.ladder-progress { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 0; font-size: 0.9rem; }
+.ladder-progress-bar { height: 8px; border-radius: 4px; background: var(--surface-sunk); overflow: hidden; }
+.ladder-progress-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--ok), var(--cyan)); border-radius: 4px; transition: width 0.6s var(--ease); animation: barIn 0.9s var(--ease); }
+@keyframes barIn { from { width: 0; } }
+.rung-facts { display: grid; gap: 8px 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin: 12px 0 16px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface-sunk); border: 1px solid var(--border); }
+.rung-facts dt { font: 700 0.72rem var(--font-head); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.rung-facts dd { margin: 0; font-size: 0.9rem; color: var(--text-heading); }
+.rung-pane { animation: paneIn 0.4s var(--ease); }
+@keyframes paneIn { from { transform: translateX(12px); opacity: 0; } }
+.mix-meters { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.mix-meters li { display: grid; grid-template-columns: minmax(150px, 1fr) 2fr 34px; gap: 10px; align-items: center; }
+@media (max-width: 520px) { .mix-meters li { grid-template-columns: 1fr 34px; } .mix-bar { grid-column: 1 / -1; grid-row: 2; } }
+.mix-label { font-size: 0.88rem; }
+.mix-bar { height: 12px; border-radius: 6px; background: var(--surface-sunk); border: 1px solid var(--border); overflow: hidden; }
+.mix-fill { display: block; height: 100%; width: var(--w); border-radius: 6px; animation: mixIn 0.9s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms + 120ms); }
+@keyframes mixIn { from { width: 0; } }
+.mix-hands { background: linear-gradient(90deg, var(--blue), var(--blue-glow)); }
+.mix-planning { background: linear-gradient(90deg, var(--cool-2), var(--cyan)); }
+.mix-people { background: linear-gradient(90deg, #8b5cf6, #b48cff); }
+.mix-oncall { background: linear-gradient(90deg, #d97706, var(--warn)); }
+.mix-val { font: 800 0.85rem var(--font-head); color: var(--text-heading); text-align: right; font-variant-numeric: tabular-nums; }
+.day-line { list-style: none; padding: 0 0 0 18px; margin: 0; position: relative; display: grid; gap: 12px; }
+.day-line::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--grad); border-radius: 1px; }
+.day-line li { position: relative; display: flex; flex-direction: column; animation: fadeUp 0.4s var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms); }
+.day-line li::before { content: ''; position: absolute; left: -18px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 3px solid var(--blue-glow); }
+.day-line strong { color: var(--text-heading); font-size: 0.9rem; }
+.rung-cols { display: grid; gap: 4px 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.tag-cloud { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-cloud li { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-sunk); font-size: 0.84rem; }
+.cert-list .cert { animation: fadeUp 0.35s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms); }
+.issuer-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.issuer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--blue-glow) 45%, var(--border));
+  background: var(--blue-soft);
+  color: var(--text-link);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s, transform 0.15s var(--ease);
+}
+.issuer-link svg { width: 13px; height: 13px; transform: rotate(-45deg); transition: transform 0.2s var(--ease); }
+.issuer-link:hover { background: color-mix(in srgb, var(--blue) 22%, transparent); transform: translateY(-1px); }
+.issuer-link:hover svg { transform: rotate(-45deg) translateX(2px); }
+.issuer-credits { margin-top: 16px; }
+.credit-grid { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.credit-grid a { display: flex; flex-direction: column; padding: 10px 12px; min-height: 52px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-sunk); text-decoration: none; color: var(--text-heading); font-weight: 600; font-size: 0.9rem; transition: border-color 0.2s, transform 0.15s var(--ease); }
+.credit-grid a:hover { border-color: var(--blue-glow); transform: translateY(-2px); }
+.credit-host { font-size: 0.78rem; font-weight: 500; color: var(--text-link); }
+
+/* ==========================================================================
+   Site-wide motion pass
+   ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  /* Page sections cascade in when a tab opens (not on the live simulator). */
+  main:not([data-tab='sim']) .tab-panel > * { animation: cascadeIn 0.5s var(--ease) both; }
+  main:not([data-tab='sim']) .tab-panel > :nth-child(2) { animation-delay: 40ms; }
+  main:not([data-tab='sim']) .tab-panel > :nth-child(3) { animation-delay: 80ms; }
+  main:not([data-tab='sim']) .tab-panel > :nth-child(4) { animation-delay: 120ms; }
+  main:not([data-tab='sim']) .tab-panel > :nth-child(5) { animation-delay: 160ms; }
+  main:not([data-tab='sim']) .tab-panel > :nth-child(n + 6) { animation-delay: 200ms; }
+  /* Buttons lift on hover, press in on tap; primary buttons get a light sweep. */
+  .btn { transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease), background-color 0.2s, border-color 0.2s; }
+  .btn:not(:disabled):hover { transform: translateY(-1px); }
+  .btn:not(:disabled):active { transform: translateY(0) scale(0.97); }
+  .btn-primary { position: relative; overflow: hidden; }
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .btn-primary:not(:disabled):hover::after { transform: translateX(120%); transition: transform 0.7s var(--ease); }
+  /* Active nav items bounce gently. */
+  .bottombar a[aria-current='page'] svg { animation: hop 0.45s var(--ease); }
+  .side-link svg { transition: transform 0.2s var(--ease); }
+  .side-link:hover svg { transform: translateX(2px) scale(1.08); }
+  .side-link[aria-current='page'] svg { animation: hop 0.45s var(--ease); }
+  /* Progress bars fill in from empty. */
+  .xp-bar span, .flash-bar span, .exam-progress span { animation: barIn 0.9s var(--ease); }
+  /* Section tab dots pulse when selected. */
+  .section-tab[aria-selected='true'] .section-dot { animation: dotPulse 1.8s ease-in-out infinite; }
+  /* Chips and cards respond to touch. */
+  .chip-btn:active, .tip-chip:active, .quick-tile:active { transform: scale(0.96); }
+}
+@keyframes cascadeIn { from { transform: translateY(14px); opacity: 0; } }
+@keyframes hop { 40% { transform: translateY(-4px) scale(1.12); } }
+@keyframes dotPulse { 50% { transform: scale(1.35); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rung-climber { transition: none; }
+  .ladder-rungs li, .rung.sel .rung-num, .ladder-progress-bar span, .rung-pane, .mix-fill, .day-line li, .cert-list .cert { animation: none; }
+  .issuer-link, .credit-grid a { transition: none; }
+}
+:root[data-theme='light'] .issuer-link { color: #123f99; background: #ffffff; }
+:root[data-theme='light'] .issuer-link:hover { background: #eef3fa; }

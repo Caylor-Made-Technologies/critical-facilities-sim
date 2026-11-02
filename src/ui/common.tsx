@@ -106,9 +106,11 @@ export function Confetti({ burst }: { burst: number }) {
 }
 
 /** Counts smoothly from the previous value to the new one. */
-export function useCountUp(target: number, ms = 700): number {
-  const [shown, setShown] = useState(target);
-  const from = useRef(target);
+export function useCountUp(target: number, ms = 700, start?: number): number {
+  const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const first = reduce || start === undefined ? target : start;
+  const [shown, setShown] = useState(first);
+  const from = useRef(first);
   useEffect(() => {
     const start = from.current;
     if (start === target) return;
@@ -219,4 +221,9 @@ export function usePauseWhenOffscreen(ref: RefObject<Element>) {
     io.observe(el);
     return () => io.disconnect();
   }, [ref]);
+}
+
+/** A number that counts up from zero when it first appears. */
+export function CountUp({ value }: { value: number }) {
+  return <>{useCountUp(value, 1100, 0)}</>;
 }

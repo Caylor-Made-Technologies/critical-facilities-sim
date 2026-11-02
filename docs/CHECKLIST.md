@@ -4,7 +4,7 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 
 | # | Point | Status for this project |
 |---|---|---|
-| 1 | Privacy policy | About page: nothing is collected or sent. Preferences and learning progress stay in your own browser's local storage. Explains how feedback works. GitHub Pages server logs are mentioned. |
+| 1 | Privacy policy | About page explains that issuer links open other websites with their own privacy policies, and that clicks aren't tracked. About page: nothing is collected or sent. Preferences and learning progress stay in your own browser's local storage. Explains how feedback works. GitHub Pages server logs are mentioned. |
 | 2 | Terms of service | About page: educational use only, no warranty, not for real work, MIT license, Texas law. Marked as a template until an attorney reviews it. |
 | 3 | Refund policy | N/A: free, nothing is sold. |
 | 4 | Cookie policy | Covered in the privacy section: no cookies. |
@@ -22,7 +22,7 @@ How each point applies to this simulator. It is a static, offline teaching tool 
 | 16 | Business details | Footer and About page: Caylor Made Technologies, Hereford, TX, email, website, source link. |
 | 17 | Kids' data | Not directed at children. No data is collected. |
 | 18 | Unsubscribe link | N/A: no email. |
-| 19 | Licensed fonts / images | Tip topic icons are the device's own emoji (no image files shipped), hidden from screen readers. The app icon is original artwork drawn in SVG for this project. Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
+| 19 | Licensed fonts / images | Certification issuers are credited and linked (no logos used).  Tip topic icons are the device's own emoji (no image files shipped), hidden from screen readers. The app icon is original artwork drawn in SVG for this project. Brand fonts Inter and Montserrat, self-hosted, SIL OFL license files shipped in `/fonts`. Logo is the business's own mark. Diagrams and icons are original SVG drawn in code. No photos. |
 | 20 | Data deletion | Nothing stored server-side. "Clear my saved settings & progress" also clears saved tips, text size and the remembered last section. Progress backups are files the user downloads to their own device; restoring validates the file and changes nothing if it isn't a valid backup. "Clear my saved settings & progress" on the About page wipes local data. Feedback emails are deleted within 45 days of a request. |
 
 ## Security

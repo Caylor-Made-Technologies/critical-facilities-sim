@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import { BUSINESS } from '../business';
 import { sanitize, type Progress } from '../progress';
+import { IssuerCredits } from './CareerLadder';
 
 export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: () => void; progress?: Progress; onRestore?: (p: Progress) => void }) {
   const file = useRef<HTMLInputElement>(null);
@@ -100,6 +101,11 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
           <p className="muted small" aria-live="polite">
             {msg || 'Backups are a file on your own device, for moving progress to a new phone or browser. The site never sees them.'}
           </p>
+          <p>
+            <strong>Links to other sites:</strong> the Career tab links to certification issuers' own websites so you can
+            find them easily. Those links open in a new tab, and those sites have their own privacy policies. This site
+            doesn't track whether you click them.
+          </p>
           <h3 style={{ marginTop: 16 }}>Feedback</h3>
           <p>
             The Feedback tab doesn't send anything itself. It opens a pre-filled email in your own email app (or a public
@@ -128,6 +134,7 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             and icons are original artwork drawn in code. No photos are used.
           </p>
         </section>
+        <IssuerCredits />
       </div>
     </div>
   );
