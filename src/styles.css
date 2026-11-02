@@ -5111,3 +5111,36 @@ body.has-follow .toast-region { bottom: 84px; }
   .rung, .rung-climber, .rung-detail, .branch[open] > :not(summary) { animation: none; transition: none; }
   .branch summary > svg { transition: none; }
 }
+
+/* ---------- Data center cert roadmap ---------- */
+.cert-road { list-style: none; padding: 0 0 0 4px; margin: 10px 0 14px; display: grid; gap: 12px; position: relative; }
+.cert-road::before { content: ''; position: absolute; left: 31px; top: 24px; bottom: 24px; width: 3px; border-radius: 2px; background: var(--grad); opacity: 0.55; }
+.cert-road .card + .card { margin-top: 0; }
+.road-step { display: flex; gap: 14px; align-items: flex-start; position: relative; animation: goldIn 0.45s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); transition: border-color 0.2s; }
+.road-step.on { border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); }
+.road-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-left: -6px;
+  border-radius: 16px;
+  background: var(--grad);
+  color: #04101f;
+  font: 800 0.8rem var(--font-head);
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 6px 16px rgba(30, 111, 255, 0.3);
+}
+.road-step.on .road-badge { background: var(--ok); color: #04140c; font-size: 1.5rem; animation: pop 0.45s var(--ease); }
+.road-body { flex: 1; min-width: 0; }
+.road-body p { margin: 4px 0; }
+.road-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.road-head h2 { margin: 0; font-size: 1.02rem; }
+.road-short { color: var(--text-muted); font-weight: 600; }
+.road-facts { display: grid; gap: 4px 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); margin: 8px 0 0; }
+.road-facts dt { font: 700 0.72rem var(--font-head); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.road-facts dd { margin: 0; font-size: 0.88rem; }
+@media (prefers-reduced-motion: reduce) { .road-step, .road-step.on .road-badge { animation: none; } }

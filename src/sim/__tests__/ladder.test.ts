@@ -34,3 +34,23 @@ describe('career ladder', () => {
     expect(climber.earned(sanitize({ careerChecks: LADDER[0]!.doNow.map((_, i) => `r1:${i}`) }))).toBe(true);
   });
 });
+
+describe('data center cert roadmap', () => {
+  it('lists the main data center certs with issuer, best rung, format and prerequisites', async () => {
+    const { DC_CERTS } = await import('../../content/ladder');
+    const shorts = DC_CERTS.map((c) => c.short);
+    for (const s of ['CDCP', 'CDCTP', 'CDFOM', 'AOS', 'CDCMP']) expect(shorts).toContain(s);
+    expect(new Set(DC_CERTS.map((c) => c.id)).size).toBe(DC_CERTS.length);
+    for (const c of DC_CERTS) {
+      expect(LADDER.some((r) => r.id === c.rung), c.id).toBe(true);
+      expect(c.by && c.format && c.needs && c.why, c.id).toBeTruthy();
+      expect(c.id).toMatch(/^[a-z]{2,8}$/);
+    }
+    // The building engineer rung names data-center-specific certs too.
+    expect(LADDER.find((r) => r.id === 'r3')!.certs.map((c) => c.name).join(' ')).toMatch(/CDFOM/);
+  });
+  it('earned certs are validated and unlock the Certified badge', () => {
+    expect(sanitize({ dcCerts: ['cdcp', 'BAD!', 7] }).dcCerts).toEqual(['cdcp']);
+    expect(BADGES.find((b) => b.id === 'dc-certified')!.earned(sanitize({ dcCerts: ['cdcp'] }))).toBe(true);
+  });
+});

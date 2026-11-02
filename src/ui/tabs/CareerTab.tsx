@@ -12,11 +12,12 @@ import { Icon } from '../icons';
 import type { Units } from '../prefs';
 import { plantIssues } from '../sim/StatusBanner';
 import type { ProgressHandle } from '../progress';
-import { BranchesView, LadderView } from './CareerLadder';
+import { BranchesView, CertRoadmap, LadderView } from './CareerLadder';
 
-type Section = 'ladder' | 'branches' | 'interview' | 'handoff';
+type Section = 'ladder' | 'certs' | 'branches' | 'interview' | 'handoff';
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'ladder', label: 'Career ladder' },
+  { id: 'certs', label: 'Data center certs' },
   { id: 'branches', label: 'Branch out' },
   { id: 'interview', label: 'Interview prep' },
   { id: 'handoff', label: 'Shift handoff' },
@@ -53,6 +54,7 @@ export function CareerTab({ sim, units, boxes, onRate, openSim, p }: Props) {
             }}
           />
         )}
+        {sec === 'certs' && <CertRoadmap p={p} goLadder={() => setSec('ladder')} />}
         {sec === 'branches' && <BranchesView openId={branch} />}
         {sec === 'handoff' && <Handoff sim={sim} units={units} openSim={openSim} />}
       </div>

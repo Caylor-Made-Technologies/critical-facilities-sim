@@ -1,10 +1,10 @@
 /**
  * Career ladder for data center critical facilities, bottom rung first,
- * plus the side branches you can step off onto. Generic: no employer
- * names. Certifications are named by the public agency or non-profit
- * association that issues them; data-center-specific courses from
- * private training firms are described generically. Requirements change,
- * so always check the issuer's current rules. Not an endorsement.
+ * plus the side branches you can step off onto, and the data center
+ * certification roadmap. Generic: no employer names. Certifications are
+ * named with the organization that issues them (agency, association or
+ * training firm) as education only: no logos, prices or endorsements.
+ * Requirements change, so always check the issuer's current rules.
  */
 
 export interface Cert {
@@ -51,6 +51,7 @@ export const LADDER: Rung[] = [
       { name: 'OSHA 10-Hour General Industry', by: 'OSHA Outreach Training Program', why: 'The baseline safety card most sites expect.' },
       { name: 'CPR / AED / First Aid', by: 'A nationally recognized provider', why: 'You may be the first person on scene.' },
       { name: 'NFPA 70E electrical safety training', by: 'Your employer or a qualified trainer (based on the NFPA 70E standard)', why: 'Required before you work near energized equipment.' },
+      { name: 'Data Center Certified Associate (DCCA)', by: 'Schneider Electric University', why: 'Online, self-paced data center basics. An easy first data center credential to start with.' },
     ],
   },
   {
@@ -75,7 +76,8 @@ export const LADDER: Rung[] = [
     certs: [
       { name: 'EPA Section 608 Universal', by: 'U.S. EPA (through an approved testing organization)', why: 'Legally required to handle refrigerant; expected for anyone on chillers or CRACs.' },
       { name: 'OSHA 30-Hour General Industry', by: 'OSHA Outreach Training Program', why: 'Deeper safety training that supervisors look for.' },
-      { name: 'Vendor-neutral data center operations certificate', by: 'Several private training firms offer one', why: 'Shows you understand data center power, cooling and resiliency as a system.' },
+      { name: 'Certified Data Centre Professional (CDCP)', by: 'EPI (exam by EXIN)', why: 'A common first data center certification. Shows you understand power, cooling and resiliency as a system.' },
+      { name: 'Certified Data Centre Technician Professional (CDCTP)', by: 'CNet Training', why: 'Built for technicians who keep a live data center running day to day.' },
       { name: 'Systems Maintenance Technician (SMT)', by: 'BOMI International', why: 'Building systems fundamentals: HVAC, electrical, boilers and controls.' },
     ],
   },
@@ -99,6 +101,8 @@ export const LADDER: Rung[] = [
       'You can explain the business impact of a risk, not just the technical part.',
     ],
     certs: [
+      { name: 'Certified Data Centre Facilities Operations Manager (CDFOM)', by: 'EPI (exam by EXIN)', why: 'Data center operations: maintenance strategy, staffing, change and incident management. A strong step toward lead and chief roles.' },
+      { name: 'Accredited Operations Specialist (AOS)', by: 'Uptime Institute', why: 'Teaches operational sustainability, the "how you run it" side of the Tier idea.' },
       { name: 'Journeyman electrician license', by: 'Your state licensing board (where it applies)', why: 'Proves electrical competence and opens the electrical SME branch.' },
       { name: 'Stationary / operating engineer license', by: 'Your city or state (where required)', why: 'Some cities require it to operate boilers, chillers or large plants.' },
       { name: 'NETA ETT Certified Technician (Level I–II)', by: 'InterNational Electrical Testing Association', why: 'Electrical testing and maintenance skills for switchgear and protection.' },
@@ -126,6 +130,7 @@ export const LADDER: Rung[] = [
     ],
     certs: [
       { name: 'Master electrician license', by: 'Your state licensing board (where it applies)', why: 'Top electrical credential; often required for electrical SME roles.' },
+      { name: 'Accredited Operations Professional (AOP)', by: 'Uptime Institute', why: 'The next step after AOS for people leading operations.' },
       { name: 'Certified Control Systems Technician (CCST)', by: 'ISA (International Society of Automation)', why: 'Controls and instrumentation credential for the BMS/EPMS branch.' },
       { name: 'Certified Maintenance & Reliability Professional (CMRP)', by: 'Society for Maintenance & Reliability Professionals', why: 'Reliability leadership; useful toward lead and chief roles.' },
       { name: 'NETA ETT Certified Technician (Level III)', by: 'InterNational Electrical Testing Association', why: 'Senior electrical testing; supports the electrical SME branch.' },
@@ -151,6 +156,7 @@ export const LADDER: Rung[] = [
       'Leadership trusts your judgment under pressure.',
     ],
     certs: [
+      { name: 'Certified Data Centre Management Professional (CDCMP)', by: 'CNet Training', why: 'Data center management: operations, risk, capacity and people. Common next step after CDCTP.' },
       { name: 'Facility Management Professional (FMP)', by: 'IFMA (International Facility Management Association)', why: 'Facility management basics: operations, finance, projects, leadership.' },
       { name: 'Certified Associate in Project Management (CAPM)', by: 'PMI (Project Management Institute)', why: 'Project skills for upgrades and capital work.' },
       { name: 'OSHA Outreach Trainer (500/501 course)', by: 'OSHA Training Institute Education Centers', why: 'Lets you teach OSHA 10/30 to your own team.' },
@@ -175,6 +181,7 @@ export const LADDER: Rung[] = [
       'You can run more than one site or a large campus.',
     ],
     certs: [
+      { name: 'Accredited Tier Specialist (ATS)', by: 'Uptime Institute', why: 'Deep understanding of the Tier topology standard for design reviews and upgrades.' },
       { name: 'Certified Facility Manager (CFM)', by: 'IFMA (International Facility Management Association)', why: 'Senior facility management credential.' },
       { name: 'Project Management Professional (PMP)', by: 'PMI (Project Management Institute)', why: 'For leading large capital projects.' },
       { name: 'Certified Energy Manager (CEM)', by: 'Association of Energy Engineers', why: 'Energy and PUE improvement credibility.' },
@@ -377,6 +384,8 @@ export const BRANCHES: Branch[] = [
     certs: [
       { name: 'Engineering degree, then the FE exam', by: 'A university, then NCEES', why: 'The first steps toward a professional engineer license.' },
       { name: 'Professional Engineer (PE) license', by: 'Your state engineering board (exam by NCEES)', why: 'Needed to seal designs.' },
+      { name: 'Certified Data Centre Specialist (CDCS), then Expert (CDCE)', by: 'EPI (exam by EXIN)', why: 'Data center design track after CDCP.' },
+      { name: 'Data Center Design Consultant (DCDC)', by: 'BICSI', why: 'Recognized data center design credential.' },
     ],
     firstSteps: ['Look into engineering degree programs (many offer evening or online options)', 'Keep a "lessons from the field" list to bring to design reviews', 'Ask design engineers questions during projects'],
   },
@@ -397,3 +406,30 @@ export const BRANCHES: Branch[] = [
 ];
 
 export const branchesFrom = (rungId: string) => BRANCHES.filter((b) => b.from === rungId);
+
+// ---------------------------------------------------------------------------
+// Data center certification roadmap (fast track for building engineers)
+// ---------------------------------------------------------------------------
+export interface DcCert {
+  id: string;
+  short: string;
+  name: string;
+  by: string;
+  /** Ladder rung where it helps most. */
+  rung: string;
+  format: string;
+  needs: string;
+  why: string;
+}
+
+/** In the order most people take them. Check each issuer for current format, prerequisites and renewal. */
+export const DC_CERTS: DcCert[] = [
+  { id: 'dcca', short: 'DCCA', name: 'Data Center Certified Associate', by: 'Schneider Electric University', rung: 'r1', format: 'Online, self-paced courses, then an online exam', needs: 'Nothing. A good first step.', why: 'Flexible, online proof that you know data center basics: power, cooling, racks, fire protection and security.' },
+  { id: 'cdcp', short: 'CDCP', name: 'Certified Data Centre Professional', by: 'EPI (exam by EXIN)', rung: 'r2', format: 'About a 2-day course, then a multiple-choice exam', needs: 'Nothing formal; some field time helps.', why: 'A common first data center certification. Shows hiring managers you see the plant as a system.' },
+  { id: 'cdctp', short: 'CDCTP', name: 'Certified Data Centre Technician Professional', by: 'CNet Training', rung: 'r2', format: 'Core unit (about 3 days) plus professional unit (about 2 days)', needs: 'Finish the core unit first.', why: 'Made for the techs who keep a live data center running. Very close to the building engineer job.' },
+  { id: 'cdfom', short: 'CDFOM', name: 'Certified Data Centre Facilities Operations Manager', by: 'EPI (exam by EXIN)', rung: 'r3', format: 'Multi-day course, then an exam', needs: 'Operations experience recommended.', why: 'Operations management: maintenance strategy, change and incident management, staffing and reporting. Speaks the language leads and chiefs use.' },
+  { id: 'aos', short: 'AOS', name: 'Accredited Operations Specialist', by: 'Uptime Institute', rung: 'r3', format: 'Multi-day course, then an end-of-course exam', needs: 'Check the issuer\'s eligibility rules.', why: 'Operational sustainability: how staffing, maintenance and procedures keep a site up. Well known across the industry.' },
+  { id: 'aop', short: 'AOP', name: 'Accredited Operations Professional', by: 'Uptime Institute', rung: 'r4', format: 'Course and exam after AOS', needs: 'AOS first.', why: 'The next level for people who lead operations programs.' },
+  { id: 'cdcmp', short: 'CDCMP', name: 'Certified Data Centre Management Professional', by: 'CNet Training', rung: 'r5', format: 'About a 5-day program', needs: 'Data center experience; often taken after CDCTP.', why: 'Management of the whole facility: operations, risk, capacity, budgets and people. Good preparation for chief engineer.' },
+  { id: 'ats', short: 'ATS', name: 'Accredited Tier Specialist', by: 'Uptime Institute', rung: 'r6', format: 'Multi-day course, then an exam', needs: 'Check the issuer\'s eligibility rules.', why: 'Deep knowledge of Tier topology for design reviews, upgrades and talking with designers and customers.' },
+];

@@ -11,6 +11,9 @@ Read that note before working here, and attach the vault repo to the session.
 
 ## Rules for this repo
 - Generic and public only: no real company, site, equipment tag, vendor model, IP address, or photo.
+  - Exception (Jonathon's call, 2026-11-02): career content may name real certifications and the
+    organizations that issue them (incl. private training firms), as education only. No logos, no
+    prices, no affiliate links, no endorsement wording; say "check the issuer's current details".
 - Static site: no backend, analytics, cookies, external calls, or data collection. Must work offline.
 - No AI-tool branding in commits, PRs, code comments, or published files. Commit as
   `Caylor Made Technologies <andycaylor@icloud.com>`. Branch names stay plain (no `claude/`).

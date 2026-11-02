@@ -5,7 +5,8 @@
  * device.
  */
 import { useEffect, useRef, useState } from 'react';
-import { BRANCHES, LADDER, branchesFrom, type Branch, type Cert } from '../../content/ladder';
+import type React from 'react';
+import { BRANCHES, DC_CERTS, LADDER, branchesFrom, type Branch, type Cert } from '../../content/ladder';
 import { Confetti } from '../common';
 import { buzz } from '../haptics';
 import { Icon } from '../icons';
@@ -185,7 +186,7 @@ export function LadderView({ p, openBranch }: { p: ProgressHandle; openBranch: (
       </div>
       <p className="muted small">
         A typical path, not a promise: titles, years and requirements vary by employer, city and state. Certification
-        names and rules change, so check the issuer's current requirements. Listing a certification is not an endorsement.
+        names and rules change, so check the issuer's current requirements. Listing a certification is not an endorsement. See the Data center certs section for the fast-track roadmap.
       </p>
     </>
   );
@@ -268,6 +269,89 @@ export function BranchesView({ openId }: { openId: string | null }) {
         {BRANCHES.length} branches. A typical picture, not a promise. Check each issuer's current certification
         requirements.
       </p>
+    </>
+  );
+}
+
+export function CertRoadmap({ p, goLadder }: { p: ProgressHandle; goLadder: () => void }) {
+  const [burst, setBurst] = useState(0);
+  const got = new Set(p.progress.dcCerts);
+  return (
+    <>
+      <div className="callout">
+        <strong>Fast track: </strong>these data-center-specific certifications show you understand the whole plant, not
+        just one machine, and they often show up in building engineer job posts. Most people take them in
+        this order. <strong>Ask your employer first:</strong> many pay for them.
+      </div>
+      <p className="muted small">
+        {got.size} of {DC_CERTS.length} marked as earned. Tap <strong>Got it</strong> when you pass one.
+      </p>
+      <ol className="cert-road">
+        {DC_CERTS.map((c, i) => {
+          const on = got.has(c.id);
+          const rung = LADDER.findIndex((r) => r.id === c.rung);
+          return (
+            <li key={c.id} className={`card road-step${on ? ' on' : ''}`} style={{ '--i': i } as React.CSSProperties}>
+              <span className="road-badge" aria-hidden="true">
+                {on ? '✓' : c.short}
+              </span>
+              <div className="road-body">
+                <div className="road-head">
+                  <h2>
+                    {c.name} <span className="road-short">({c.short})</span>
+                  </h2>
+                  <button
+                    type="button"
+                    className={`btn btn-sm${on ? ' btn-primary' : ''}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      if (!on) {
+                        setBurst(Date.now());
+                        buzz([10, 40, 10]);
+                      }
+                      p.toggleDcCert(c.id);
+                    }}
+                  >
+                    <Icon name="check" /> {on ? 'Got it' : 'Mark got it'}
+                  </button>
+                </div>
+                <p className="cert-by">{c.by}</p>
+                <p>{c.why}</p>
+                <dl className="road-facts">
+                  <div>
+                    <dt>Best at</dt>
+                    <dd>
+                      Rung {rung + 1}: {LADDER[rung]!.role}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Format</dt>
+                    <dd>{c.format}</dd>
+                  </div>
+                  <div>
+                    <dt>Before you start</dt>
+                    <dd>{c.needs}</dd>
+                  </div>
+                </dl>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="callout">
+        <strong>Pair them with the basics: </strong>OSHA 10/30, EPA 608, NFPA 70E training and an electrical license still
+        matter. The{' '}
+        <button className="linklike" type="button" onClick={goLadder}>
+          career ladder
+        </button>{' '}
+        shows where each one fits.
+      </div>
+      <p className="muted small">
+        Names, formats, prerequisites and renewal rules come from the issuers and change over time (several renew every 3
+        years). Check the issuer's current details before you sign up. Listing a certification is not an endorsement, and
+        this site has no ties to any issuer.
+      </p>
+      <Confetti burst={burst} />
     </>
   );
 }
