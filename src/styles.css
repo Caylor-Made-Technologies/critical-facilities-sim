@@ -5393,9 +5393,9 @@ body.has-follow .toast-region { bottom: 84px; }
 .wave { display: inline-block; transform-origin: 70% 70%; animation: wave 2.4s ease-in-out 0.4s 2; }
 @keyframes wave { 10%, 30% { transform: rotate(14deg); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(-4deg); } 50% { transform: none; } }
 .path-hero-sub { color: var(--text-body); margin: 0 0 14px; }
-.next-up { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; max-width: 560px; border-color: color-mix(in srgb, var(--blue-glow) 55%, var(--border)); box-shadow: var(--glow); animation: fadeUp 0.6s var(--ease) 0.2s both; }
-.next-up strong { font: 800 1.15rem var(--font-head); color: var(--text-heading); }
-.next-up .btn { margin-top: 8px; }
+.bp-next { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; max-width: 560px; border-color: color-mix(in srgb, var(--blue-glow) 55%, var(--border)); box-shadow: var(--glow); animation: fadeUp 0.6s var(--ease) 0.2s both; }
+.bp-next strong { font: 800 1.15rem var(--font-head); color: var(--text-heading); }
+.bp-next .btn { margin-top: 8px; }
 .next-label { font: 700 0.72rem var(--font-head); text-transform: uppercase; letter-spacing: 0.06em; color: var(--cyan); }
 .path-profile { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
 .path-profile .card + .card { margin-top: 0; }
@@ -5493,7 +5493,7 @@ body.has-follow .toast-region { bottom: 84px; }
 .path-invite-ring > span { position: absolute; inset: 0; display: grid; place-items: center; font: 800 0.8rem var(--font-head); color: var(--text-heading); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wiz-steps li.now, .wiz-card.dir-fwd, .wiz-card.dir-back, .orb, .orb-ring, .orb-emoji, .pick, .equip, .conf-list li, .conf-face, .drop.reading .doc-line, .scan, .findings, .find-chips li, .check-q, .big-score, .build-core, .build-sat, .build-steps li.done .build-tick, .build-steps li.now .build-tick, .path-hero-bg, .wave, .next-up, .prof-ring-fg, .radar-shape, .radar-dot, .mini-ladder li, .plan-bar span, .phases::before, .phase, .path-item, .path-item.done .pi-icon, .path-invite-orb, .suggest { animation: none !important; }
+  .wiz-steps li.now, .wiz-card.dir-fwd, .wiz-card.dir-back, .orb, .orb-ring, .orb-emoji, .pick, .equip, .conf-list li, .conf-face, .drop.reading .doc-line, .scan, .findings, .find-chips li, .check-q, .big-score, .build-core, .build-sat, .build-steps li.done .build-tick, .build-steps li.now .build-tick, .path-hero-bg, .wave, .bp-next, .prof-ring-fg, .radar-shape, .radar-dot, .mini-ladder li, .plan-bar span, .phases::before, .phase, .path-item, .path-item.done .pi-icon, .path-invite-orb, .suggest { animation: none !important; }
   .equip-check svg, .check-dots span, .pick, .equip, .path-invite { transition: none; }
 }
 
@@ -5710,4 +5710,11 @@ body.has-follow .toast-region { bottom: 84px; }
   .path-hero-art { display: block; position: absolute !important; right: 24px; top: 50%; width: 360px; transform: translateY(-50%); opacity: 0.95; }
   .path-hero-art .bp-art { margin: 0; }
   .path-hero > :not(.path-hero-bg):not(.path-hero-art) { max-width: calc(100% - 400px); }
+}
+/* Blueprint skill check: one column, full width */
+.skill-check { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.skill-check .quiz-options { width: 100%; }
+@media (max-width: 600px) {
+  .title-block { position: static; width: fit-content; margin: -6px 0 12px auto; }
+  .wiz-card h1#wiz-h { padding-right: 0; }
 }

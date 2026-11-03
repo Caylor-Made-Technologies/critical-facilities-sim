@@ -594,7 +594,7 @@ function SkillCheck({ check, setCheck, hi }: { check: Record<string, boolean>; s
   }
   const q = qs[i]!;
   return (
-    <div className="check">
+    <div className="skill-check">
       <h1 id="wiz-h" className="check-h">
         Quick skill check: {i + 1} of {qs.length}
       </h1>
@@ -794,7 +794,7 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
           {profile.jobTitle || role.label} · {YEARS.find((y) => y.id === profile.years)!.label} · {profile.hours} hr/week
         </p>
         {next ? (
-          <div className="next-up card">
+          <div className="bp-next card">
             <span className="next-label">Next up · week {path.weekOf[next.key]}</span>
             <strong>{next.title}</strong>
             <span className="muted small">{next.why}</span>
@@ -803,7 +803,7 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
             </button>
           </div>
         ) : (
-          <div className="next-up card all-done">
+          <div className="bp-next card all-done">
             <strong>⚡ Fully energized!</strong>
             <span>Every item is done. Retake the skill check to draw your next revision.</span>
             <button className="btn btn-primary" type="button" onClick={onRetake}>
