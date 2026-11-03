@@ -20,7 +20,7 @@ export const SKILL_AREAS: { id: SkillArea; label: string; emoji: string; blurb: 
   { id: 'backup', label: 'UPS, batteries & generators', emoji: '🔋', blurb: 'Ride-through, transfers, fuel' },
   { id: 'mechanical', label: 'Cooling & HVAC', emoji: '❄️', blurb: 'Chillers, towers, pumps, air handlers' },
   { id: 'controls', label: 'Controls & BMS', emoji: '🎛️', blurb: 'Sensors, alarms, trends, VFDs' },
-  { id: 'safety', label: 'Safety & LOTO', emoji: '🦺', blurb: 'Lockout, arc flash, PPE, permits' },
+  { id: 'safety', label: 'Safety & LOTOTO', emoji: '🦺', blurb: 'Lockout, arc flash, PPE, permits' },
   { id: 'procedures', label: 'MOPs & change', emoji: '📋', blurb: 'Following and writing procedures' },
   { id: 'troubleshooting', label: 'Troubleshooting', emoji: '🔍', blurb: 'Finding root causes' },
   { id: 'leadership', label: 'Communication & leading', emoji: '🤝', blurb: 'Handoffs, training others, incidents' },
@@ -117,6 +117,8 @@ export interface Profile {
   /** Path items marked done by hand (tabs, certs, ladder steps). */
   done: string[];
   createdAt: string;
+  /** Blueprint revision: goes up each time the path is rebuilt. */
+  rev: number;
 }
 
 export const EMPTY_CONFIDENCE: Record<SkillArea, number> = {
@@ -355,7 +357,7 @@ const AREA_PLAN: Record<SkillArea, { learn: (PathItem | null)[]; practice: (Path
   safety: {
     learn: [lesson('loto-basics', 'safety', 'Your lock, your life.'), tab('safety', 'Safety Center: golden rules & library', 'safety', 'The ten rules and the reasons behind them.', 15)],
     practice: [
-      { key: `safety:${LOTO_DRILLS[0]!.id}`, kind: 'safety', ref: LOTO_DRILLS[0]!.id, title: `LOTO drill: ${LOTO_DRILLS[0]!.title}`, why: 'Put lockout steps in the right order.', minutes: 5, area: 'safety' },
+      { key: `safety:${LOTO_DRILLS[0]!.id}`, kind: 'safety', ref: LOTO_DRILLS[0]!.id, title: `LOTOTO drill: ${LOTO_DRILLS[0]!.title}`, why: 'Put lockout steps in the right order.', minutes: 5, area: 'safety' },
       { key: `safety:${HAZARD_HUNTS[0]!.id}`, kind: 'safety', ref: HAZARD_HUNTS[0]!.id, title: `Hazard hunt: ${HAZARD_HUNTS[0]!.title}`, why: 'Train your eye for hazards.', minutes: 5, area: 'safety' },
       proc('drill-fire', 'safety', 'Fire alarm response.'),
     ],
@@ -424,10 +426,10 @@ export function buildPath(p: Profile, s: SkillScores = scoreProfile(p)): Trainin
   if (p.goal === 'first-job') add(level, tab('career', 'Interview prep: practice 5 cards a day', 'career', 'Get ready to land the job.', 15));
 
   const phases: PathPhase[] = [
-    { id: 'foundation', title: 'Foundations', emoji: '🧱', blurb: `Shore up ${focus.slice(0, 2).map((a) => SKILL_AREAS.find((x) => x.id === a)!.label).join(' and ')} first.`, items: foundation },
-    { id: 'practice', title: 'Hands-on practice', emoji: '🛠️', blurb: 'Run it on the live plant model. Wrong calls are safe here.', items: practice },
-    { id: 'prove', title: 'Prove it', emoji: '🎯', blurb: 'Quizzes, flashcards and the timed exam.', items: prove },
-    { id: 'level', title: 'Level up', emoji: '🚀', blurb: `Certs and goals toward ${nextRung.role.toLowerCase()}.`, items: level },
+    { id: 'foundation', title: 'Lay the foundation', emoji: '📐', blurb: `Shore up ${focus.slice(0, 2).map((a) => SKILL_AREAS.find((x) => x.id === a)!.label).join(' and ')} first.`, items: foundation },
+    { id: 'practice', title: 'Wire it up', emoji: '🛠️', blurb: 'Hands-on practice on the live plant model. Wrong calls are safe here.', items: practice },
+    { id: 'prove', title: 'Test & verify', emoji: '🔬', blurb: 'Prove it: quizzes, flashcards and the timed exam.', items: prove },
+    { id: 'level', title: 'Energize', emoji: '⚡', blurb: `Level up: certs and goals toward ${nextRung.role.toLowerCase()}.`, items: level },
   ].filter((ph) => ph.items.length);
 
   // Spread items across weeks by study time.
@@ -506,6 +508,7 @@ export function sanitizeProfile(raw: unknown): Profile | null {
     resume,
     done: strs(p.done, 200, 200),
     createdAt: str(p.createdAt, 30),
+    rev: typeof p.rev === 'number' && p.rev >= 1 && p.rev < 1000 ? Math.floor(p.rev) : 1,
   };
 }
 

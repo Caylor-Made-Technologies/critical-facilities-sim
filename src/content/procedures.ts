@@ -87,9 +87,9 @@ export const MOPS: Procedure[] = [
       {
         title: 'Verify the load and lock out',
         detail:
-          'Confirm every rack still has power, then apply locks and tags to the open breakers under your LOTO program and test for absence of voltage before anyone touches the UPS.',
+          'Confirm every rack still has power, then apply locks and tags to the open breakers under your LOTOTO program and test for absence of voltage before anyone touches the UPS.',
         why: 'An open breaker is not proof of a dead circuit. Test before touch, every time.',
-        confirm: 'Load verified, LOTO applied, absence of voltage tested',
+        confirm: 'Load verified, LOTOTO applied, absence of voltage tested',
       },
     ],
     debrief: [
@@ -121,7 +121,7 @@ export const MOPS: Procedure[] = [
         title: 'Work complete, area clear, locks off',
         detail: 'Confirm the maintenance is signed off, tools and people are clear, and every lock and tag has been removed by the person who placed it.',
         why: 'Re-energizing with someone still inside the cabinet is how people get hurt.',
-        confirm: 'Work signed off, area clear, LOTO removed',
+        confirm: 'Work signed off, area clear, LOTOTO removed',
       },
       {
         title: 'Close the UPS input and bypass input breakers',
@@ -410,14 +410,14 @@ export const MOPS: Procedure[] = [
       {
         title: 'Lock out and isolate',
         detail: 'Apply your lock at the chiller disconnect, close and tag the water valves, and verify zero energy before the tech opens anything.',
-        why: 'Water and refrigerant are stored energy too. Electrical LOTO alone is not enough on a chiller.',
+        why: 'Water and refrigerant are stored energy too. Electrical LOTOTO alone is not enough on a chiller.',
         confirm: 'Electrical and water isolation locked, tagged and verified',
       },
     ],
     debrief: [
       'Check spares, stored cooling and weather before you take capacity out.',
       'Watch the plant settle before you walk away.',
-      'Mechanical LOTO covers water and refrigerant, not just the breaker.',
+      'Mechanical LOTOTO covers water and refrigerant, not just the breaker.',
     ],
   },
   {

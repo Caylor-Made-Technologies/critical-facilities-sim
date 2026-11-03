@@ -201,7 +201,7 @@ function lastTab(): Tab | null {
 }
 
 const QUICK: { tab: Tab; emoji: string; title: string; text: string }[] = [
-  { tab: 'mypath', emoji: '🧭', title: 'My training path', text: 'Built around you' },
+  { tab: 'mypath', emoji: '📐', title: 'My Blueprint', text: 'Your career, engineered' },
   { tab: 'learn', emoji: '📘', title: 'Learn the basics', text: 'Step-by-step walkthroughs' },
   { tab: 'procedures', emoji: '🎯', title: 'Practice a drill', text: 'Scored MOPs and emergencies' },
   { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${TIPS.length} tricks for a pinch` },
@@ -278,11 +278,11 @@ export function PathCard({ p, go }: { p: ProgressHandle; go: (t: Tab) => void })
     return (
       <button type="button" className="path-invite" onClick={() => go('mypath')}>
         <span className="path-invite-orb" aria-hidden="true">
-          🧭
+          <Icon name="blueprint" />
         </span>
         <span>
-          <strong>Build your personal training path</strong>
-          <span>Upload your resume (it stays on your phone), answer a few questions, take a 2-minute skill check.</span>
+          <strong>Get your Caylor Made Blueprint</strong>
+          <span>Your career, engineered. Add your resume (it stays on your phone), answer a few questions, take a 2-minute skill check.</span>
         </span>
         <Icon name="arrow-right" />
       </button>
@@ -303,8 +303,8 @@ export function PathCard({ p, go }: { p: ProgressHandle; go: (t: Tab) => void })
         <span>{all.length ? Math.round((done / all.length) * 100) : 0}%</span>
       </span>
       <span>
-        <strong>{prof.name ? `${prof.name}'s path` : 'Your path'} · {done}/{all.length} done</strong>
-        <span>{next ? `Next up: ${next.title}` : 'Path complete. Build your next level!'}</span>
+        <strong>{prof.name ? `${prof.name}'s blueprint` : 'Your blueprint'} · rev {prof.rev} · {done}/{all.length} done</strong>
+        <span>{next ? `Next up: ${next.title}` : 'Fully energized. Draw your next revision!'}</span>
       </span>
       <Icon name="arrow-right" />
     </button>

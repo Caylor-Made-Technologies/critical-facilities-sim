@@ -132,17 +132,17 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </span>
         <div>
           <div className="eyebrow" id="new-h">
-            New: My Path
+            New: The Caylor Made Blueprint
           </div>
           <p>
-            Your own training plan. Add your resume (it's read on your phone and never uploaded), answer a few questions,
-            take a 2-minute skill check, and get a week-by-week path with a skill radar and your spot on the career
-            ladder.
+            Your career, engineered. Add your resume (it's read on your phone and never uploaded), answer a few
+            questions, take a 2-minute skill check, and get a week-by-week blueprint with a skill radar and your spot on
+            the career ladder. LOTOTO drills now include the try-out and a meter rating check before live-dead-live.
           </p>
         </div>
         <div className="whats-new-btns">
           <button className="btn btn-primary" type="button" onClick={() => go('mypath')}>
-            Build my path <Icon name="arrow-right" />
+            Draw my blueprint <Icon name="arrow-right" />
           </button>
           <button className="btn" type="button" onClick={() => go('tips')}>
             Tips & Tricks

@@ -5496,3 +5496,218 @@ body.has-follow .toast-region { bottom: 84px; }
   .wiz-steps li.now, .wiz-card.dir-fwd, .wiz-card.dir-back, .orb, .orb-ring, .orb-emoji, .pick, .equip, .conf-list li, .conf-face, .drop.reading .doc-line, .scan, .findings, .find-chips li, .check-q, .big-score, .build-core, .build-sat, .build-steps li.done .build-tick, .build-steps li.now .build-tick, .path-hero-bg, .wave, .next-up, .prof-ring-fg, .radar-shape, .radar-dot, .mini-ladder li, .plan-bar span, .phases::before, .phase, .path-item, .path-item.done .pi-icon, .path-invite-orb, .suggest { animation: none !important; }
   .equip-check svg, .check-dots span, .pick, .equip, .path-invite { transition: none; }
 }
+
+/* ==========================================================================
+   Caylor Made Blueprint
+   ========================================================================== */
+:root { --bp-line: color-mix(in srgb, var(--cyan) 16%, transparent); --bp-ink: var(--cyan); --spring: cubic-bezier(0.34, 1.56, 0.64, 1); --out-expo: cubic-bezier(0.16, 1, 0.3, 1); }
+:root[data-theme='light'] { --bp-line: color-mix(in srgb, #0e7490 12%, transparent); --bp-ink: #0e7490; }
+.blueprint-sheet {
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(var(--bp-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bp-line) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--bp-line) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--bp-line) 45%, transparent) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+  border-color: color-mix(in srgb, var(--bp-ink) 35%, var(--border));
+}
+.title-block {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  border: 1px solid color-mix(in srgb, var(--bp-ink) 55%, transparent);
+  border-radius: 6px;
+  overflow: hidden;
+  font: 700 0.62rem var(--font-head);
+  letter-spacing: 0.12em;
+  color: var(--bp-ink);
+  background: var(--surface);
+}
+.title-block span { padding: 4px 8px; }
+.title-block span + span { border-left: 1px solid color-mix(in srgb, var(--bp-ink) 55%, transparent); }
+@media (max-width: 520px) { .title-block span:nth-child(2) { display: none; } }
+.wiz-card h1#wiz-h { padding-right: 40px; }
+
+.bp-art { display: block; width: 100%; max-width: 420px; margin: 0 auto 16px; overflow: visible; }
+.bp-art.big { max-width: 520px; }
+.bp-paper { fill: color-mix(in srgb, var(--blue) 10%, var(--surface)); stroke: color-mix(in srgb, var(--bp-ink) 45%, transparent); stroke-width: 1.5; }
+.bp-grid { fill: none; stroke: var(--bp-line); stroke-width: 1; }
+.bp-dims path { fill: none; stroke: color-mix(in srgb, var(--bp-ink) 60%, transparent); stroke-width: 1; stroke-dasharray: 3 3; }
+.bp-dims text, .bp-node text { font: 700 8px var(--font-head); letter-spacing: 0.14em; fill: var(--bp-ink); }
+.bp-trace { fill: none; stroke: var(--bp-ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 420; stroke-dashoffset: 420; animation: bpDraw 1.8s var(--out-expo) 0.2s forwards; }
+.bp-trace-2 { stroke-width: 2; opacity: 0.55; stroke-dasharray: 160; stroke-dashoffset: 160; animation-delay: 1s; }
+.bp-spark { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 10 420; stroke-dashoffset: 430; filter: drop-shadow(0 0 6px var(--cyan)); opacity: 0; animation: bpSpark 2.6s linear 2s infinite; }
+.bp-node circle { fill: var(--surface); stroke: var(--bp-ink); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: dotIn 0.45s var(--spring) both; animation-delay: calc(var(--i) * 0.28s + 0.4s); }
+.bp-node text { opacity: 0; animation: fadeIn 0.4s ease forwards; animation-delay: calc(var(--i) * 0.28s + 0.7s); }
+@keyframes bpDraw { to { stroke-dashoffset: 0; } }
+@keyframes bpSpark { 0% { stroke-dashoffset: 430; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+
+.path-hero { background-image: linear-gradient(var(--bp-line) 1px, transparent 1px), linear-gradient(90deg, var(--bp-line) 1px, transparent 1px); background-size: 24px 24px; }
+.path-hero-tag { margin: 0 0 4px; font: 800 0.95rem var(--font-head); letter-spacing: 0.02em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; width: fit-content; }
+.chip.energized { background: color-mix(in srgb, var(--ok) 20%, transparent); border-color: var(--ok); color: var(--text-heading); }
+/* Current flows down the blueprint line as you finish items. */
+.phases::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 18px;
+  width: 3px;
+  height: calc((100% - 36px) * var(--energy, 0));
+  border-radius: 2px;
+  background: repeating-linear-gradient(180deg, #fff 0 6px, var(--ok) 6px 18px);
+  background-size: 100% 36px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ok) 70%, transparent);
+  transition: height 0.9s var(--out-expo);
+  animation: currentFlow 0.9s linear infinite;
+}
+@keyframes currentFlow { to { background-position: 0 36px; } }
+.title-block-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  margin: 18px 0 0;
+  border: 1.5px solid color-mix(in srgb, var(--bp-ink) 60%, var(--border));
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.title-block-full div { padding: 8px 12px; border-right: 1px solid color-mix(in srgb, var(--bp-ink) 35%, var(--border)); border-bottom: 1px solid color-mix(in srgb, var(--bp-ink) 35%, var(--border)); }
+.title-block-full dt { font: 700 0.62rem var(--font-head); letter-spacing: 0.12em; text-transform: uppercase; color: var(--bp-ink); }
+.title-block-full dd { margin: 2px 0 0; font: 700 0.9rem var(--font-head); color: var(--text-heading); }
+.path-invite-orb svg { width: 26px; height: 26px; color: #04101f; }
+.building .bp-art { margin-bottom: 8px; }
+@media print {
+  .title-block-full, .title-block-full * { color: #000 !important; border-color: #000 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-trace, .bp-trace-2 { animation: none; stroke-dashoffset: 0; }
+  .bp-spark { animation: none; display: none; }
+  .bp-node circle, .bp-node text { animation: none; opacity: 1; }
+  .phases::after { animation: none; transition: none; }
+}
+
+/* ==========================================================================
+   Signature motion: hand-built feel, site wide
+   ========================================================================== */
+/* Sliding highlight behind the active sidebar item */
+.sidebar { position: sticky; }
+.side-ink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue-glow) 30%, transparent);
+  transition: transform 0.5s var(--spring), height 0.35s var(--out-expo), width 0.35s var(--out-expo), background-color 0.3s;
+  pointer-events: none;
+}
+.side-ink::before { content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--grad); }
+.side-ink.danger { background: var(--danger-bg); }
+.side-ink.danger::before { background: var(--alarm); }
+.sidebar .side-link { z-index: 1; }
+.sidebar .side-link[aria-current='page'] { background: transparent; }
+.sidebar .side-link[aria-current='page']::before { display: none; }
+
+/* Sliding pill on the phone bottom bar */
+.bottom-ink { display: none; }
+@media (max-width: 899px) {
+  .bottom-ink {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    z-index: 0;
+    border-radius: 14px;
+    background: var(--blue-button);
+    box-shadow: 0 6px 18px rgba(30, 111, 255, 0.35);
+    transition: transform 0.5s var(--spring), width 0.35s var(--out-expo);
+    pointer-events: none;
+  }
+  .bottombar a, .bottombar button { position: relative; z-index: 1; }
+  .bottombar a[aria-current='page'], .bottombar button.active { background: transparent !important; box-shadow: none !important; }
+  .bottombar button[aria-expanded='true']:not(.active) { background: var(--blue-button); }
+}
+
+/* Current pulse under the header on every page change */
+.surge {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 35%;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), #fff, var(--cyan), transparent);
+  filter: drop-shadow(0 0 6px var(--cyan));
+  transform: translateX(-110%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .surge { animation: surge 0.9s var(--out-expo); }
+  /* Header circuit traces draw themselves in, then nodes light up one by one. */
+  .page-head .head-art path:not(.pulse) { stroke-dasharray: 520; stroke-dashoffset: 520; animation: bpDraw 1.6s var(--out-expo) 0.1s forwards; }
+  .page-head .head-art circle { transform-box: fill-box; transform-origin: center; animation: dotIn 0.45s var(--spring) both; animation-delay: calc(var(--i, 0) * 0.09s + 0.5s); }
+  .page-head h1::after { transform-origin: left; animation: underline 0.8s var(--out-expo) 0.15s both; }
+  /* Focus rings settle into place. */
+  :focus-visible { animation: focusPop 0.25s var(--out-expo); }
+  /* Toasts spring in. */
+  .toast { animation: toastSpring 0.55s var(--spring) both; }
+  /* Cards that can be tapped feel physical. */
+  .topic-card, .proc-tile, .quick-tile, .road-step, .branch, .tip-card { will-change: auto; }
+  .topic-card:active, .proc-tile:active, .tip-card:active { transform: scale(0.985); }
+}
+@keyframes surge { 0% { transform: translateX(-110%); opacity: 1; } 100% { transform: translateX(310%); opacity: 0; } }
+@keyframes underline { from { transform: scaleX(0); } }
+@keyframes focusPop { from { outline-offset: 7px; } }
+@keyframes toastSpring { from { transform: translateY(16px) scale(0.92); opacity: 0; } }
+
+/* Direction-aware page slides (view transitions) */
+:root[data-vt]::view-transition-old(root) { animation-duration: 0.26s; animation-timing-function: var(--out-expo); animation-fill-mode: both; }
+:root[data-vt]::view-transition-new(root) { animation-duration: 0.46s; animation-timing-function: var(--out-expo); animation-fill-mode: both; }
+:root[data-vt='fwd']::view-transition-old(root) { animation-name: vtOutLeft; }
+:root[data-vt='fwd']::view-transition-new(root) { animation-name: vtInRight; }
+:root[data-vt='back']::view-transition-old(root) { animation-name: vtOutRight; }
+:root[data-vt='back']::view-transition-new(root) { animation-name: vtInLeft; }
+@keyframes vtOutLeft { to { transform: translateX(-28px); opacity: 0; } }
+@keyframes vtInRight { from { transform: translateX(36px); opacity: 0; } }
+@keyframes vtOutRight { to { transform: translateX(28px); opacity: 0; } }
+@keyframes vtInLeft { from { transform: translateX(-36px); opacity: 0; } }
+
+/* Brand power-on intro (once per visit) */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(600px 400px at 50% 45%, color-mix(in srgb, var(--blue) 22%, var(--bg)), var(--bg));
+  pointer-events: none;
+  animation: splashOut 0.55s var(--out-expo) 1.3s forwards;
+}
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.splash img { border-radius: 20px; box-shadow: 0 0 0 1px var(--border), 0 10px 40px rgba(30, 111, 255, 0.45); animation: splashIcon 0.7s var(--spring) both; }
+.splash-trace { width: 240px; height: 32px; overflow: visible; }
+.splash-trace path { fill: none; stroke: var(--blue-glow); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 340; stroke-dashoffset: 340; animation: bpDraw 0.8s var(--out-expo) 0.25s forwards; }
+.splash-trace .splash-spark { stroke: #fff; stroke-dasharray: 12 340; stroke-dashoffset: 352; filter: drop-shadow(0 0 6px var(--cyan)); animation: splashSpark 0.8s linear 0.6s forwards; }
+.splash-word { display: flex; font: 800 1.25rem var(--font-head); letter-spacing: 0.22em; color: var(--text-heading); }
+.splash-word span { display: inline-block; animation: letterUp 0.5s var(--out-expo) both; animation-delay: calc(var(--i) * 0.035s + 0.45s); }
+.splash-tag { font: 600 0.8rem var(--font-head); letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue-glow); animation: fadeIn 0.5s ease 0.85s both; }
+@keyframes splashOut { to { opacity: 0; visibility: hidden; transform: scale(1.03); } }
+@keyframes splashIcon { from { transform: scale(0.5) rotate(-12deg); opacity: 0; } }
+@keyframes splashSpark { to { stroke-dashoffset: 0; } }
+@keyframes letterUp { from { transform: translateY(14px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash { display: none; }
+  .side-ink, .bottom-ink { transition: none; }
+}
+.path-hero-art { display: none; }
+@media (min-width: 1100px) {
+  .path-hero-art { display: block; position: absolute !important; right: 24px; top: 50%; width: 360px; transform: translateY(-50%); opacity: 0.95; }
+  .path-hero-art .bp-art { margin: 0; }
+  .path-hero > :not(.path-hero-bg):not(.path-hero-art) { max-width: calc(100% - 400px); }
+}

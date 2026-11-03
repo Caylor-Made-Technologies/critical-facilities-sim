@@ -218,7 +218,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     [commit],
   );
   const saveProfile = useCallback(
-    (profile: Profile | null) => commit((p) => ({ ...p, profile, dcCerts: profile ? [...new Set([...p.dcCerts, ...profile.certs])] : p.dcCerts }), profile ? 'Your training path is ready.' : 'Your path was deleted from this device.'),
+    (profile: Profile | null) => commit((p) => ({ ...p, profile, dcCerts: profile ? [...new Set([...p.dcCerts, ...profile.certs])] : p.dcCerts }), profile ? `Blueprint rev ${profile.rev} is ready.` : 'Your blueprint was deleted from this device.'),
     [commit],
   );
   const togglePathDone = useCallback(

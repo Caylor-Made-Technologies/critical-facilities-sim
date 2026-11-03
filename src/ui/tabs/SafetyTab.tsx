@@ -1,6 +1,6 @@
 /**
  * Safety Center: golden rules, the safety library, and hands-on practice
- * (approach boundaries, LOTO order, hazard hunts, emergency cards, and a
+ * (approach boundaries, LOTOTO order, hazard hunts, emergency cards, and a
  * printable pre-task brief). Nothing leaves the browser.
  */
 import { useMemo, useState } from 'react';
@@ -38,7 +38,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'rules', label: 'Golden rules' },
   { id: 'library', label: 'Library' },
   { id: 'boundaries', label: 'Boundaries' },
-  { id: 'loto', label: 'LOTO drill' },
+  { id: 'loto', label: 'LOTOTO drill' },
   { id: 'hunt', label: 'Hazard hunt' },
   { id: 'emergency', label: 'Emergency' },
   { id: 'brief', label: 'Pre-task brief' },

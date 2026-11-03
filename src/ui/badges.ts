@@ -23,6 +23,7 @@ const mops = PROCEDURES.filter((x) => x.kind === 'mop').map((x) => x.id);
 const drills = PROCEDURES.filter((x) => x.kind === 'drill').map((x) => x.id);
 
 export const BADGES: Badge[] = [
+  { id: 'pathfinder', name: 'Blueprinted', how: 'Draw your Caylor Made Blueprint.', icon: 'target', earned: (p) => !!p.profile },
   { id: 'first-steps', name: 'First steps', how: 'Finish your first walkthrough.', icon: 'book', earned: (p) => p.lessons.length >= 1 },
   { id: 'scholar', name: 'Scholar', how: 'Finish every walkthrough.', icon: 'book', earned: (p) => LESSONS.every((l) => p.lessons.includes(l.id)) },
   { id: 'switchman', name: 'By the book', how: 'Complete your first MOP.', icon: 'list', earned: (p) => mops.some((id) => id in p.procs) },
@@ -40,7 +41,6 @@ export const BADGES: Badge[] = [
   { id: 'tips-10', name: 'Tip collector', how: 'Save 10 tips to your favorites.', icon: 'star', earned: (p) => p.favTips.length >= 10 },
   { id: 'climber', name: 'Climber', how: 'Tick off every goal on one career ladder rung.', icon: 'arrow-up', earned: (p) => LADDER.some((r) => r.doNow.every((_, i) => p.careerChecks.includes(`${r.id}:${i}`))) },
   { id: 'dc-certified', name: 'Certified', how: 'Mark a data center certification as earned in Career.', icon: 'check', earned: (p) => p.dcCerts.length >= 1 },
-  { id: 'pathfinder', name: 'Pathfinder', how: 'Build your personal training path in My Path.', icon: 'target', earned: (p) => !!p.profile },
   { id: 'gear-10', name: 'Gearhead', how: 'Read 10 equipment guides.', icon: 'wrench', earned: (p) => p.guides.length >= 10 },
 ];
 

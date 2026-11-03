@@ -149,7 +149,7 @@ function Tiers() {
       <div className="callout callout-warn">
         <strong>Why III vs IV is hard: </strong>
         both need two paths. The difference is whether a fire, a leak, or a technician's mistake in one room can reach the
-        other path. Separation, compartments, and discipline (MOPs, keys, LOTO) are what turn a second path into fault
+        other path. Separation, compartments, and discipline (MOPs, keys, LOTOTO) are what turn a second path into fault
         tolerance.
       </div>
     </>

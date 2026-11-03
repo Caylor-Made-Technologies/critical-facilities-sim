@@ -300,6 +300,22 @@ export const QUIZ: QuizQuestion[] = [
     why: 'OSHA requires suitable facilities for quick drenching or flushing of the eyes and body where corrosive materials are present. Battery acid is corrosive.',
   },
   {
+    id: 's-meter-rating',
+    section: 'safety',
+    q: 'You\'re about to test a locked-out 480 V switchboard for absence of voltage. What do you check about your meter first?',
+    options: ['That the battery is new', 'That the meter and leads are CAT III or IV and rated at or above 480 V, with no damage', 'That it auto-ranges', 'Nothing: any meter works if you\'re careful'],
+    answer: 1,
+    why: 'A meter or leads rated below the circuit can fail violently on a voltage spike. Check the CAT category and voltage rating on the meter and the leads, inspect them, then do live-dead-live.',
+  },
+  {
+    id: 's-tryout',
+    section: 'safety',
+    q: 'In LOTOTO, when do you do the try-out?',
+    options: ['Before you apply locks', 'After locks are on and stored energy is released, before testing and work', 'Only if someone asks', 'After the work is finished'],
+    answer: 1,
+    why: 'Lock out, tag out, release stored energy, then try out: try to start it from every control point to prove the isolation works, return controls to OFF, then test with a rated meter (live-dead-live).',
+  },
+  {
     id: 's-restricted',
     section: 'safety',
     q: 'Covers are off on live 480 V gear. An unqualified helper is escorted by a qualified tech. How close may the helper go?',

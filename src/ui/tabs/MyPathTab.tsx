@@ -41,7 +41,7 @@ import { readResume } from '../resumeReader';
 const FACES = ['😬', '🙂', '😊', '😎', '🏆'];
 const FACE_LABEL = ['New to me', 'A little', 'Comfortable', 'Confident', 'I could teach it'];
 
-type Draft = Omit<Profile, 'done' | 'createdAt' | 'check'> & { check: Record<string, boolean> };
+type Draft = Omit<Profile, 'done' | 'createdAt' | 'check' | 'rev'> & { check: Record<string, boolean> };
 
 const emptyDraft = (): Draft => ({
   name: '',
@@ -77,7 +77,7 @@ export function MyPathTab({ p, onStart, go }: { p: ProgressHandle; onStart: (it:
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const t = window.setTimeout(
       () => {
-        p.saveProfile({ ...draft, done: profile?.done ?? [], createdAt: new Date().toISOString().slice(0, 10) });
+        p.saveProfile({ ...draft, done: profile?.done ?? [], createdAt: new Date().toISOString().slice(0, 10), rev: (profile?.rev ?? 0) + 1 });
         setMode('view');
         setRetake(false);
         window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
@@ -115,7 +115,7 @@ export function MyPathTab({ p, onStart, go }: { p: ProgressHandle; onStart: (it:
             setMode('wizard');
           }}
           onDelete={() => {
-            if (window.confirm('Delete your profile and path from this device? Your other progress stays.')) {
+            if (window.confirm('Delete your blueprint and answers from this device? Your other progress stays.')) {
               p.saveProfile(null);
               setMode('wizard');
             }
@@ -145,7 +145,7 @@ function Wizard({ initial, startAt, onDone, onCancel }: { initial: Draft; startA
   return (
     <section className="wizard" aria-labelledby="wiz-h" ref={top}>
       <div className="wiz-top">
-        <div className="eyebrow">My Path · step {step + 1} of {STEPS.length}</div>
+        <div className="eyebrow">Caylor Made Blueprint · sheet {step + 1} of {STEPS.length}</div>
         {onCancel && (
           <button className="btn btn-sm btn-ghost" type="button" onClick={onCancel}>
             <Icon name="close" /> Cancel
@@ -163,18 +163,24 @@ function Wizard({ initial, startAt, onDone, onCancel }: { initial: Draft; startA
         <span style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
       </div>
 
-      <div className={`wiz-card card dir-${dir > 0 ? 'fwd' : 'back'}`} key={step}>
+      <div className={`wiz-card card blueprint-sheet dir-${dir > 0 ? 'fwd' : 'back'}`} key={step}>
+        <span className="title-block" aria-hidden="true">
+          <span>CMT</span>
+          <span>BLUEPRINT</span>
+          <span>
+            SHT {step + 1}/{STEPS.length}
+          </span>
+        </span>
         {step === 0 && (
           <>
-            <div className="wiz-hero" aria-hidden="true">
-              <span className="orb" />
-              <span className="orb-ring" />
-              <span className="orb-emoji">🧭</span>
-            </div>
-            <h1 id="wiz-h">Let's build a path that's yours</h1>
+            <BlueprintArt />
+            <h1 id="wiz-h">
+              Your career, <span className="grad">engineered.</span>
+            </h1>
             <p className="wiz-lead">
-              A few questions, an optional resume, and a quick 8-question skill check. Then you get a week-by-week
-              training plan built around what you already know and where you want to go.
+              Welcome to the <strong>Caylor Made Blueprint</strong>. Hand me your resume (optional), answer a few
+              questions, and take a 2-minute skill check. I'll draft a week-by-week plan built around what you already
+              know and where you want to go. Advanced engineering, applied to you.
             </p>
             <label className="field big-field">
               <span>What should I call you? (optional)</span>
@@ -301,7 +307,7 @@ function Wizard({ initial, startAt, onDone, onCancel }: { initial: Draft; startA
                 );
               })}
             </div>
-            <p className="muted small">None yet? Totally fine. Your path will tell you which one to go for first.</p>
+            <p className="muted small">None yet? Totally fine. Your blueprint will tell you which one to go for first.</p>
           </>
         )}
 
@@ -361,7 +367,7 @@ function Wizard({ initial, startAt, onDone, onCancel }: { initial: Draft; startA
         )}
         {last ? (
           <button className="btn btn-primary btn-lg" type="button" disabled={Object.keys(d.check).length < skillCheck().length} onClick={() => onDone(d)}>
-            <Icon name="star" /> Build my path
+            <Icon name="blueprint" /> Draw my blueprint
           </button>
         ) : (
           <button className="btn btn-primary" type="button" onClick={() => move(step + 1)} disabled={step === 6 && d.goal === 'branch' && !d.branch}>
@@ -577,8 +583,8 @@ function SkillCheck({ check, setCheck, hi }: { check: Record<string, boolean>; s
         </div>
         <h1 id="wiz-h">Skill check done{hi}!</h1>
         <p className="wiz-lead">
-          {right >= 7 ? 'Sharp. Your path will push you toward advanced work.' : right >= 4 ? 'Good base. Your path will fill in the gaps.' : 'No problem at all. Your path starts right at the foundations.'}{' '}
-          Tap <strong>Build my path</strong>.
+          {right >= 7 ? 'Sharp. Your blueprint will push you toward advanced work.' : right >= 4 ? 'Good base. Your blueprint will fill in the gaps.' : 'No problem at all. Your blueprint starts right at the foundation.'}{' '}
+          Tap <strong>Draw my blueprint</strong>.
         </p>
         <button className="linklike" type="button" onClick={() => { setCheck({}); setI(0); }}>
           Retake the skill check
@@ -629,31 +635,62 @@ function SkillCheck({ check, setCheck, hi }: { check: Record<string, boolean>; s
           );
         })}
       </div>
-      <p className="muted small">Not sure? Pick your best guess. It only tunes your path.</p>
+      <p className="muted small">Not sure? Pick your best guess. It only tunes your blueprint.</p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-const BUILD_STEPS = ['Reading your answers', 'Scoring your skill check', 'Finding your strengths', 'Mapping you to the career ladder', 'Picking lessons and drills', 'Scheduling your weeks'];
+const BUILD_STEPS = ['Reading your answers', 'Scoring your skill check', 'Measuring your strengths', 'Locating you on the career ladder', 'Routing lessons and drills', 'Scheduling your weeks', 'Signing the title block'];
+
+/** The signature drawing: a trace that climbs like a ladder, drawn by hand on blueprint paper. */
+function BlueprintArt({ big }: { big?: boolean }) {
+  return (
+    <svg className={`bp-art${big ? ' big' : ''}`} viewBox="0 0 320 150" aria-hidden="true" focusable="false">
+      <defs>
+        <pattern id="bp-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+          <path d="M16 0H0V16" className="bp-grid" />
+        </pattern>
+      </defs>
+      <rect x="0" y="0" width="320" height="150" rx="12" className="bp-paper" />
+      <rect x="0" y="0" width="320" height="150" rx="12" fill="url(#bp-grid)" />
+      <g className="bp-dims">
+        <path d="M24 132H296M24 128v8M296 128v8" />
+        <text x="160" y="146" textAnchor="middle">YOUR PATH · NOT TO SCALE</text>
+      </g>
+      <path className="bp-trace" d="M28 112H92L112 92H164L184 72H232L252 52H292" />
+      <path className="bp-trace bp-trace-2" d="M112 92V122M184 72V40M252 52V122" />
+      <path className="bp-spark" d="M28 112H92L112 92H164L184 72H232L252 52H292" />
+      {[
+        [28, 112, 'START'],
+        [112, 92, ''],
+        [184, 72, ''],
+        [252, 52, ''],
+        [292, 52, 'NEXT RUNG'],
+      ].map(([x, y, t], i) => (
+        <g key={i} className="bp-node" style={{ '--i': i } as React.CSSProperties}>
+          <circle cx={x as number} cy={y as number} r={6} />
+          {t && (
+            <text x={x as number} y={(y as number) - 12} textAnchor={i === 0 ? 'start' : 'end'}>
+              {t}
+            </text>
+          )}
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 function Building({ name }: { name: string }) {
   const [n, setN] = useState(0);
   useEffect(() => {
-    const t = window.setInterval(() => setN((x) => Math.min(BUILD_STEPS.length, x + 1)), 480);
+    const t = window.setInterval(() => setN((x) => Math.min(BUILD_STEPS.length, x + 1)), 430);
     return () => window.clearInterval(t);
   }, []);
   return (
-    <section className="building" aria-live="polite" aria-label="Building your path">
-      <div className="build-orbit" aria-hidden="true">
-        <span className="build-core">🧭</span>
-        {['⚡', '❄️', '🦺', '🔋', '🎛️', '📋'].map((e, i) => (
-          <span key={e} className="build-sat" style={{ '--i': i } as React.CSSProperties}>
-            {e}
-          </span>
-        ))}
-      </div>
-      <h1>Building your path{name.trim() ? `, ${name.trim()}` : ''}…</h1>
+    <section className="building" aria-live="polite" aria-label="Drafting your blueprint">
+      <BlueprintArt big />
+      <h1>Drafting your blueprint{name.trim() ? `, ${name.trim()}` : ''}…</h1>
       <ul className="build-steps">
         {BUILD_STEPS.map((s, i) => (
           <li key={s} className={i < n ? 'done' : i === n ? 'now' : ''}>
@@ -742,11 +779,17 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
     <>
       <header className="path-hero">
         <div className="path-hero-bg" aria-hidden="true" />
-        <div className="eyebrow">My Path</div>
+        <div className="path-hero-art">
+          <BlueprintArt />
+        </div>
+        <div className="eyebrow">
+          Caylor Made Blueprint · Rev {profile.rev}
+        </div>
         <h1>
           {greeting()}
           {name ? `, ${name}` : ''} <span className="wave" aria-hidden="true">👋</span>
         </h1>
+        <p className="path-hero-tag">Your career, engineered. Built different.</p>
         <p className="path-hero-sub">
           {profile.jobTitle || role.label} · {YEARS.find((y) => y.id === profile.years)!.label} · {profile.hours} hr/week
         </p>
@@ -761,10 +804,10 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
           </div>
         ) : (
           <div className="next-up card all-done">
-            <strong>🏆 Path complete!</strong>
-            <span>Retake the skill check to build your next level.</span>
+            <strong>⚡ Fully energized!</strong>
+            <span>Every item is done. Retake the skill check to draw your next revision.</span>
             <button className="btn btn-primary" type="button" onClick={onRetake}>
-              Build my next path
+              Draw rev {profile.rev + 1}
             </button>
           </div>
         )}
@@ -856,7 +899,7 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
 
       <section className="path-plan print-area" aria-labelledby="plan-h">
         <div className="plan-head">
-          <h2 id="plan-h">Your training path</h2>
+          <h2 id="plan-h">Your blueprint</h2>
           <span className="plan-meta">
             {doneN} of {all.length} done · about {path.weeks} week{path.weeks === 1 ? '' : 's'} · {Math.round(path.totalMinutes / 60)} hr of practice
           </span>
@@ -864,7 +907,7 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
         <div className="plan-bar" aria-hidden="true">
           <span style={{ width: `${pct * 100}%` }} />
         </div>
-        <ol className="phases">
+        <ol className="phases" style={{ '--energy': pct } as React.CSSProperties}>
           {path.phases.map((ph, pi) => {
             const phDone = ph.items.filter(isDone).length;
             return (
@@ -879,8 +922,8 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
                     </h3>
                     <p className="muted small">{ph.blurb}</p>
                   </div>
-                  <span className="chip">
-                    {phDone}/{ph.items.length}
+                  <span className={`chip${phDone === ph.items.length ? ' energized' : ''}`}>
+                    {phDone === ph.items.length ? 'Energized ⚡' : `${phDone}/${ph.items.length}`}
                   </span>
                 </div>
                 <ul className="path-items">
@@ -930,10 +973,32 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
           Lessons, drills, safety drills, certs and the exam tick themselves off when you finish them. Tap <strong>Done</strong>{' '}
           on the explore items when you've been through them.
         </p>
+        <dl className="title-block-full">
+          <div>
+            <dt>Drawn for</dt>
+            <dd>{name || 'You'}</dd>
+          </div>
+          <div>
+            <dt>Drawn by</dt>
+            <dd>Caylor Made Technologies</dd>
+          </div>
+          <div>
+            <dt>Date</dt>
+            <dd>{profile.createdAt || '—'}</dd>
+          </div>
+          <div>
+            <dt>Rev</dt>
+            <dd>{profile.rev}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{Math.round(pct * 100)}% energized</dd>
+          </div>
+        </dl>
       </section>
 
       <section className="card path-actions no-print">
-        <h2 className="h-card">Tune your path</h2>
+        <h2 className="h-card">Revise your blueprint</h2>
         <div className="record-actions">
           <button className="btn" type="button" onClick={onRetake}>
             <Icon name="target" /> Retake skill check
@@ -942,14 +1007,14 @@ function PathView({ p, profile, onStart, go, onEdit, onRetake, onDelete }: { p: 
             <Icon name="list" /> Edit my answers
           </button>
           <button className="btn" type="button" onClick={() => window.print()}>
-            <Icon name="print" /> Print my plan
+            <Icon name="print" /> Print my blueprint
           </button>
           <button className="btn btn-ghost" type="button" onClick={onDelete}>
-            <Icon name="close" /> Delete my path
+            <Icon name="close" /> Delete my blueprint
           </button>
         </div>
         <p className="muted small">
-          Built {profile.createdAt || 'today'}. Your answers and the skill findings stay in this browser only. Use About →
+          Rev {profile.rev}, drawn {profile.createdAt || 'today'}. Your answers and the skill findings stay in this browser only. Use About →
           Download a backup to move them to a new phone. This is a learning plan, not a job assessment or a qualification.
         </p>
       </section>

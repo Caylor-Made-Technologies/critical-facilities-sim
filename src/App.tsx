@@ -2,8 +2,9 @@
  * App shell: brand header, grouped sidebar (laptop), bottom bar + "More"
  * sheet (phone), hash routing, XP toasts, and every tab.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import type React from 'react';
 import { CHANGE } from './content/change';
 import { CODES } from './content/codes';
 import { guideForKind } from './content/equipment';
@@ -55,6 +56,43 @@ export function App() {
   const { prefs, resolvedTheme, update, reset: resetPrefs } = usePrefs();
   const [simView, setSimView] = useState<SimView>('electrical');
   const [tab, setTabState] = useState<Tab>(tabFromHash);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  // Brand "power-on" intro: once per visit, skipped for reduced motion.
+  const [splash, setSplash] = useState(() => {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+      return !sessionStorage.getItem('cfs-splash');
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (!splash) return;
+    try {
+      sessionStorage.setItem('cfs-splash', '1');
+    } catch {
+      /* storage blocked */
+    }
+    const t = window.setTimeout(() => setSplash(false), 1900);
+    return () => window.clearTimeout(t);
+  }, [splash]);
+  // Sliding highlight behind the active sidebar and bottom-bar items.
+  const sideRef = useRef<HTMLElement>(null);
+  const bottomRef = useRef<HTMLElement>(null);
+  const [sideInk, setSideInk] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [bottomInk, setBottomInk] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const a = sideRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+      setSideInk(a ? { x: a.offsetLeft, y: a.offsetTop, w: a.offsetWidth, h: a.offsetHeight } : null);
+      const b = bottomRef.current?.querySelector<HTMLElement>('[aria-current="page"], button.active');
+      setBottomInk(b ? { x: b.offsetLeft, w: b.offsetWidth } : null);
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [tab]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
   const toastTimer = useRef<number>();
@@ -137,11 +175,15 @@ export function App() {
       setMoreOpen(false);
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     };
-    // Cross-fade between tabs where the browser supports view transitions.
-    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    // Slide between tabs in the direction you're moving through the menu.
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (doc.startViewTransition && !calm) doc.startViewTransition(() => flushSync(swap));
-    else swap();
+    if (doc.startViewTransition && !calm) {
+      const root = document.documentElement;
+      const from = TAB_IDS.indexOf(tabRef.current);
+      root.dataset.vt = TAB_IDS.indexOf(t) >= from ? 'fwd' : 'back';
+      doc.startViewTransition(() => flushSync(swap)).finished.finally(() => delete root.dataset.vt);
+    } else swap();
     document.getElementById('main')?.focus({ preventScroll: true });
   }, []);
 
@@ -329,6 +371,25 @@ export function App() {
 
   return (
     <div className="shell">
+      {splash && (
+        <div className="splash" aria-hidden="true">
+          <div className="splash-inner">
+            <img src={`${import.meta.env.BASE_URL}brand/app-mark.png`} alt="" width={84} height={84} />
+            <svg className="splash-trace" viewBox="0 0 300 40" focusable="false">
+              <path d="M0 20H90L105 8H195L210 20H300" />
+              <path className="splash-spark" d="M0 20H90L105 8H195L210 20H300" />
+            </svg>
+            <span className="splash-word">
+              {'CAYLOR MADE'.split('').map((c, i) => (
+                <span key={i} style={{ '--i': i } as React.CSSProperties}>
+                  {c === ' ' ? '\u00a0' : c}
+                </span>
+              ))}
+            </span>
+            <span className="splash-tag">Advanced Engineering. Built Different.</span>
+          </div>
+        </div>
+      )}
       <a className="skip-link" href="#main">
         Skip to content
       </a>
@@ -350,6 +411,7 @@ export function App() {
             <span className="brand-sub">Caylor Made Technologies</span>
           </span>
         </a>
+        <span className="surge" key={tab} aria-hidden="true" />
         <div className="header-actions">
           <button className="search-btn" type="button" onClick={() => setPaletteOpen(true)} aria-label="Quick search (Control K)">
             <Icon name="search" />
@@ -399,7 +461,8 @@ export function App() {
       </header>
 
       <div className="body">
-        <nav className="sidebar" aria-label="Sections">
+        <nav className="sidebar" aria-label="Sections" ref={sideRef}>
+          {sideInk && <span className={`side-ink${tab === 'never' ? ' danger' : ''}`} aria-hidden="true" style={{ transform: `translate(${sideInk.x}px, ${sideInk.y}px)`, width: sideInk.w, height: sideInk.h }} />}
           {GROUPS.map((g) => (
             <div key={g} className="side-group">
               <div className="side-group-label">{g}</div>
@@ -552,7 +615,7 @@ export function App() {
               <p className="foot-tagline">Advanced Engineering. Built Different.</p>
               <p className="disclaimer">
                 Educational simulation of generic data center infrastructure. Not a site procedure. Always follow your
-                facility's approved MOPs/EOPs and LOTO program.
+                facility's approved MOPs/EOPs and LOTOTO program.
               </p>
               <p>
                 Built by {BUSINESS.name} · {BUSINESS.city} · <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a>
@@ -577,7 +640,8 @@ export function App() {
       </div>
 
       {/* Phone navigation */}
-      <nav className="bottombar" aria-label="Quick sections">
+      <nav className="bottombar" aria-label="Quick sections" ref={bottomRef}>
+        {bottomInk && <span className="bottom-ink" aria-hidden="true" style={{ transform: `translateX(${bottomInk.x}px)`, width: bottomInk.w }} />}
         {BOTTOM.map((id) => {
           const n = NAV.find((x) => x.id === id)!;
           return (

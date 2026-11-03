@@ -34,7 +34,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { id: 'home', label: 'Home', short: 'Home', icon: 'home', group: 'Start', desc: 'Your progress and where to go next.' },
-  { id: 'mypath', label: 'My Path', short: 'My Path', icon: 'target', group: 'Start', desc: 'Your personal training plan: resume, a few questions, a skill check, and a week-by-week path.' },
+  { id: 'mypath', label: 'My Blueprint', short: 'Blueprint', icon: 'blueprint', group: 'Start', desc: 'The Caylor Made Blueprint: your career, engineered. Resume, a few questions, a skill check, and a week-by-week plan built for you.' },
   { id: 'sim', label: 'Simulator', short: 'Sim', icon: 'bolt', group: 'Practice', desc: 'Break the plant on purpose and watch the backups catch it.' },
   { id: 'learn', label: 'Learn', short: 'Learn', icon: 'book', group: 'Practice', desc: 'Step-by-step walkthroughs, electrical and mechanical.' },
   { id: 'procedures', label: 'Procedures & Drills', short: 'MOPs', icon: 'list', group: 'Practice', desc: 'Run MOPs and emergency drills on the live plant. Scored.' },
@@ -47,7 +47,7 @@ export const NAV: NavItem[] = [
   { id: 'designs', label: 'Designs & PUE', short: 'Designs', icon: 'layers', group: 'Know your gear', desc: 'Compare redundancy designs side by side, and see where the power goes.' },
   { id: 'never', label: 'Never Do', short: 'Never', icon: 'warning', group: 'Know your gear', desc: 'Hard stops you must never cross.' },
   { id: 'glossary', label: 'Glossary', short: 'Terms', icon: 'search', group: 'Know your gear', desc: 'The words you\'ll hear on the floor.' },
-  { id: 'safety', label: 'Safety', short: 'Safety', icon: 'shield', group: 'Work safe', desc: 'Golden rules, boundary and LOTO drills, hazard hunts, emergency cards, and a pre-task brief.' },
+  { id: 'safety', label: 'Safety', short: 'Safety', icon: 'shield', group: 'Work safe', desc: 'Golden rules, boundary and LOTOTO drills, hazard hunts, emergency cards, and a pre-task brief.' },
   { id: 'codes', label: 'Codes & Standards', short: 'Codes', icon: 'scale', group: 'Work safe', desc: 'OSHA, NFPA, ASHRAE, EPA in plain English.' },
   { id: 'uptime', label: 'Uptime', short: 'Uptime', icon: 'pulse', group: 'Work safe', desc: 'Habits that keep the load running.' },
   { id: 'change', label: 'Change Mgmt', short: 'Change', icon: 'change', group: 'Work safe', desc: 'MOC: how changes are reviewed, approved, and done.' },

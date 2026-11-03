@@ -29,6 +29,8 @@ export const NEVER: Record<NeverSection, NeverRule[]> = {
     { rule: 'NEVER touch customer IT equipment unless it is your job and you are authorized.', why: 'You can cause an outage or a security incident.' },
   ],
   electrical: [
+    { rule: 'NEVER test with a meter or leads that aren\'t rated for the circuit.', why: 'An under-rated meter can explode on a voltage spike. Check the CAT and voltage rating on the meter and leads first.' },
+    { rule: 'NEVER skip the try-out after locking out.', why: 'The try-out proves your locks are on the right isolation points before anyone touches anything.' },
     { rule: 'NEVER assume a circuit is dead. Test for absence of voltage (live-dead-live).', why: 'Back-feed, mislabeled breakers, UPS outputs, and stored energy can all keep "off" circuits live.' },
     { rule: 'NEVER open energized gear or cross the arc flash boundary without being qualified, authorized, and in the PPE the label requires.', why: 'An arc flash can reach thousands of degrees in milliseconds and cause fatal burns and blast injuries.' },
     { rule: 'NEVER work on gear with a missing or outdated arc flash label.', why: 'The hazard is unknown. The incident energy can be far higher than the panel next to it.' },

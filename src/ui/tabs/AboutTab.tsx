@@ -49,7 +49,7 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
           </p>
           <div className="callout callout-warn">
             <strong>Not a site procedure. </strong>Educational simulation of generic data center infrastructure. Always
-            follow your facility's approved MOPs/EOPs and LOTO program. Simplified physics: not an engineering or design
+            follow your facility's approved MOPs/EOPs and LOTOTO program. Simplified physics: not an engineering or design
             tool. Tier-style descriptions explain ideas only; nothing here is certified.
           </div>
           <h3>Built by</h3>
@@ -102,10 +102,10 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             {msg || 'Backups are a file on your own device, for moving progress to a new phone or browser. The site never sees them.'}
           </p>
           <p>
-            <strong>My Path and your resume:</strong> if you add a resume, it is read inside your browser (PDF, Word or
+            <strong>The Blueprint and your resume:</strong> if you add a resume, it is read inside your browser (PDF, Word or
             text) and then thrown away. It is never uploaded, sent or saved. Only the findings (job titles, keyword
-            counts, certifications, rough years) and your answers are kept, in this browser's local storage, so your path
-            is there next time. Delete them any time with "Delete my path" or the button below.
+            counts, certifications, rough years) and your answers are kept, in this browser's local storage, so your blueprint
+            is there next time. Delete them any time with "Delete my blueprint" or the button below.
           </p>
           <p>
             <strong>Links to other sites:</strong> the Career tab links to certification issuers' own websites so you can

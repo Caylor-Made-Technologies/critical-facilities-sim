@@ -54,10 +54,10 @@ export const SAFETY: Article[] = [
   {
     id: 'loto',
     group: 'Electrical',
-    title: 'Lockout/tagout, step by step (OSHA 1910.147)',
-    intro: 'LOTO keeps machines and circuits from being energized while someone is working on them. It applies to electrical, mechanical, hydraulic, pneumatic, chemical, and thermal energy, so it covers the mechanical side too.',
+    title: 'LOTOTO: lock out, tag out, try out (OSHA 1910.147)',
+    intro: 'LOTOTO keeps machines and circuits from being energized while someone is working on them. OSHA calls it lockout/tagout (LOTO); "try out" is the step that proves your isolation actually works. It applies to electrical, mechanical, hydraulic, pneumatic, chemical, and thermal energy, so it covers the mechanical side too.',
     blocks: [
-      { h: 'Applying lockout' },
+      { h: 'Lock out, tag out' },
       { ol: [
         'Prepare: know every energy source and how to control it (use the written procedure for that equipment).',
         'Notify everyone affected that the equipment is being shut down and locked out.',
@@ -65,8 +65,21 @@ export const SAFETY: Article[] = [
         'Isolate every energy source (breakers, valves, disconnects).',
         'Apply your personal lock and tag to each isolation point. One lock per person per point, or a group lockbox.',
         'Release or restrain stored energy: bleed pressure, discharge capacitors, block parts that can move.',
-        'Verify isolation: try to start it (then return controls to off), and test for absence of voltage.',
       ] },
+      { h: 'Try out' },
+      { ol: [
+        'Try to start the equipment from every control point (local start, BMS, HAND position). Nothing should move or energize.',
+        'Return every control to OFF so nothing starts when the locks come off later.',
+      ] },
+      { h: 'Test: rated meter, then live-dead-live' },
+      { ol: [
+        'Check your meter is rated for the job before any test: CAT category (CAT III or IV for switchgear and panels) and a voltage rating at or above the circuit, on the meter and on the leads and probes.',
+        'Inspect the leads and probes: no cracks, no exposed metal, tip shields on. Use the site\'s required tester, within its test or calibration date.',
+        'Live: prove the meter on a known live source.',
+        'Dead: test the isolated circuit phase to phase and phase to ground on every conductor (and DC where present).',
+        'Live: prove the meter on the known source again. Only then is "dead" trusted.',
+      ] },
+      { callout: 'A meter or leads rated below the circuit can fail violently on a voltage spike. No rating, wrong rating, or damaged leads means no test.', tone: 'danger', title: 'Check the rating first' },
       { h: 'Removing lockout' },
       { ol: [
         'Make sure tools are removed, guards are back, and the work area is clear.',
@@ -153,7 +166,7 @@ export const SAFETY: Article[] = [
       { table: {
         head: ['Hazard', 'Where', 'Control'],
         rows: [
-          ['Rotating equipment', 'Pumps, fans, couplings, belts', 'Guards in place; LOTO before touching; VFDs and automation can restart equipment on their own.'],
+          ['Rotating equipment', 'Pumps, fans, couplings, belts', 'Guards in place; LOTOTO before touching; VFDs and automation can restart equipment on their own.'],
           ['Stored pressure', 'Chilled water, condenser water, glycol, refrigerant', 'Isolate, then bleed to zero and verify before opening anything. Never open a hot pressurized cap.'],
           ['Refrigerant', 'Chiller rooms, CRAC units', 'Leak monitors and alarms; leave and ventilate on alarm; only EPA 608–certified techs handle refrigerant.'],
           ['Hot surfaces', 'Generator exhaust, chiller discharge lines, reheat coils', 'Gloves, let it cool, don\'t touch to "check temperature".'],
@@ -169,7 +182,7 @@ export const SAFETY: Article[] = [
     id: 'mechanical-loto',
     group: 'Mechanical',
     title: 'Isolating mechanical systems',
-    intro: 'Mechanical lockout is LOTO plus valves: you are controlling fluid and pressure as well as electricity.',
+    intro: 'Mechanical lockout is LOTOTO plus valves: you are controlling fluid and pressure as well as electricity.',
     blocks: [
       { ol: [
         'Lock out the motor starter or VFD feeding the equipment.',

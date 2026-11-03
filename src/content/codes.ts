@@ -36,7 +36,7 @@ export const CODES: Article[] = [
       { table: {
         head,
         rows: [
-          ['OSHA 29 CFR 1910.147', 'Control of hazardous energy (LOTO)', 'Written procedures, personal locks, training, periodic inspections of the program.'],
+          ['OSHA 29 CFR 1910.147', 'Control of hazardous energy (LOTOTO)', 'Written procedures, personal locks, training, periodic inspections of the program.'],
           ['OSHA 1910.331–.335', 'Electrical safe work practices', 'Only qualified people work on or near exposed energized parts.'],
           ['NFPA 70E', 'Electrical safety in the workplace', 'ESWC, risk assessment, energized work permits, arc flash PPE, approach boundaries.'],
           ['NFPA 70 (NEC)', 'How electrical systems are installed', 'Working clearances, labeling, Article 645 for IT rooms, Articles 700/701/702 for emergency and standby systems.'],

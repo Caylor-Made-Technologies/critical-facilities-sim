@@ -82,8 +82,8 @@ describe('pre-task brief', () => {
   });
   it('energy without LOTO or a permit is a gap', () => {
     const b = { ...EMPTY_BRIEF, task: 'Belt', worst: 'Starts', emergency: '911', stopIf: 'Mismatch', energy: ['Rotating parts'] };
-    expect(briefGaps(b).some((g) => /LOTO/.test(g))).toBe(true);
-    expect(briefGaps({ ...b, permits: ['LOTO'] })).toEqual([]);
+    expect(briefGaps(b).some((g) => /LOTOTO/.test(g))).toBe(true);
+    expect(briefGaps({ ...b, permits: ['LOTOTO'] })).toEqual([]);
   });
 });
 
@@ -105,8 +105,24 @@ describe('quick search', () => {
     for (const t of ['Tab', 'Walkthrough', 'MOP', 'Drill', 'Equipment', 'Safety', 'Term', 'Case study']) expect(types.has(t), t).toBe(true);
   });
   it('ranks title matches first', () => {
-    expect(search('lockout')[0]!.title.toLowerCase()).toContain('lockout');
+    expect(search('lockout')[0]!.title).toMatch(/LOTOTO|lockout/i);
     expect(search('kirk')[0]!.title).toMatch(/kirk/i);
     expect(search('zzzqqq')).toEqual([]);
+  });
+});
+
+describe('LOTOTO teaching order', () => {
+  it('every lockout drill tries out, rate-checks the meter, then does live-dead-live, in that order', () => {
+    for (const d of LOTO_DRILLS) {
+      const t = d.steps.map((s) => s.text);
+      const tryOut = t.findIndex((x) => /^Try out/.test(x));
+      const meter = t.findIndex((x) => /meter/i.test(x) && /rat|CAT/.test(x));
+      const ldl = t.findIndex((x) => /live-dead-live/i.test(x));
+      expect(tryOut, d.id).toBeGreaterThan(0);
+      expect(meter, d.id).toBeGreaterThan(tryOut);
+      expect(ldl, d.id).toBeGreaterThanOrEqual(meter);
+      const lock = t.findIndex((x) => /lock and tag|own lock/i.test(x));
+      expect(lock, d.id).toBeLessThan(tryOut);
+    }
   });
 });

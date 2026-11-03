@@ -42,6 +42,7 @@ const base = (over: Partial<Profile> = {}): Profile => ({
   resume: null,
   done: [],
   createdAt: '2026-11-03',
+  rev: 1,
   ...over,
 });
 

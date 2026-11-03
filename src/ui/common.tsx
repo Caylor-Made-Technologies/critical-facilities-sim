@@ -187,8 +187,8 @@ function HeadArt() {
         [210, 70],
         [330, 70],
         [150, 95],
-      ].map(([x, y]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r={4} />
+      ].map(([x, y], i) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={4} style={{ '--i': i } as React.CSSProperties} />
       ))}
     </svg>
   );

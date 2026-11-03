@@ -1,6 +1,6 @@
 /**
  * Safety Center practice tools: golden rules, approach-boundary explorer,
- * LOTO sequencing drills, hazard hunts, emergency cards, and the pre-task
+ * LOTOTO sequencing drills, hazard hunts, emergency cards, and the pre-task
  * brief. Plain data plus small pure functions so they can be unit tested.
  *
  * Educational only. Real boundaries come from the equipment's arc flash
@@ -18,8 +18,8 @@ export interface GoldenRule {
 
 export const GOLDEN_RULES: GoldenRule[] = [
   { icon: 'stop', rule: 'Anyone can stop the job.', why: 'Stop-work authority belongs to everyone. A good-faith stop is never punished.' },
-  { icon: 'lock', rule: 'Your lock, your life.', why: 'Apply your own lock and tag on every energy source you work behind.' },
-  { icon: 'bolt', rule: 'Test before you touch.', why: 'Live-dead-live with a rated meter. Assume it is energized until you prove it isn\'t.' },
+  { icon: 'lock', rule: 'Your lock, your life.', why: 'LOTOTO: lock out, tag out, try out, on every energy source you work behind.' },
+  { icon: 'bolt', rule: 'Try it, rate it, test it.', why: 'Try out after you lock out. Check your meter\'s CAT and voltage rating. Then live-dead-live. Assume it is energized until you prove it isn\'t.' },
   { icon: 'shield', rule: 'Read the label, wear the PPE.', why: 'The arc flash label sets the boundary and the gear. No label means no work.' },
   { icon: 'list', rule: 'Follow the procedure, step by step.', why: 'Read it, do it, check it off. Never work from memory on critical gear.' },
   { icon: 'eye', rule: 'Verify the device.', why: 'Check the tag with a second person before you operate. Wrong-device errors drop sites.' },
@@ -109,7 +109,7 @@ export function boundaryVerdict(distFt: number, who: Who, arcPpe: boolean, label
 }
 
 // ---------------------------------------------------------------------------
-// LOTO sequencing drills
+// LOTOTO sequencing drills
 // ---------------------------------------------------------------------------
 export interface LotoStep {
   text: string;
@@ -130,13 +130,15 @@ export const LOTO_DRILLS: LotoDrill[] = [
     title: 'Lock out an air handler fan (480 V)',
     scenario: 'CRAH-104 needs a fan belt replaced. The hall has N+2 air handlers, so the load stays cool while it is out.',
     steps: [
-      { text: 'Read the equipment\'s written LOTO procedure and list every energy source.', why: 'You have to know every source before you can control them. Planning comes first.' },
+      { text: 'Read the equipment\'s written LOTOTO procedure and list every energy source.', why: 'You have to know every source before you can control them. Planning comes first.' },
       { text: 'Tell the control room and everyone affected that CRAH-104 is coming down.', why: 'People affected are told before anything is shut down, so nobody is surprised or restarts it.' },
       { text: 'Stop the unit from its normal control (BMS or local stop).', why: 'Use the normal stop first. Opening a disconnect under load can arc.' },
       { text: 'Open the unit disconnect and the VFD bypass, if there is one.', why: 'The unit must be stopped normally before you isolate it.' },
       { text: 'Apply your own lock and tag to each isolation point.', why: 'Locks go on after the sources are isolated, not before.' },
       { text: 'Wait the labeled discharge time for the VFD capacitors.', why: 'Stored energy is released after locks are on and before you verify.' },
-      { text: 'Try to start the fan, test for absence of voltage (live-dead-live), then return the controls to off.', why: 'Verification is the last step before work. It proves the isolation actually worked.' },
+      { text: 'Try out: press start at the unit and from the BMS. Nothing should move. Return every control to OFF.', why: 'The try-out comes after locks and stored energy are handled. It proves the isolation works before anyone tests or touches.' },
+      { text: 'Check your meter: CAT III or IV and rated for at least 480 V, with rated, undamaged leads.', why: 'Rate-check the meter right before you test with it. A meter rated too low can fail violently.' },
+      { text: 'Live-dead-live: prove the meter on a known source, test every phase and to ground, prove the meter again.', why: 'Testing comes after the try-out, with a meter you just checked. It is the last proof before hands go in.' },
       { text: 'Start the belt work.', why: 'Work only starts once isolation has been verified.' },
     ],
   },
@@ -150,7 +152,9 @@ export const LOTO_DRILLS: LotoDrill[] = [
       { text: 'Open the pump\'s disconnect and apply your lock and tag.', why: 'Electrical isolation comes after the normal stop.' },
       { text: 'Close and lock the suction and discharge isolation valves.', why: 'Hydraulic isolation comes after the motor is locked out so it can\'t run against closed valves.' },
       { text: 'Open the drain and vent to bleed the pump casing to zero.', why: 'Bleed only after both valves are closed, or you would drain the loop.' },
-      { text: 'Verify zero pressure on the gauge and no flow from the vent. Try to start the pump.', why: 'Verification proves both the electrical and water isolation before you open anything.' },
+      { text: 'Try out: try to start the pump from the BMS and the local control. Return them to OFF.', why: 'Try out after the locks and the bleed, to prove the motor can\'t run.' },
+      { text: 'Verify zero pressure on the gauge and no flow from the vent.', why: 'Proves the water side is isolated, after the try-out and before you open anything.' },
+      { text: 'Check your meter rating, then live-dead-live on the load side of the disconnect.', why: 'Electrical proof comes last, with a meter rated for the circuit.' },
       { text: 'Start the seal replacement.', why: 'Work only starts once isolation has been verified.' },
     ],
   },
@@ -164,7 +168,9 @@ export const LOTO_DRILLS: LotoDrill[] = [
       { text: 'Open the battery breaker or disconnect.', why: 'The battery is a separate energy source. It is easy to forget, so it has its own step.' },
       { text: 'Apply your own lock and tag to every isolation point, including the battery.', why: 'Locks go on after all sources are open.' },
       { text: 'Wait the labeled DC capacitor discharge time.', why: 'Capacitors keep a charge after every source is open.' },
-      { text: 'Test for absence of voltage, AC and DC, live-dead-live.', why: 'Testing is last: it proves every source, including the DC bus, is dead.' },
+      { text: 'Try out: try to start the module from its panel. It must stay off.', why: 'The try-out comes after locks and the discharge wait, and proves the module can\'t restart.' },
+      { text: 'Check your meter: CAT rating and voltage rating cover both the AC input and the DC bus voltage.', why: 'UPS DC buses can be several hundred volts. Check the meter right before testing.' },
+      { text: 'Live-dead-live on AC and DC, at every point.', why: 'Testing is last: it proves every source, including the DC bus, is dead.' },
     ],
   },
 ];
@@ -236,6 +242,7 @@ export const HAZARD_HUNTS: HazardHunt[] = [
       { text: 'One section of the switchboard has no arc flash label.', hazard: true, why: 'No label means the hazard is unknown. No work until it is assessed.' },
       { text: 'The tech stands right in front of the breaker even though a remote racking tool is on the cart.', hazard: true, why: 'Distance is the best PPE. Use remote racking where it is provided.' },
       { text: 'The meter was checked on a known live source before and after the test.', hazard: false, why: 'Correct: live-dead-live.' },
+      { text: 'The tester grabbed a CAT II meter from the truck for the 480 V switchboard.', hazard: true, why: 'Switchgear needs a meter and leads rated CAT III or IV and at least 480 V. Check the rating before any test.' },
       { text: 'A contractor walks past inside the limited approach boundary, unescorted, with covers off.', hazard: true, why: 'Unqualified people stay outside the limited approach boundary unless escorted.' },
       { text: 'They use a fiberglass ladder to reach the upper section.', hazard: false, why: 'Correct: non-conductive ladders near electrical gear.' },
       { text: 'Cardboard boxes are stored in front of the panels.', hazard: true, why: 'Working space in front of electrical equipment must be kept clear.' },
@@ -384,7 +391,7 @@ export const BRIEF_PPE = [
   'Fall protection',
 ] as const;
 
-export const BRIEF_PERMITS = ['LOTO', 'Energized work permit', 'Hot work permit', 'Confined space permit', 'Fire system impairment', 'MOP / change approved'] as const;
+export const BRIEF_PERMITS = ['LOTOTO', 'Energized work permit', 'Hot work permit', 'Confined space permit', 'Fire system impairment', 'MOP / change approved'] as const;
 
 export interface Brief {
   task: string;
@@ -405,8 +412,8 @@ export function briefGaps(b: Brief): string[] {
   if (b.energy.length === 0) gaps.push('Pick at least one energy source (almost every job has one).');
   const electrical = b.energy.includes('AC electrical') || b.energy.includes('DC / battery') || b.energy.includes('Stored (capacitors, springs)');
   const hasEnergy = b.energy.some((e) => e !== 'Gravity / falling objects');
-  if (hasEnergy && !b.permits.includes('LOTO') && !b.permits.includes('Energized work permit'))
-    gaps.push('Energy is present: add LOTO, or an energized work permit if it truly can\'t be de-energized.');
+  if (hasEnergy && !b.permits.includes('LOTOTO') && !b.permits.includes('Energized work permit'))
+    gaps.push('Energy is present: add LOTOTO, or an energized work permit if it truly can\'t be de-energized.');
   if (electrical && !b.ppe.includes('Arc-rated PPE per the label') && b.permits.includes('Energized work permit'))
     gaps.push('Energized electrical work needs arc-rated PPE per the label.');
   if (b.energy.includes('Chemicals') && !b.ppe.includes('Chemical gloves / apron')) gaps.push('Chemicals are present: add chemical gloves / apron (check the SDS).');
