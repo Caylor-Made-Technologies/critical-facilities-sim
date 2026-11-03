@@ -102,6 +102,12 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             {msg || 'Backups are a file on your own device, for moving progress to a new phone or browser. The site never sees them.'}
           </p>
           <p>
+            <strong>My Path and your resume:</strong> if you add a resume, it is read inside your browser (PDF, Word or
+            text) and then thrown away. It is never uploaded, sent or saved. Only the findings (job titles, keyword
+            counts, certifications, rough years) and your answers are kept, in this browser's local storage, so your path
+            is there next time. Delete them any time with "Delete my path" or the button below.
+          </p>
+          <p>
             <strong>Links to other sites:</strong> the Career tab links to certification issuers' own websites so you can
             find them easily. Those links open in a new tab, and those sites have their own privacy policies. This site
             doesn't track whether you click them.

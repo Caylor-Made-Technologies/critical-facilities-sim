@@ -3,6 +3,7 @@ import type { IconName } from './icons';
 
 export type Tab =
   | 'home'
+  | 'mypath'
   | 'sim'
   | 'learn'
   | 'procedures'
@@ -33,6 +34,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { id: 'home', label: 'Home', short: 'Home', icon: 'home', group: 'Start', desc: 'Your progress and where to go next.' },
+  { id: 'mypath', label: 'My Path', short: 'My Path', icon: 'target', group: 'Start', desc: 'Your personal training plan: resume, a few questions, a skill check, and a week-by-week path.' },
   { id: 'sim', label: 'Simulator', short: 'Sim', icon: 'bolt', group: 'Practice', desc: 'Break the plant on purpose and watch the backups catch it.' },
   { id: 'learn', label: 'Learn', short: 'Learn', icon: 'book', group: 'Practice', desc: 'Step-by-step walkthroughs, electrical and mechanical.' },
   { id: 'procedures', label: 'Procedures & Drills', short: 'MOPs', icon: 'list', group: 'Practice', desc: 'Run MOPs and emergency drills on the live plant. Scored.' },

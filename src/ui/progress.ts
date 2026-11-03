@@ -4,6 +4,7 @@
  * every access guarded. Turned into XP and a level to make growth visible.
  */
 import { useCallback, useState } from 'react';
+import { sanitizeProfile, type Profile } from '../content/path';
 import { earnedBadges } from './badges';
 import { today } from './dates';
 export { streakOf, today } from './dates';
@@ -35,9 +36,11 @@ export interface Progress {
   careerChecks: string[];
   /** Data center certifications the viewer marked as earned. */
   dcCerts: string[];
+  /** My Path: answers and resume signals (never the resume text), or null. */
+  profile: Profile | null;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [] };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [], profile: null };
 
 export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
 
@@ -71,6 +74,7 @@ export function sanitize(raw: unknown): Progress {
     careerRung: typeof p.careerRung === 'string' && /^r\d$/.test(p.careerRung) ? p.careerRung : '',
     careerChecks: strs(p.careerChecks).filter((x) => /^r\d:\d+$/.test(x)).slice(0, 200),
     dcCerts: strs(p.dcCerts).filter((x) => /^[a-z]{2,8}$/.test(x)).slice(0, 50),
+    profile: sanitizeProfile(p.profile),
   };
 }
 
@@ -213,6 +217,19 @@ export function useProgress(onGain?: (msg: string) => void) {
       }),
     [commit],
   );
+  const saveProfile = useCallback(
+    (profile: Profile | null) => commit((p) => ({ ...p, profile, dcCerts: profile ? [...new Set([...p.dcCerts, ...profile.certs])] : p.dcCerts }), profile ? 'Your training path is ready.' : 'Your path was deleted from this device.'),
+    [commit],
+  );
+  const togglePathDone = useCallback(
+    (key: string) =>
+      commit((p) => {
+        if (!p.profile) return null;
+        const done = p.profile.done.includes(key) ? p.profile.done.filter((x) => x !== key) : [...p.profile.done, key];
+        return { ...p, profile: { ...p.profile, done } };
+      }),
+    [commit],
+  );
   /** Replace progress with an imported backup (already sanitized). */
   const restore = useCallback((next: Progress) => {
     save(next);
@@ -227,7 +244,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, restore, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, saveProfile, togglePathDone, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

@@ -11,6 +11,7 @@ import { streakOf, today, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 import type React from 'react';
 import { TIPS, tipOfDay } from '../../content/tips';
+import { buildPath, itemDone, scoreProfile } from '../../content/path';
 import { TipCard } from './TipsTab';
 
 export function DailyCard({ p, go, startProc }: { p: ProgressHandle; go: (t: Tab) => void; startProc: (id: string) => void }) {
@@ -200,6 +201,7 @@ function lastTab(): Tab | null {
 }
 
 const QUICK: { tab: Tab; emoji: string; title: string; text: string }[] = [
+  { tab: 'mypath', emoji: '🧭', title: 'My training path', text: 'Built around you' },
   { tab: 'learn', emoji: '📘', title: 'Learn the basics', text: 'Step-by-step walkthroughs' },
   { tab: 'procedures', emoji: '🎯', title: 'Practice a drill', text: 'Scored MOPs and emergencies' },
   { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${TIPS.length} tricks for a pinch` },
@@ -266,5 +268,45 @@ export function TipOfDay({ p, go }: { p: ProgressHandle; go: (t: Tab) => void })
         <TipCard tip={tip} saved={p.progress.favTips.includes(tip.id)} onSave={() => p.toggleTip(tip.id)} />
       </div>
     </section>
+  );
+}
+
+/** Home card: your path's next step, or an invite to build one. */
+export function PathCard({ p, go }: { p: ProgressHandle; go: (t: Tab) => void }) {
+  const prof = p.progress.profile;
+  if (!prof) {
+    return (
+      <button type="button" className="path-invite" onClick={() => go('mypath')}>
+        <span className="path-invite-orb" aria-hidden="true">
+          🧭
+        </span>
+        <span>
+          <strong>Build your personal training path</strong>
+          <span>Upload your resume (it stays on your phone), answer a few questions, take a 2-minute skill check.</span>
+        </span>
+        <Icon name="arrow-right" />
+      </button>
+    );
+  }
+  const s = scoreProfile(prof);
+  const path = buildPath(prof, s);
+  const all = path.phases.flatMap((ph) => ph.items);
+  const done = all.filter((it) => itemDone(it, p.progress, prof.done)).length;
+  const next = all.find((it) => !itemDone(it, p.progress, prof.done));
+  return (
+    <button type="button" className="path-invite has-path" onClick={() => go('mypath')}>
+      <span className="path-invite-ring" aria-hidden="true">
+        <svg viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="16" className="ring-bg" />
+          <circle cx="20" cy="20" r="16" className="ring-fg" strokeDasharray={100.5} strokeDashoffset={100.5 * (1 - (all.length ? done / all.length : 0))} />
+        </svg>
+        <span>{all.length ? Math.round((done / all.length) * 100) : 0}%</span>
+      </span>
+      <span>
+        <strong>{prof.name ? `${prof.name}'s path` : 'Your path'} · {done}/{all.length} done</strong>
+        <span>{next ? `Next up: ${next.title}` : 'Path complete. Build your next level!'}</span>
+      </span>
+      <Icon name="arrow-right" />
+    </button>
   );
 }

@@ -3,7 +3,7 @@
  * Pages: network first, so updates arrive as soon as you're online.
  * Hashed build files, fonts and images: cache first (their names change when they change).
  */
-const CACHE = 'cfs-v2';
+const CACHE = 'cfs-v3';
 const SCOPE = self.registration.scope;
 
 // Precache the page plus the build files and fonts it links to, so the very next visit works offline.

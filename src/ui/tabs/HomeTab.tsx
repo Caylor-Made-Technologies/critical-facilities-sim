@@ -11,7 +11,7 @@ import { Icon } from '../icons';
 import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 import { CountUp } from '../common';
-import { BadgeWall, DailyCard, InstallButton, QuickStart, TipOfDay } from './HomeExtras';
+import { BadgeWall, DailyCard, InstallButton, PathCard, QuickStart, TipOfDay } from './HomeExtras';
 
 
 
@@ -123,6 +123,7 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </div>
       </section>
 
+      <PathCard p={p} go={go} />
       <QuickStart go={go} />
 
       <section className="card whats-new" aria-labelledby="new-h">
@@ -131,20 +132,20 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </span>
         <div>
           <div className="eyebrow" id="new-h">
-            New: Tips & Tricks
+            New: My Path
           </div>
           <p>
-            Over 200 quick tips: CCME for the refrigeration cycle, BOY and BRB for wire colors, quick math, and safe
-            in-a-pinch moves. Plus Field Tools, Career, badges and daily streaks. Tap <strong>Aa</strong> up top to change
-            the text size, or press <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere.
+            Your own training plan. Add your resume (it's read on your phone and never uploaded), answer a few questions,
+            take a 2-minute skill check, and get a week-by-week path with a skill radar and your spot on the career
+            ladder.
           </p>
         </div>
         <div className="whats-new-btns">
-          <button className="btn btn-primary" type="button" onClick={() => go('tips')}>
-            Open Tips <Icon name="arrow-right" />
+          <button className="btn btn-primary" type="button" onClick={() => go('mypath')}>
+            Build my path <Icon name="arrow-right" />
           </button>
-          <button className="btn" type="button" onClick={() => go('tools')}>
-            Field Tools
+          <button className="btn" type="button" onClick={() => go('tips')}>
+            Tips & Tricks
           </button>
         </div>
       </section>

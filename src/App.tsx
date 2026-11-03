@@ -22,6 +22,8 @@ import { SafetyTab } from './ui/tabs/SafetyTab';
 import { FieldToolsTab } from './ui/tabs/FieldToolsTab';
 import { CareerTab } from './ui/tabs/CareerTab';
 import { TipsTab } from './ui/tabs/TipsTab';
+import { MyPathTab } from './ui/tabs/MyPathTab';
+import type { PathItem } from './content/path';
 import { TIPS } from './content/tips';
 import { rememberTab } from './ui/tabs/HomeExtras';
 import { Palette } from './ui/Palette';
@@ -305,6 +307,22 @@ export function App() {
     }
   };
 
+  const startPathItem = (it: PathItem) => {
+    if (it.kind === 'lesson') {
+      const l = LESSONS.find((x) => x.id === it.ref);
+      if (l) {
+        startLesson(l);
+        setTab(drivesSim(l) ? 'sim' : 'learn');
+      }
+    } else if (it.kind === 'proc') {
+      const pr = PROCEDURES.find((x) => x.id === it.ref);
+      if (pr) startProc(pr);
+    } else if (it.kind === 'safety') setTab('safety');
+    else if (it.kind === 'exam') setTab('quiz');
+    else if (it.kind === 'cert') setTab('career');
+    else setTab(it.ref as Tab);
+  };
+
   const lvl = levelOf(p.xp);
   const current = NAV.find((n) => n.id === tab)!;
   const simLesson = lesson && drivesSim(lesson.lesson) ? lesson : null;
@@ -418,6 +436,7 @@ export function App() {
               />
             )}
             {tab === 'tools' && <FieldToolsTab />}
+            {tab === 'mypath' && <MyPathTab p={p} onStart={startPathItem} go={setTab} />}
             {tab === 'tips' && <TipsTab key={tipQ} p={p} initialQuery={tipQ} />}
             {tab === 'career' && <CareerTab sim={h.sim} version={h.version} units={prefs.units} boxes={p.progress.cards} onRate={p.rateCard} openSim={() => setTab('sim')} p={p} go={setTab} />}
             {tab === 'sim' && (
