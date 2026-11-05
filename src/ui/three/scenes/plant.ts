@@ -23,6 +23,7 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  Plane,
   Quaternion,
   Raycaster,
   RingGeometry,
@@ -38,7 +39,7 @@ import {
   type Object3D,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createStage, edgeMaterial, type ThemeColors } from '../core';
+import { createStage, declutter, edgeMaterial, type Tag, type ThemeColors } from '../core';
 import type { Link3D, Node3D, Plant3D } from '../plantModel';
 
 export interface PlantApi {
@@ -46,6 +47,10 @@ export interface PlantApi {
   stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   update: (m: Plant3D, selected: string | null, failureMode: boolean) => void;
   focus: (id: string | null) => void;
+  /** Fly back to the whole-plant view. */
+  reset: () => void;
+  /** Device tags showing right now and their screen boxes (for automated checks). */
+  visibleTags: () => { id: string; rect: [number, number, number, number] }[];
   pick: (clientX: number, clientY: number) => string | null;
   project: (id: string) => { x: number; y: number } | null;
   nodeState: (id: string) => { state: string; light: string } | null;
@@ -59,7 +64,7 @@ export interface PlantApi {
 interface NodeObj {
   n: Node3D;
   group: Group;
-  hit: Mesh;
+  hit: Mesh<BoxGeometry>;
   light: Mesh;
   body: Mesh[];
   label: Sprite;
@@ -72,7 +77,7 @@ interface NodeObj {
 const UP = new Vector3(0, 1, 0);
 
 export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: string) => void }): PlantApi {
-  const stage = createStage(canvas, { camera: [0, 30, 30], target: [0, 0, 0], fov: 42, interactive: true, minDistance: 3, maxDistance: 120, maxDpr: 1.5, fps: 30, fog: [60, 160] });
+  const stage = createStage(canvas, { camera: [0, 30, 30], target: [0, 0, 0], fov: 42, interactive: true, minDistance: 3, maxDistance: 120, maxDpr: 1.5, fps: 30, fog: [60, 160], shadows: true });
   const { scene, camera, controls } = stage;
   if (controls) {
     controls.enablePan = true;
@@ -81,6 +86,21 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
   }
   const root = new Group();
   scene.add(root);
+  // Keep the camera over the plant: panning stops at its edges, and the view can't drop below the floor.
+  controls?.addEventListener('change', () => {
+    if (!model || !controls) return;
+    const [x0, z0, x1, z1] = model.bounds;
+    const t = controls.target;
+    const cx = Math.min(x1 + 2, Math.max(x0 - 2, t.x));
+    const cz = Math.min(z1 + 2, Math.max(z0 - 2, t.z));
+    const cy = Math.min(3, Math.max(0, t.y));
+    if (cx !== t.x || cz !== t.z || cy !== t.y) {
+      const d = new Vector3(cx - t.x, cy - t.y, cz - t.z);
+      t.add(d);
+      camera.position.add(d);
+    }
+    if (camera.position.y < 0.6) camera.position.y = 0.6;
+  });
 
   // --- Materials ---
   const std = (c: number, m = 0.35, r = 0.48) => new MeshStandardMaterial({ color: c, metalness: m, roughness: r });
@@ -141,10 +161,42 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
   sel.visible = false;
   root.add(sel);
 
+  // Contact shadows: a soft dark spot under every device (all tiers, one draw call).
+  const shadowTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(0.55, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    return new CanvasTexture(c);
+  })();
+  const contactMat = new MeshBasicMaterial({ map: shadowTex, color: 0x000000, transparent: true, depthWrite: false, opacity: stage.theme.dark ? 0.6 : 0.32, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const contactGeo = new PlaneGeometry(1, 1);
+  let contact: InstancedMesh | null = null;
+  function buildContact(list: NodeObj[]) {
+    if (contact) {
+      root.remove(contact);
+      contact.dispose();
+    }
+    contact = new InstancedMesh(contactGeo, contactMat, Math.max(1, list.length));
+    const q = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
+    list.forEach((o, i) => {
+      const hb = o.hit.geometry.parameters as { width: number; depth: number };
+      contact!.setMatrixAt(i, new Matrix4().compose(new Vector3(o.group.position.x, 0.012, o.group.position.z), q, new Vector3(hb.width * 1.25, hb.depth * 1.15, 1)));
+    });
+    contact.count = list.length;
+    contact.renderOrder = -1;
+    root.add(contact);
+  }
+
   let nodes = new Map<string, NodeObj>();
   let linkGroup = new Group();
   root.add(linkGroup);
-  let zoneSprites: Sprite[] = [];
+  let zoneMarks: Mesh[] = [];
   let model: Plant3D | null = null;
   let layoutKey = '';
   let failureMode = false;
@@ -197,20 +249,33 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     ctx.fillText(sub.slice(0, 22), c.width / 2, 78);
     tex.needsUpdate = true;
   }
+  // Zone names are painted on the floor beside each row: they never cover equipment tags.
   const makeZone = (label: string) => {
     const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 64;
-    const ctx = c.getContext('2d')!;
-    ctx.fillStyle = '#' + stage.theme.cyan.getHexString();
-    ctx.font = '800 34px Montserrat, system-ui, sans-serif';
-    ctx.fillText(label.toUpperCase(), 8, 44);
+    c.width = 1024;
+    c.height = 128;
     const tex = new CanvasTexture(c);
     tex.colorSpace = SRGBColorSpace;
-    const spr = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.85, toneMapped: false }));
-    spr.scale.set(6, 0.75, 1);
-    return spr;
+    tex.anisotropy = 4;
+    const mat = new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const mesh = new Mesh(geo('zone', () => new PlaneGeometry(6.4, 0.8)), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.userData.label = label;
+    drawZone(mesh);
+    return mesh;
   };
+  function drawZone(mesh: Mesh) {
+    const tex = (mesh.material as MeshBasicMaterial).map as CanvasTexture;
+    const c = tex.image as HTMLCanvasElement;
+    const ctx = c.getContext('2d')!;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#' + stage.theme.cyan.getHexString();
+    ctx.globalAlpha = stage.theme.dark ? 0.85 : 0.95;
+    ctx.font = '800 64px Montserrat, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(mesh.userData.label).toUpperCase(), c.width - 12, 86);
+    tex.needsUpdate = true;
+  }
 
   // --- Equipment builders (simple, readable shapes) ---
   const box = (g: Group, w: number, h: number, d: number, mat: Material, x = 0, y = h / 2, z = 0, edges = true) => {
@@ -364,6 +429,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     label.position.set(0, h + 0.75, 0);
     g.add(label);
     root.add(g);
+    if (stage.shadows) g.traverse((x) => (x as Mesh).isMesh && x !== hit && ((x as Mesh).castShadow = true));
     return { n, group: g, hit, light, body, label, labelText: `${n.tag}|${n.sub}`, lever, spinner };
   }
 
@@ -506,24 +572,98 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     sel.visible = !!s;
     if (s) sel.position.set(s.group.position.x, 0.03, s.group.position.z);
     M.ring.color.copy(failureMode ? th.alarm : th.blue);
+    tags = tagList();
     stage.invalidate();
   }
 
   // --- Camera: fit and fly-to ---
   let fly: { from: Vector3; to: Vector3; tFrom: Vector3; tTo: Vector3; t: number } | null = null;
-  function fitAll() {
-    if (!model) return;
+  /**
+   * Whole-plant view that fits any screen shape: look from a fixed angle, then
+   * find the distance (and centring) at which the plant's box just fits.
+   */
+  const corners: Vector3[] = Array.from({ length: 8 }, () => new Vector3());
+  function fitPose(): { pos: Vector3; tgt: Vector3 } | null {
+    if (!model) return null;
     const [x0, z0, x1, z1] = model.bounds;
-    const cx = (x0 + x1) / 2;
-    const cz = (z0 + z1) / 2;
-    const span = Math.max(x1 - x0, (z1 - z0) * 1.4, 8);
-    const aspect = camera.aspect || 1;
-    const dist = (span / Math.min(aspect, 1.6)) * 0.95 + 6;
-    const tgt = new Vector3(cx, 0, cz);
-    const pos = new Vector3(cx, dist * 0.78, cz + dist * 0.62);
-    camera.position.copy(pos);
-    controls?.target.copy(tgt);
-    controls?.update();
+    // Tall phone screen + wide plant: look from the side so the long run goes up the screen.
+    const az = portrait();
+    const dir = new Vector3(Math.sin(az) * Math.cos(0.92), Math.sin(0.92), Math.cos(az) * Math.cos(0.92));
+    const tgt = new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    const probe = camera.clone();
+    probe.aspect = camera.aspect || 1;
+    probe.updateProjectionMatrix();
+    const ext = (d: number, t: Vector3) => {
+      probe.position.copy(t).addScaledVector(dir, d);
+      probe.lookAt(t);
+      probe.updateMatrixWorld();
+      let a = Infinity, b = -Infinity, c = Infinity, e = -Infinity;
+      let i = 0;
+      for (const x of [x0 - 0.8, x1 + 0.8]) for (const y of [0, 2.2]) for (const z of [z0 - 0.8, z1 + 0.8]) {
+        const v = corners[i++]!.set(x, y, z).project(probe);
+        a = Math.min(a, v.x); b = Math.max(b, v.x); c = Math.min(c, v.y); e = Math.max(e, v.y);
+      }
+      return { a, b, c, e };
+    };
+    const fits = (d: number, t: Vector3) => {
+      const r = ext(d, t);
+      return Math.max(-r.a, r.b, -r.c, r.e) <= 0.94;
+    };
+    let lo = 2, hi = 400;
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid, tgt)) hi = mid;
+      else lo = mid;
+    }
+    // Centre the plant on screen (a tilted view puts the far rows higher), then fit again.
+    const r = ext(hi, tgt);
+    const ray = new Raycaster();
+    ray.setFromCamera(new Vector2((r.a + r.b) / 2, (r.c + r.e) / 2), probe);
+    const hit = new Vector3();
+    if (ray.ray.intersectPlane(new Plane(UP, 0), hit)) {
+      tgt.x += (hit.x - tgt.x) * 0.9;
+      tgt.z += (hit.z - tgt.z) * 0.9;
+      lo = 2;
+      hi = 400;
+      for (let k = 0; k < 30; k++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid, tgt)) hi = mid;
+        else lo = mid;
+      }
+    }
+    return { pos: tgt.clone().addScaledVector(dir, hi), tgt };
+  }
+  function portrait(): number {
+    if (!model) return 0;
+    const [x0, z0, x1, z1] = model.bounds;
+    return (camera.aspect || 1) < 0.85 && x1 - x0 > (z1 - z0) * 1.15 ? Math.PI / 2 : 0;
+  }
+  let zoneTurn = 0;
+  function turnZones() {
+    const az = portrait();
+    if (az === zoneTurn && zoneMarks.every((z) => z.userData.turn === az)) return;
+    zoneTurn = az;
+    for (const z of zoneMarks) {
+      z.rotation.set(-Math.PI / 2, 0, az);
+      z.userData.turn = az;
+    }
+  }
+  function fitAll() {
+    turnZones();
+    const p = fitPose();
+    if (!p || !controls) return;
+    camera.position.copy(p.pos);
+    controls.target.copy(p.tgt);
+    controls.maxDistance = Math.max(20, p.pos.distanceTo(p.tgt) * 1.6);
+    controls.update();
+    stage.invalidate();
+  }
+  function reset() {
+    turnZones();
+    const p = fitPose();
+    if (!p || !controls) return;
+    if (stage.calm || !stage.onScreen()) return fitAll();
+    fly = { from: camera.position.clone(), to: p.pos, tFrom: controls.target.clone(), tTo: p.tgt, t: 0 };
   }
   function focus(id: string | null) {
     const o = id ? nodes.get(id) : undefined;
@@ -547,6 +687,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
   stage.onTheme((th) => {
     edge.color.copy(th.cyan);
     M.floor.color.copy(th.floor);
+    contactMat.opacity = th.dark ? 0.6 : 0.32;
     for (const [k, m] of lightMats) {
       const c = th[k as 'ok' | 'warn' | 'alarm' | 'muted'];
       if (c) m.color.copy(c);
@@ -556,10 +697,23 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     for (const o of nodes.values()) {
       drawLabel(o.label, o.n.tag, o.n.sub);
     }
+    for (const z of zoneMarks) drawZone(z);
     if (grid) (grid.material as LineBasicMaterial).color = th.line.clone();
     paint();
   });
   M.floor.color.copy(stage.theme.floor);
+
+  // --- Tags: never overlapping, fade with distance ---
+  const tagList = (): Tag[] =>
+    [...nodes.values()].map((o) => ({
+      sprite: o.label,
+      priority: (o.n.id === selectedId ? 100 : 0) + (o.n.state === 'failed' ? 50 : o.n.state === 'maint' ? 40 : 0) + (o.label.scale.x > 2 ? 10 : 0),
+    }));
+  let tags: Tag[] = [];
+  stage.onRender(() => {
+    if (!tags.length && nodes.size) tags = tagList();
+    declutter(tags, camera, canvas, { fadeNear: 26, fadeFar: 70, minPx: 13, snap: stage.calm });
+  });
 
   // --- Animation ---
   const mtx = new Matrix4();
@@ -624,6 +778,12 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     if (e.buttons) return;
     canvas.style.cursor = pick(e.clientX, e.clientY) ? 'pointer' : 'grab';
   };
+  // Double-tap (or double-click) a device to fly to it.
+  const onDbl = (e: MouseEvent) => {
+    const id = pick(e.clientX, e.clientY);
+    if (id) focus(id);
+  };
+  canvas.addEventListener('dblclick', onDbl);
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointermove', onMove);
@@ -648,22 +808,25 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
         edgeSrc = [];
         for (const n of m.nodes) nodes.set(n.id, buildNode(n));
         buildEdges();
-        for (const s of zoneSprites) {
-          root.remove(s);
-          (s.material as SpriteMaterial).map?.dispose();
-          s.material.dispose();
+        buildContact([...nodes.values()]);
+        for (const z of zoneMarks) {
+          root.remove(z);
+          (z.material as MeshBasicMaterial).map?.dispose();
+          (z.material as MeshBasicMaterial).dispose();
         }
-        zoneSprites = m.zones.map((z) => {
-          const s = makeZone(z.label);
-          s.position.set(m.bounds[0] + 1.2, 0.4, z.z - 0.9);
-          s.center.set(0, 0.5);
-          root.add(s);
-          return s;
+        // In the floor margin left of the plant, right-aligned toward the row it names.
+        zoneMarks = m.zones.map((z) => {
+          const mesh = makeZone(z.label);
+          mesh.position.set(m.bounds[0] - 3.6, 0.02, z.z);
+          root.add(mesh);
+          return mesh;
         });
         buildLinks(m);
         const [x0, z0, x1, z1] = m.bounds;
         floor.scale.set(x1 - x0 + 12, z1 - z0 + 10, 1);
         floor.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+        floor.receiveShadow = stage.shadows;
+        stage.fitShadow((x0 + x1) / 2, (z0 + z1) / 2, Math.max(x1 - x0, z1 - z0) / 2 + 3);
         if (grid) {
           root.remove(grid);
           grid.geometry.dispose();
@@ -690,6 +853,8 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
       if (changedSel && selected) focus(selected);
     },
     focus,
+    reset,
+    visibleTags: () => [...nodes.values()].filter((o) => o.label.visible && o.label.material.opacity > 0.5).map((o) => ({ id: o.n.id, rect: o.label.userData.rect as [number, number, number, number] })),
     pick,
     project(id) {
       const o = nodes.get(id);
@@ -714,6 +879,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
       return { geometries: r.memory.geometries, textures: r.memory.textures, programs: r.programs?.length ?? 0, calls: r.render.calls, triangles: r.render.triangles, target: [t.x, t.y, t.z], flying: !!fly };
     },
     dispose() {
+      canvas.removeEventListener('dblclick', onDbl);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointermove', onMove);
@@ -722,10 +888,17 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
           const spr = x as Sprite;
           if (spr.isSprite) (spr.material as SpriteMaterial).map?.dispose();
         });
-      for (const s of zoneSprites) (s.material as SpriteMaterial).map?.dispose();
+      for (const z of zoneMarks) {
+        (z.material as MeshBasicMaterial).map?.dispose();
+        (z.material as MeshBasicMaterial).dispose();
+      }
       for (const m of [...lightMats.values(), ...linkMats.values(), ...Object.values(M), edge, pulseMat]) m.dispose();
       pulseGeo.dispose();
       unitCyl.dispose();
+      contact?.dispose();
+      contactGeo.dispose();
+      contactMat.dispose();
+      shadowTex.dispose();
       for (const g of geoCache.values()) g.dispose();
       edgeLines?.geometry.dispose();
       stage.dispose();

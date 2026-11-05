@@ -5,6 +5,7 @@
  */
 import {
   AdditiveBlending,
+  NormalBlending,
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
@@ -111,23 +112,47 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
   selRing.visible = false;
   root.add(selRing);
 
-  // --- Airflow particles (cold air rising from perforated tiles) ---
-  const N = 520;
+  // --- Airflow particles: the full loop, colored by temperature ---
+  // Cold air rises from the perforated tiles in each cold aisle, is pulled through
+  // the racks (warming up), and leaves the hot aisle rising toward the ceiling.
+  // Count capped by quality tier; one draw call.
+  const N = stage.tier === 'low' ? 240 : stage.tier === 'medium' ? 520 : 900;
   const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
   const speed = new Float32Array(N);
+  const phase = new Uint8Array(N); // 0 rising in cold aisle, 1 through a rack, 2 rising in hot aisle
+  const side = new Int8Array(N);
+  const startZ = new Float32Array(N);
   const pGeo = new BufferGeometry();
   pGeo.setAttribute('position', new BufferAttribute(pos, 3));
-  const pMat = new PointsMaterial({ size: 0.07, color: 0x22d3ee, transparent: true, opacity: 0.75, depthWrite: false, blending: AdditiveBlending });
+  pGeo.setAttribute('color', new BufferAttribute(col, 3));
+  const pMat = new PointsMaterial({ size: 0.1, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, blending: AdditiveBlending });
+  // Glowing (additive) on dark floors; plain dots on light ones, where additive light vanishes.
+  const pBlend = (dark: boolean) => {
+    pMat.blending = dark ? AdditiveBlending : NormalBlending;
+    pMat.size = dark ? 0.1 : 0.085;
+    pMat.needsUpdate = true;
+  };
+  pBlend(stage.theme.dark);
   const particles = new Points(pGeo, pMat);
+  particles.frustumCulled = false;
   root.add(particles);
   let aisleZ: number[] = [0];
   let hallW = 6;
+  const cold = new Color();
+  const hot = new Color();
   const seed = (i: number, fresh: boolean) => {
     const z = aisleZ[i % aisleZ.length]!;
     pos[i * 3] = (Math.random() - 0.5) * hallW;
-    pos[i * 3 + 1] = fresh ? Math.random() * 2.4 : 0;
+    pos[i * 3 + 1] = fresh ? Math.random() * 1.8 : 0;
     pos[i * 3 + 2] = z + (Math.random() - 0.5) * 0.9;
+    startZ[i] = z;
+    side[i] = Math.random() < 0.5 ? -1 : 1;
+    phase[i] = 0;
     speed[i] = 0.4 + Math.random() * 0.6;
+    col[i * 3] = cold.r;
+    col[i * 3 + 1] = cold.g;
+    col[i * 3 + 2] = cold.b;
   };
 
   let vis: HallVis | null = null;
@@ -241,8 +266,17 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
       o.group.userData.status = o.vis.status;
     }
     const heat = heat01(vis.inletC);
-    pMat.color.copy(th.cyan).lerp(th.warn, heat);
-    pMat.opacity = 0.25 + 0.55 * vis.airflow;
+    // Supply air: blue when cool, toward amber as the inlet warms. Exhaust is always warmer.
+    cold.copy(th.cyan).lerp(th.warn, heat);
+    hot.copy(th.warn).lerp(th.alarm, Math.min(1, 0.35 + heat));
+    for (let i = 0; i < N; i++)
+      if (phase[i] === 0) {
+        col[i * 3] = cold.r;
+        col[i * 3 + 1] = cold.g;
+        col[i * 3 + 2] = cold.b;
+      }
+    pGeo.attributes.color!.needsUpdate = true;
+    pMat.opacity = (th.dark ? 0.35 : 0.55) + 0.45 * vis.airflow;
     mPulse.color.copy(th.cyan);
     const sel = rackObjs.find((o) => o.vis.id === selected);
     selRing.visible = !!sel;
@@ -256,6 +290,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
       if (c) m.color.copy(c);
     }
     mFloor.color.copy(th.floor);
+    pBlend(th.dark);
     if (grid) (grid.material as LineBasicMaterial).color = th.line.clone();
     mSel.color.copy(th.blue);
     mEdge.color.copy(th.cyan);
@@ -271,11 +306,28 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
     if (!vis) return;
     // Air rises from the tiles, faster when more cooling runs.
     const flow = 0.3 + vis.airflow * 1.2;
+    // Half a rack depth plus a little: where the exhaust leaves the back of the rack.
+    const through = ROW_PITCH / 2 + RACK_D / 2 + 0.2;
     for (let i = 0; i < N; i++) {
-      pos[i * 3 + 1]! += dt * speed[i]! * flow;
-      if (pos[i * 3 + 1]! > 2.5) seed(i, false);
+      const v = dt * speed[i]! * flow;
+      if (phase[i] === 0) {
+        pos[i * 3 + 1]! += v;
+        // Pulled into the rack fronts somewhere between 0.4 m and 1.9 m up.
+        if (pos[i * 3 + 1]! > 0.4 + (i % 7) * 0.22) phase[i] = 1;
+      } else if (phase[i] === 1) {
+        pos[i * 3 + 2]! += side[i]! * v * 1.4;
+        const f = Math.min(1, Math.abs(pos[i * 3 + 2]! - startZ[i]!) / through);
+        col[i * 3] = cold.r + (hot.r - cold.r) * f;
+        col[i * 3 + 1] = cold.g + (hot.g - cold.g) * f;
+        col[i * 3 + 2] = cold.b + (hot.b - cold.b) * f;
+        if (f >= 1) phase[i] = 2;
+      } else {
+        pos[i * 3 + 1]! += v * 0.8;
+        if (pos[i * 3 + 1]! > 2.7) seed(i, false);
+      }
     }
     pGeo.attributes.position!.needsUpdate = true;
+    pGeo.attributes.color!.needsUpdate = true;
     // Power pulses run along busways of rows that still have power.
     for (const p of pulses) {
       const rowUp = vis.racks.some((r) => r.row === p.row && r.status !== 'down');

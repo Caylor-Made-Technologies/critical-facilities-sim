@@ -10,6 +10,9 @@ export interface Cf3d {
     liveLinks: () => number;
     frames: () => number;
     focus: (id: string | null) => void;
+    reset: () => void;
+    visibleTags: () => { id: string; rect: [number, number, number, number] }[];
+    stats: () => { workMedian: number; workP95: number; gapMedian: number; samples: number; tier: string; shadows: boolean };
     info: () => { geometries: number; textures: number; programs: number; calls: number; triangles: number; target: [number, number, number]; flying: boolean };
   };
 }

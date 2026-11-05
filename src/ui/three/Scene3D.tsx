@@ -3,7 +3,7 @@
  * when a scene is on the page. If WebGL isn't available or anything fails,
  * the wrapper shows its fallback and the page keeps working.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type React from 'react';
 import type { BoundaryApi, BoundaryState } from './scenes/boundary';
 import type { EquipmentApi } from './scenes/equipment';
@@ -14,7 +14,9 @@ import type { HallVis } from './hallState';
 import { MODEL_CAPTION, type ModelKey } from './models';
 import { useQuality } from './quality';
 
-type Status = 'loading' | 'ready' | 'fallback';
+type Status = 'loading' | 'ready' | 'fallback' | 'lost';
+/** Rebuilds the scene on a fresh canvas (after the GPU dropped it). */
+const Reload = createContext<() => void>(() => {});
 
 /** Checked before loading any 3D code, so devices without WebGL never download it. */
 let webgl: boolean | null = null;
@@ -73,6 +75,7 @@ function useScene<T extends { dispose: () => void }>(mount: (c: HTMLCanvasElemen
   useEffect(() => {
     let alive = true;
     let made: T | null = null;
+    let unlisten = () => {};
     (async () => {
       if (!hasWebGL()) throw new Error('no webgl');
       if (!alive || !ref.current) return;
@@ -86,9 +89,20 @@ function useScene<T extends { dispose: () => void }>(mount: (c: HTMLCanvasElemen
       expose(name, made);
       setApi(made);
       setStatus('ready');
+      // The browser can drop a WebGL context (GPU reset, too many tabs): pause and offer a reload.
+      const c = ref.current;
+      if (c) {
+        const lost = (e: Event) => {
+          e.preventDefault();
+          if (alive) setStatus('lost');
+        };
+        c.addEventListener('webglcontextlost', lost);
+        unlisten = () => c.removeEventListener('webglcontextlost', lost);
+      }
     })().catch(() => alive && setStatus('fallback'));
     return () => {
       alive = false;
+      unlisten();
       made?.dispose();
       expose(name, undefined);
     };
@@ -107,6 +121,7 @@ function Frame({ status, label, className, children, fallback, canvasRef, hint }
         </span>
       )}
       {status === 'fallback' && fallback}
+      {status === 'lost' && <LostCard />}
       {status === 'ready' && hint && (
         <span className="scene3d-hint" aria-hidden="true">
           {hint}
@@ -165,35 +180,75 @@ function Plant3DViewInner({ model, selected, failureMode, onActivate, label }: {
         label={label}
         className={`scene3d-plant${failureMode ? ' failure' : ''}`}
         canvasRef={ref}
-        hint={failureMode ? 'Tap equipment to fail or restore it · drag to turn' : 'Tap equipment for details · drag to turn · two fingers to move'}
+        hint={failureMode ? 'Tap equipment to fail or restore it · drag to turn' : 'Tap for details · double-tap to fly there · drag to turn · two fingers to move'}
         fallback={<span className="scene3d-fallback">3D isn't available on this device. Switch back to 2D.</span>}
       />
       {status === 'ready' && (
-        <button type="button" className="btn btn-sm scene3d-fit" onClick={() => api?.focus(selected)} disabled={!selected}>
-          Go to selected
-        </button>
+        <div className="scene3d-fit">
+          <button type="button" className="btn btn-sm" onClick={() => api?.reset()}>
+            Reset view
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => api?.focus(selected)} disabled={!selected}>
+            Go to selected
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-// Each scene gets a fresh canvas when the quality tier changes (a WebGL canvas can't be reused).
+function LostCard() {
+  const reload = useContext(Reload);
+  return (
+    <div className="scene3d-lost">
+      <p>3D paused: the device needed its graphics memory back.</p>
+      <button type="button" className="btn btn-primary btn-sm" onClick={reload}>
+        Tap to reload 3D
+      </button>
+    </div>
+  );
+}
+
+// Each scene gets a fresh canvas when the quality tier changes or after a lost context
+// (a WebGL canvas can't be reused).
 type Props<F> = F extends (p: infer P) => unknown ? P : never;
+function useFresh(): [string, () => void] {
+  const { tier } = useQuality();
+  const [gen, setGen] = useState(0);
+  return [`${tier}-${gen}`, () => setGen((g) => g + 1)];
+}
 export function Hall3D(p: Props<typeof Hall3DInner>) {
   const { tier } = useQuality();
+  const [key, reload] = useFresh();
   // The Home hero is decoration: on the Low tier the page keeps its still circuit art instead.
   if (p.mode === 'hero' && tier === 'low') return null;
-  return <Hall3DInner key={tier} {...p} />;
+  return (
+    <Reload.Provider value={reload}>
+      <Hall3DInner key={key} {...p} />
+    </Reload.Provider>
+  );
 }
 export function Equipment3D(p: Props<typeof Equipment3DInner>) {
-  const { tier } = useQuality();
-  return <Equipment3DInner key={tier} {...p} />;
+  const [key, reload] = useFresh();
+  return (
+    <Reload.Provider value={reload}>
+      <Equipment3DInner key={key} {...p} />
+    </Reload.Provider>
+  );
 }
 export function Boundary3D(p: Props<typeof Boundary3DInner>) {
-  const { tier } = useQuality();
-  return <Boundary3DInner key={tier} {...p} />;
+  const [key, reload] = useFresh();
+  return (
+    <Reload.Provider value={reload}>
+      <Boundary3DInner key={key} {...p} />
+    </Reload.Provider>
+  );
 }
 export function Plant3DView(p: Props<typeof Plant3DViewInner>) {
-  const { tier } = useQuality();
-  return <Plant3DViewInner key={tier} {...p} />;
+  const [key, reload] = useFresh();
+  return (
+    <Reload.Provider value={reload}>
+      <Plant3DViewInner key={key} {...p} />
+    </Reload.Provider>
+  );
 }

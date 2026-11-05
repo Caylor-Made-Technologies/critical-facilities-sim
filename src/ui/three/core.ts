@@ -18,7 +18,7 @@ import {
   Fog,
   HemisphereLight,
   Mesh,
-  PCFSoftShadowMap,
+  PCFShadowMap,
   PerspectiveCamera,
   SRGBColorSpace,
   Scene,
@@ -117,6 +117,8 @@ export interface Stage {
   calm: boolean;
   /** Called every frame with seconds since the last frame and total time. */
   onFrame: (fn: (dt: number, t: number) => void) => void;
+  /** Called right before every draw, animated or not (labels, culling). */
+  onRender: (fn: () => void) => void;
   /** Called when the light/dark theme changes. */
   onTheme: (fn: (t: ThemeColors) => void) => void;
   /** Ask for one render (used in reduced-motion mode after changes). */
@@ -168,10 +170,11 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
   scene.add(hemi, sun);
   if (shadows) {
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFSoftShadowMap;
+    renderer.shadowMap.type = PCFShadowMap;
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.bias = -0.0005;
+    sun.shadow.radius = 4;
     sun.shadow.normalBias = 0.02;
     scene.add(sun.target);
   }
@@ -205,6 +208,7 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
 
   const frameFns: ((dt: number, t: number) => void)[] = [];
   const themeFns: ((t: ThemeColors) => void)[] = [];
+  const renderFns: (() => void)[] = [];
   let frames = 0;
   let raf = 0;
   let last = performance.now();
@@ -248,6 +252,7 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
   const render = () => {
     const t0 = performance.now();
     controls?.update();
+    for (const fn of renderFns) fn();
     renderer.render(scene, camera);
     frames++;
     dirty = false;
@@ -312,6 +317,7 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
     calm,
     onFrame: (fn) => frameFns.push(fn),
     onTheme: (fn) => themeFns.push(fn),
+    onRender: (fn) => renderFns.push(fn),
     invalidate: () => {
       dirty = true;
     },
@@ -332,7 +338,8 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
       envTex.dispose();
       pmrem.dispose();
       renderer.dispose();
-      renderer.forceContextLoss();
+      // Free the GPU context now (unless the browser already took it back).
+      if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
     },
   } as Stage;
 }
@@ -357,4 +364,56 @@ export function addEdges(mesh: Mesh, mat: LineBasicMaterial): LineSegments {
 
 export function edgeMaterial(theme: ThemeColors, opacity = 0.55): LineBasicMaterial {
   return new LineBasicMaterial({ color: theme.cyan.clone(), transparent: true, opacity });
+}
+
+// ---------------------------------------------------------------------------
+// Labels that never overlap: each frame, project every label to the screen,
+// keep the most important ones that fit, and fade the rest out. Labels also
+// fade with distance and hide when too small to read.
+
+export interface Tag {
+  sprite: import('three').Sprite;
+  /** Higher wins a spot first (selected > failed > big > the rest). */
+  priority: number;
+}
+
+const tmpV = new Vector3();
+export function declutter(tags: Tag[], camera: PerspectiveCamera, canvas: HTMLCanvasElement, o: { fadeNear: number; fadeFar: number; minPx?: number; snap?: boolean }): void {
+  camera.updateMatrixWorld();
+  const W = canvas.clientWidth || 1;
+  const H = canvas.clientHeight || 1;
+  const k = H / (2 * Math.tan((camera.fov * Math.PI) / 360));
+  const cand: { t: Tag; x0: number; y0: number; x1: number; y1: number; d: number; a: number }[] = [];
+  for (const t of tags) {
+    const s = t.sprite;
+    if (!s.parent || !s.parent.visible) continue;
+    s.getWorldPosition(tmpV);
+    const d = tmpV.distanceTo(camera.position);
+    tmpV.project(camera);
+    const behind = tmpV.z > 1 || tmpV.z < -1;
+    const px = k / Math.max(d, 0.001);
+    const w = s.scale.x * px;
+    const h = s.scale.y * px;
+    const fade = 1 - Math.min(1, Math.max(0, (d - o.fadeNear) / Math.max(0.001, o.fadeFar - o.fadeNear)));
+    const a = behind || h < (o.minPx ?? 9) ? 0 : fade;
+    const x = ((tmpV.x + 1) / 2) * W;
+    const y = ((1 - tmpV.y) / 2) * H;
+    // Sprites are centred on their position (center 0.5, 0.5).
+    cand.push({ t, x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: y + h / 2, d, a });
+  }
+  cand.sort((p, q) => q.t.priority - p.t.priority || p.d - q.d);
+  const kept: typeof cand = [];
+  const pad = 3;
+  for (const c of cand) {
+    let target = c.a;
+    if (target > 0.02) {
+      const hit = kept.some((q) => c.x0 < q.x1 + pad && c.x1 > q.x0 - pad && c.y0 < q.y1 + pad && c.y1 > q.y0 - pad);
+      if (hit) target = 0;
+      else kept.push(c);
+    }
+    const m = c.t.sprite.material;
+    m.opacity = o.snap ? target : m.opacity + (target - m.opacity) * 0.25;
+    c.t.sprite.visible = m.opacity > 0.02;
+    c.t.sprite.userData.rect = [c.x0, c.y0, c.x1, c.y1];
+  }
 }
