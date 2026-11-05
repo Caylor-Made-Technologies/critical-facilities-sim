@@ -152,7 +152,7 @@ export function FieldToolsTab() {
           </label>
         </Tool>
 
-        <Tool icon="flame" title="Generator fuel runtime" formula="burn ≈ kW × 0.27 L/kWh (10% idle floor)" result={<><Out big={`${n1(genHrs)} h`} label="until empty" /><Out big={`${n1(litresToGallons(genFuelLPerS(Math.min(genLoad, genKw), genKw) * 3600))} gal/h`} label="burn rate" /></>}>
+        <Tool icon="flame" title="Generator fuel runtime" formula="burn ≈ rated kW × 0.27 L/kWh × (0.1 + 0.9 × load ÷ rated)" result={<><Out big={`${n1(genHrs)} h`} label="until empty" /><Out big={`${n1(litresToGallons(genFuelLPerS(Math.min(genLoad, genKw), genKw) * 3600))} gal/h`} label="burn rate" /></>}>
           <Num label="Generator rating" value={genKw} onChange={setGenKw} unit="kW" step={50} />
           <Num label="Load" value={genLoad} onChange={setGenLoad} unit="kW" step={50} />
           <Num label="Fuel on hand" value={fuelGal} onChange={setFuelGal} unit="gal" step={100} />

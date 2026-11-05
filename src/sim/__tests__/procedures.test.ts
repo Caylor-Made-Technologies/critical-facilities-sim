@@ -6,13 +6,19 @@ import type { Simulation } from '../engine';
 const byId = (id: string) => PROCEDURES.find((p) => p.id === id)!;
 
 /** Walk a procedure: confirm hold points, pick the right answers, run the operator actions given per step. */
-function play(p: Procedure, actions: Record<number, (s: Simulation) => void> = {}) {
+function play(p: Procedure, actions: Record<number, (s: Simulation) => void> = {}, readS = 0) {
   const sim = procedureSim(p);
   let run: ProcRun = startRun(p, sim);
   let guard = 0;
   while (!run.done && guard++ < 50) {
     const i = run.step;
     const s = p.steps[i]!;
+    // Drills keep the clock running while a person reads the step.
+    if (p.run && readS > 0) {
+      sim.advance(readS);
+      run = evaluate(p, run, sim);
+      if (run.step !== i) continue;
+    }
     if (s.confirm) run = confirmStep(p, run, sim);
     else if (s.choices) run = choose(p, run, sim, s.choices.findIndex((c) => c.correct));
     else {
@@ -161,14 +167,37 @@ describe('operator actions for practice', () => {
 });
 
 describe('drills', () => {
+  // Operator actions a drill needs (most drills are calls only).
+  const DRILL_ACTIONS: Record<string, Record<number, (s: Simulation) => void>> = {
+    'drill-towers': { 3: (s) => (s.restore('CH-01'), s.restore('CH-02')) },
+  };
   for (const p of DRILLS) {
-    it(`${p.title}: right calls finish with full score and no racks down`, () => {
-      const { sim, run } = play(p);
-      expect(run.done).toBe(true);
-      expect(run.score).toBe(SCORE.start);
-      expect(sim.droppedRacks()).toEqual([]);
-    });
+    // 0 s = instant answers; 45 s = a person reading each step while the clock runs.
+    // (Slower than that is meant to cost points in some drills, e.g. the CDU drill gives you seconds.)
+    for (const readS of [0, 45]) {
+      it(`${p.title}: right calls finish with full score and no racks down (reading ${readS} s per step)`, () => {
+        const { sim, run } = play(p, DRILL_ACTIONS[p.id], readS);
+        expect(run.done).toBe(true);
+        expect(run.score).toBe(SCORE.start);
+        expect(sim.droppedRacks()).toEqual([]);
+      });
+    }
   }
+
+  it('towers drill (B-005): the backup step waits for the trip, then finishes even though the tank keeps topping up', () => {
+    const p = byId('drill-towers');
+    const sim = procedureSim(p);
+    let run = startRun(p, sim);
+    run = choose(p, run, sim, p.steps[0]!.choices!.findIndex((c) => c.correct));
+    // Answered at once: nothing has tripped yet, so the step must not tick off.
+    expect(run.step).toBe(1);
+    for (let t = 0; t < 3600 && run.step === 1; t += 60) {
+      sim.advance(60);
+      run = evaluate(p, run, sim);
+    }
+    expect(run.step).toBe(2);
+    expect(sim.graph.get('CH-01').status).toBe('failed');
+  });
 
   it('a wrong answer costs points once and keeps you on the step', () => {
     const p = DRILLS[0]!;

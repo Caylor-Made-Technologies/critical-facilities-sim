@@ -16,7 +16,7 @@ const PAGE = 30;
 export function TipCard({ tip, saved, onSave, big }: { tip: Tip; saved: boolean; onSave: () => void; big?: boolean }) {
   const c = CAT[tip.cat];
   return (
-    <article className={`tip-card cat-${tip.cat}${big ? ' big' : ''}${tip.caution ? ' has-caution' : ''}`} aria-labelledby={`tip-${tip.id}`}>
+    <article className={`tip-card cat-${tip.cat}${big ? ' big' : ''}${tip.caution ? ' has-caution' : ''}`} aria-labelledby={`tip-${big ? 'big-' : ''}${tip.id}`}>
       <div className="tip-top">
         <span className="tip-cat">
           <span aria-hidden="true">{c.icon}</span> {c.label}
@@ -34,7 +34,7 @@ export function TipCard({ tip, saved, onSave, big }: { tip: Tip; saved: boolean;
           <Icon name="star" />
         </button>
       </div>
-      <h3 id={`tip-${tip.id}`}>{tip.title}</h3>
+      <h3 id={`tip-${big ? 'big-' : ''}${tip.id}`}>{tip.title}</h3>
       <p>{tip.text}</p>
       {tip.caution && (
         <p className="tip-caution">

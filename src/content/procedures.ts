@@ -841,11 +841,15 @@ export const DRILLS: Procedure[] = [
       },
       {
         title: 'Let the backup plant take over',
-        detail: 'Let the clock run until the storage tank stops discharging (the backup chillers are carrying the load).',
+        detail: 'Let the clock run until CH-01 and CH-02 have tripped and the backup chillers are running and loaded. The storage tank covers any gap meanwhile; on a day this hot it may keep topping up a little.',
         why: 'Trust the backup and confirm it, before you start fixing the cause.',
         hint: 'Set 10× speed and press Run.',
         view: 'mechanical',
-        check: (s) => s.thermal.readout.tesDischargeKwt === 0 && Object.values(s.thermal.readout.chillers).filter((m) => m === 'running').length >= 2,
+        // Not "tank stops discharging": at 105 °F the backups can fall a few kW short, so the tank keeps covering that gap.
+        check: (s) =>
+          s.graph.get('CH-01').status === 'failed' &&
+          s.graph.get('CH-02').status === 'failed' &&
+          Object.values(s.thermal.readout.chillers).filter((m) => m === 'running').length >= 2,
       },
       {
         title: 'Tower fans reset',

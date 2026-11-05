@@ -14,6 +14,13 @@ test('every tab loads (lazy code included) and never scrolls sideways', async ({
     await page.waitForTimeout(250); // let entrance motion run
     const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(wide, `${t} scrolls sideways`).toBeLessThanOrEqual(0);
+    // Duplicate ids break aria-labelledby and label links (B-006).
+    const dups = await page.evaluate(() => {
+      const seen: Record<string, number> = {};
+      for (const el of Array.from(document.querySelectorAll('[id]'))) seen[el.id] = (seen[el.id] ?? 0) + 1;
+      return Object.keys(seen).filter((k) => seen[k]! > 1);
+    });
+    expect(dups, `${t} has duplicate ids`).toEqual([]);
   }
 });
 
