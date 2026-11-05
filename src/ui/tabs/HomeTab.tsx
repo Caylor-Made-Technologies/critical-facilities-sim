@@ -11,6 +11,10 @@ import { Icon } from '../icons';
 import { fmtSecs, LEVELS, levelOf, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 import { CountUp } from '../common';
+import { Hall3D } from '../three/Scene3D';
+import { demoHall } from '../three/hallState';
+
+const DEMO_HALL = demoHall();
 import { BadgeWall, DailyCard, InstallButton, PathCard, QuickStart, TipOfDay } from './HomeExtras';
 
 
@@ -82,6 +86,9 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
     <div className="tab-panel home">
       <section className="hero" aria-labelledby="hero-h">
         <CircuitArt />
+        <div className="hero-3d">
+          <Hall3D mode="hero" vis={DEMO_HALL} label="Animated 3D data hall: rows of racks with blinking status lights, cold air rising and power flowing along the busways." />
+        </div>
         <div className="hero-inner">
           <div className="eyebrow">Critical facilities, from utility to chip</div>
           <h1 id="hero-h">

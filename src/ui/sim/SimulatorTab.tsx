@@ -4,7 +4,9 @@ import { BATTERY_AGES, describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, 
 import { fmtTemp } from '../format';
 import { Icon, type IconName } from '../icons';
 import { PageHead } from '../common';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Hall3D } from '../three/Scene3D';
+import { hallVis } from '../three/hallState';
 import type { Units } from '../prefs';
 import type { SimHandle } from '../useSimulation';
 import { BmsPanel } from './BmsPanel';
@@ -234,6 +236,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             <span>Moving dashes = power flowing (faster = more load)</span>
           </div>
           )}
+          <Hall3DCard sim={sim} version={version} selected={selected} onPick={activate} />
           <DataHall sim={sim} selected={selected} onActivate={activate} units={units} />
         </div>
         <aside className="side-panel" aria-label="Details">
@@ -263,5 +266,36 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         </aside>
       </div>
     </div>
+  );
+}
+
+function Hall3DCard({ sim, version, selected, onPick }: { sim: SimHandle['sim']; version: number; selected: string | null; onPick: (id: string) => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const vis = useMemo(() => hallVis(sim), [sim, version]);
+  const down = vis.racks.filter((r) => r.status === 'down' || r.status === 'hot').length;
+  const throttled = vis.racks.filter((r) => r.status === 'throttled').length;
+  const summary = down ? `${down} rack${down > 1 ? 's' : ''} down` : throttled ? `${throttled} GPU racks throttling` : 'all 36 racks running';
+  return (
+    <section className="card hall3d-card" aria-labelledby="hall3d-h">
+      <h2 id="hall3d-h" className="h-card hall-title">
+        3D data hall <span className={`chip${down ? ' chip-alarm' : ''}`}>live · {summary}</span>
+      </h2>
+      <Hall3D mode="live" vis={vis} selected={selected} onPick={onPick} label={`3D view of the data hall: ${summary}. Airflow at ${Math.round(vis.airflow * 100)} percent. The rack tiles below list every rack.`} />
+      <div className="legend" aria-hidden="true">
+        <span>
+          <i style={{ background: 'var(--ok)' }} /> running
+        </span>
+        <span>
+          <i style={{ background: 'var(--warn)' }} /> throttling
+        </span>
+        <span>
+          <i style={{ background: 'var(--alarm)' }} /> down (blinking)
+        </span>
+        <span>
+          <i style={{ background: 'var(--cyan)' }} /> cold air (turns orange as the hall heats)
+        </span>
+        <span>Pulses on the busway = power flowing</span>
+      </div>
+    </section>
   );
 }

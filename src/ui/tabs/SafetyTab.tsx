@@ -30,6 +30,7 @@ import {
 import { Confetti, DangerMark, PageHead, SectionTabs } from '../common';
 import { Icon } from '../icons';
 import { buzz } from '../haptics';
+import { Boundary3D } from '../three/Scene3D';
 import { ArticlesTab } from './ArticlesTab';
 
 type Section = 'rules' | 'library' | 'boundaries' | 'loto' | 'hunt' | 'emergency' | 'brief';
@@ -129,6 +130,7 @@ function BoundaryExplorer() {
   const [dist, setDist] = useState(12);
   const [who, setWho] = useState<Who>('qualified');
   const [ppe, setPpe] = useState(false);
+  const [view3d, setView3d] = useState(true);
   const label = LABEL_EXAMPLES.find((l) => l.id === labelId)!;
   const v = boundaryVerdict(dist, who, ppe, label);
   const max = 32;
@@ -153,7 +155,21 @@ function BoundaryExplorer() {
           typical 480 V values; the arc flash numbers are made-up example labels. Real ones come from the label on the
           gear.
         </p>
-        <svg className="boundary-svg" viewBox="0 0 600 160" role="img" aria-label={`Floor plan: you are ${dist} feet from exposed live parts. ${v.headline}.`}>
+        <div className="mode-switch" role="group" aria-label="Boundary view">
+          <button type="button" aria-pressed={view3d} onClick={() => setView3d(true)}>
+            3D
+          </button>
+          <button type="button" aria-pressed={!view3d} onClick={() => setView3d(false)}>
+            2D
+          </button>
+        </div>
+        {view3d && (
+          <Boundary3D
+            state={{ distFt: dist, restrictedFt: SHOCK_BOUNDARIES.restrictedFt, limitedFt: SHOCK_BOUNDARIES.limitedFt, arcFt: label.afbFt, tone: v.tone }}
+            label={`3D view: you are ${dist} feet from exposed live parts. Restricted ${SHOCK_BOUNDARIES.restrictedFt} ft, limited ${SHOCK_BOUNDARIES.limitedFt} ft, arc flash ${label.afbFt} ft. ${v.headline}.`}
+          />
+        )}
+        <svg className={`boundary-svg${view3d ? ' is-mini' : ''}`} viewBox="0 0 600 160" role="img" aria-label={`Floor plan: you are ${dist} feet from exposed live parts. ${v.headline}.`}>
           {ring(label.afbFt, 'bz-arc', `Arc flash ${label.afbFt} ft`, 'top-right')}
           {ring(SHOCK_BOUNDARIES.limitedFt, 'bz-lim', `Limited ${SHOCK_BOUNDARIES.limitedFt} ft`, 'bottom')}
           {ring(SHOCK_BOUNDARIES.restrictedFt, 'bz-res', 'Restricted 1 ft', 'top-left')}

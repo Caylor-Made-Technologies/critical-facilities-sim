@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { EQUIPMENT, type EquipmentGuide } from '../../content/equipment';
 import { NeverList, PageHead, SectionTabs } from '../common';
 import { Figure } from '../figures';
+import { Equipment3D } from '../three/Scene3D';
+import { GUIDE_MODEL } from '../three/models';
 import { Icon } from '../icons';
 
 interface Props {
@@ -83,6 +85,7 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
         <article className="card article" key={guide.id} aria-labelledby="eq-h">
           <div className="eyebrow">{guide.group}</div>
           <h2 id="eq-h">{guide.title}</h2>
+          {GUIDE_MODEL[guide.id] && <Equipment3D model={GUIDE_MODEL[guide.id]!} title={guide.title} />}
           <p>{guide.summary}</p>
           <div className="card-actions" style={{ marginTop: 0 }}>
             <button className="btn" type="button" onClick={() => onShowInSim(guide.kinds[0]!)}>
