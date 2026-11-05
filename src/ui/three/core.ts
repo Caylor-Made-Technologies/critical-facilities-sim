@@ -137,6 +137,7 @@ export interface Stage {
 }
 
 export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
+  seedState = 0x9e3779b9; // fixed decoration per scene under ?still (no effect otherwise)
   const calm = prefersCalm();
   const tier = getTier();
   const cap = tier === 'low' ? 1 : tier === 'medium' ? Math.min(1.5, o.maxDpr ?? 1.75) : o.maxDpr ?? 1.75;
@@ -412,8 +413,24 @@ export function declutter(tags: Tag[], camera: PerspectiveCamera, canvas: HTMLCa
       else kept.push(c);
     }
     const m = c.t.sprite.material;
-    m.opacity = o.snap ? target : m.opacity + (target - m.opacity) * 0.25;
+    // Make way at once (two tags never show on top of each other, at any frame rate); appear with a short fade.
+    m.opacity = o.snap || target < m.opacity ? target : m.opacity + (target - m.opacity) * 0.25;
     c.t.sprite.visible = m.opacity > 0.02;
     c.t.sprite.userData.rect = [c.x0, c.y0, c.x1, c.y1];
   }
+}
+
+/**
+ * Random numbers for decoration (particles, drops). Under ?debug3d&still the
+ * sequence is fixed, so screenshot checks see the same picture every run.
+ */
+let seedState = 0x9e3779b9;
+const still = typeof location !== 'undefined' && /[?&]still\b/.test(location.search) && location.search.includes('debug3d');
+export function rand(): number {
+  if (!still) return Math.random();
+  seedState = (seedState + 0x6d2b79f5) | 0;
+  let t = seedState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }

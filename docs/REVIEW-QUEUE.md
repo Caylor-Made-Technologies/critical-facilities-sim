@@ -14,3 +14,5 @@ safety-critical, code-related or numeric content ships.
 | Certifications | Career → Data center certs, `src/content/issuers.ts` | Names, issuers, prerequisites vs. current issuer rules | Open |
 | Policy pages | About (privacy, terms) | Templates until an attorney reviews | Open |
 | Generator test MOP | `src/content/procedures.ts` (`mop-gen-test`) | Walkdown items and "unloaded test" wording vs. common practice | Open |
+| Cutaways | `src/ui/three/models.ts` (`CUTAWAYS`): UPS, chiller, CRAH inner parts | Part names, flow order (CCME) and one-line descriptions are correct and generic | Open |
+| Hall airflow | 3D data hall particles | Hot/cold aisle flow picture is a fair simplification (supply up from tiles, through racks, exhaust up the hot aisle) | Open |

@@ -15,17 +15,29 @@ import {
   SphereGeometry,
   TorusGeometry,
   Vector3,
+  CanvasTexture,
+  Color,
+  LineSegments,
+  SRGBColorSpace,
+  Sprite,
+  SpriteMaterial,
   DoubleSide,
   type Material,
   type Object3D,
 } from 'three';
-import { addEdges, createStage, disposeTree, edgeMaterial } from '../core';
-import type { ModelKey } from '../models';
+import { addEdges, createStage, disposeTree, edgeMaterial, rand } from '../core';
+import { CUTAWAYS, type ModelKey } from '../models';
 
 export interface EquipmentApi {
   /** Frame-time stats and tier, for automated checks (?debug3d). */
   stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   show: (key: ModelKey) => void;
+  /** See inside (UPS, chiller, CRAH): shell turns to glass, inner parts appear. Returns false if this model has none. */
+  cutaway: (on: boolean) => boolean;
+  /** Light up one inner part (or none). */
+  highlight: (id: string | null) => void;
+  /** Inner parts currently shown (for automated checks). */
+  parts: () => string[];
   current: () => ModelKey | null;
   meshCount: () => number;
   frames: () => number;
@@ -89,7 +101,7 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     const m = new Mesh(new SphereGeometry(0.035, 10, 8), mat);
     m.position.set(x, y, z);
     g.add(m);
-    if (blink) blinkers.push({ mesh: m, phase: Math.random() * 6 });
+    if (blink) blinkers.push({ mesh: m, phase: rand() * 6 });
     return m;
   };
   const fan = (g: Group, r: number, x: number, y: number, z: number, axis: 'x' | 'y' | 'z', speed: number, facing: [number, number, number] = [0, 0, 0]) => {
@@ -218,7 +230,7 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
       // falling water
       for (let k = 0; k < 10; k++) {
         const d = new Mesh(new BoxGeometry(0.02, 0.18, 0.02), M.water);
-        d.position.set(-0.9 + (k % 5) * 0.45, 0.5 + Math.random(), 0.9 + Math.floor(k / 5) * 0.1);
+        d.position.set(-0.9 + (k % 5) * 0.45, 0.5 + rand(), 0.9 + Math.floor(k / 5) * 0.1);
         d.userData.fall = true;
         g.add(d);
       }
@@ -294,6 +306,213 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     },
   };
 
+  // --- Cutaways: inner parts for "See inside" ---
+  const partMats = new Map<string, MeshStandardMaterial>();
+  const pm = (id: string, c: number) => {
+    let m = partMats.get(id);
+    if (!m) partMats.set(id, (m = new MeshStandardMaterial({ color: c, metalness: 0.4, roughness: 0.45, emissive: new Color(0x000000) })));
+    return m;
+  };
+  const inside: Record<string, (g: Group, P: (id: string, m: Object3D) => Object3D) => void> = {
+    ups: (g, P) => {
+      const r = new Group();
+      box(r, 0.42, 0.42, 0.5, pm('rectifier', 0x8a6d3b), 0, 0, 0);
+      for (let k = 0; k < 6; k++) box(r, 0.02, 0.3, 0.4, M.steel, -0.15 + k * 0.06, 0.06, 0);
+      r.position.set(-0.75, 1.15, 0);
+      g.add(P('rectifier', r));
+      const inv = new Group();
+      box(inv, 0.42, 0.42, 0.5, pm('inverter', 0x2d5fae), 0, 0, 0);
+      for (let k = 0; k < 6; k++) box(inv, 0.02, 0.3, 0.4, M.steel, -0.15 + k * 0.06, 0.06, 0);
+      inv.position.set(-0.3, 1.15, 0);
+      g.add(P('inverter', inv));
+      const bus = new Group();
+      box(bus, 2.3, 0.06, 0.08, pm('dcbus', 0xc07a3f), 0, 0, 0);
+      bus.position.set(0.3, 0.85, 0);
+      g.add(P('dcbus', bus));
+      const sw = new Group();
+      box(sw, 0.5, 0.18, 0.3, pm('bypass', 0xf2b705), 0, 0, 0);
+      sw.position.set(-0.55, 1.65, 0);
+      g.add(P('bypass', sw));
+      const bat = new Group();
+      for (const x of [0.42, 1.25]) for (let row = 0; row < 4; row++) for (let k = 0; k < 3; k++) box(bat, 0.18, 0.22, 0.5, pm('batteries', 0x3f8a64), x - 0.22 + k * 0.22, 0.2 + row * 0.4, 0);
+      g.add(P('batteries', bat));
+    },
+    chiller: (g, P) => {
+      // Tube bundles inside the two shells (the shells turn to glass).
+      const evap = new Group();
+      for (let k = 0; k < 7; k++) cyl(evap, 0.035, 2.4, pm('evaporator', 0x7dd3fc), 0, Math.cos(k) * 0.18, Math.sin(k) * 0.18, [0, 0, Math.PI / 2], 8);
+      evap.position.set(0, 0.5, 0.35);
+      g.add(P('evaporator', evap));
+      const cond = new Group();
+      for (let k = 0; k < 7; k++) cyl(cond, 0.035, 2.4, pm('condenser', 0xfb923c), 0, Math.cos(k) * 0.18, Math.sin(k) * 0.18, [0, 0, Math.PI / 2], 8);
+      cond.position.set(0, 0.5, -0.45);
+      g.add(P('condenser', cond));
+      const comp = new Group();
+      cyl(comp, 0.3, 0.8, pm('compressor', 0x94a3b8), 0, 0, 0, [0, 0, Math.PI / 2]);
+      comp.position.set(-0.3, 1.25, -0.05);
+      g.add(P('compressor', comp));
+      const exv = new Group();
+      cyl(exv, 0.08, 0.25, pm('expansion', 0xf2b705), 0, 0, 0);
+      cyl(exv, 0.03, 0.8, M.copper, 0, 0, 0, [Math.PI / 2, 0, 0], 8);
+      exv.position.set(1.1, 0.5, -0.05);
+      g.add(P('expansion', exv));
+    },
+    crah: (g, P) => {
+      const f = new Group();
+      box(f, 1.8, 0.45, 0.06, pm('filters', 0xe5e7eb), 0, 0, 0);
+      for (let k = 0; k < 8; k++) box(f, 0.02, 0.43, 0.07, M.dark, -0.8 + k * 0.23, 0, 0);
+      f.position.set(0, 1.75, -0.2);
+      g.add(P('filters', f));
+      const c = new Group();
+      box(c, 1.8, 0.6, 0.18, pm('coil', 0x2d5fae), 0, 0, 0);
+      for (let k = 0; k < 14; k++) box(c, 0.015, 0.58, 0.2, M.copper, -0.85 + k * 0.13, 0, 0);
+      c.position.set(0, 1.15, 0);
+      g.add(P('coil', c));
+      const v = new Group();
+      cyl(v, 0.06, 0.4, M.cyanPipe, 0, 0, 0, [0, 0, Math.PI / 2], 10);
+      box(v, 0.14, 0.18, 0.14, pm('valve', 0xf2b705), 0, 0.15, 0);
+      v.position.set(0.75, 0.75, -0.25);
+      g.add(P('valve', v));
+    },
+  };
+  let cut = false;
+  let partObjs = new Map<string, Object3D>();
+  let shellMats = new Map<Mesh, Material>();
+  const ghost = new MeshStandardMaterial({ color: 0x9fb4d0, transparent: true, opacity: 0.12, depthWrite: false, metalness: 0.1, roughness: 0.2 });
+  sharedMats.add(ghost);
+  const tagSprites: Sprite[] = [];
+  // Numbered dot on each part; the highlighted part's dot grows into a name tag.
+  const drawTag = (spr: Sprite, n: number, name: string | null) => {
+    const c = (spr.material.map as CanvasTexture).image as HTMLCanvasElement;
+    const ctx = c.getContext('2d')!;
+    const th = stage.theme;
+    ctx.clearRect(0, 0, c.width, c.height);
+    const w = name ? c.width - 6 : 66;
+    ctx.fillStyle = th.dark ? 'rgba(11,15,20,0.88)' : 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.roundRect(3, 3, w, c.height - 6, 33);
+    ctx.fill();
+    ctx.strokeStyle = '#' + th.blue.getHexString();
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#' + th.blue.getHexString();
+    ctx.beginPath();
+    ctx.arc(36, 36, 25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 30px Montserrat, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(n), 36, 47);
+    if (name) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = th.dark ? '#ffffff' : '#0b1220';
+      ctx.font = '700 32px Montserrat, system-ui, sans-serif';
+      ctx.fillText(name, 74, 48);
+    }
+    spr.material.map!.needsUpdate = true;
+    // Anchor on the dot so it stays put when the name appears.
+    spr.center.set(36 / c.width, 0.5);
+  };
+  const makeTag = (n: number) => {
+    const c = document.createElement('canvas');
+    c.width = 448;
+    c.height = 72;
+    const tex = new CanvasTexture(c);
+    tex.colorSpace = SRGBColorSpace;
+    const spr = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false }));
+    spr.scale.set(1.4, 0.225, 1);
+    spr.renderOrder = 10;
+    spr.userData.n = n;
+    drawTag(spr, n, null);
+    return spr;
+  };
+  function clearCut() {
+    for (const [m, mat] of shellMats) m.material = mat;
+    shellMats = new Map();
+    for (const o of partObjs.values()) {
+      o.parent?.remove(o);
+      o.traverse((x) => (x as Mesh).geometry?.dispose());
+    }
+    partObjs = new Map();
+    for (const t of tagSprites) {
+      t.parent?.remove(t);
+      t.material.map?.dispose();
+      t.material.dispose();
+    }
+    tagSprites.length = 0;
+    model?.traverse((x) => {
+      if ((x as LineSegments).isLineSegments) x.visible = true;
+    });
+  }
+  function applyCut(on: boolean): boolean {
+    const list = key ? CUTAWAYS[key] : undefined;
+    clearCut();
+    cut = on && !!list && !!model;
+    if (!cut || !model || !key || !list) {
+      if (controls) controls.autoRotate = !stage.calm;
+      stage.invalidate();
+      return !!list;
+    }
+    // Ghost everything the builder made (the outside of the unit); hide its outlines.
+    model.traverse((x) => {
+      const m = x as Mesh;
+      if (m.isMesh) {
+        shellMats.set(m, m.material as Material);
+        m.material = ghost;
+      }
+      if ((x as LineSegments).isLineSegments) x.visible = false;
+    });
+    const parts = new Group();
+    inside[key]!(parts, (id, o) => {
+      partObjs.set(id, o);
+      return o;
+    });
+    // Parts live in the model's own frame (the model was centered on the floor when shown).
+    model.add(parts);
+    partObjs.set('__group', parts);
+    if (key === 'crah') {
+      // The fans are already there: count them as a part.
+      const fans = new Group();
+      model.children.filter((c) => c instanceof Group && c !== parts).forEach((c) => fans.add(c.clone()));
+      fans.visible = false;
+      partObjs.set('fans', fans);
+    }
+    // Numbered tags above each part.
+    list.forEach((p, i) => {
+      const o = partObjs.get(p.id);
+      if (!o) return;
+      const b = new Box3().setFromObject(o.visible ? o : model!);
+      const c = b.getCenter(new Vector3());
+      const t = makeTag(i + 1);
+      t.userData.part = p.id;
+      t.userData.name = p.name;
+      model!.worldToLocal(c);
+      t.position.set(c.x, c.y - model!.position.y, b.max.z - model!.position.z + 0.08);
+      if (p.id === 'fans') t.position.set(-0.6, 0.5, 0.6);
+      model!.add(t);
+      tagSprites.push(t);
+    });
+    if (controls) {
+      controls.autoRotate = false;
+      // Move in closer so the inside fills the view.
+      const b = new Box3().setFromObject(model);
+      const r = b.getSize(new Vector3()).length() / 2;
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      camera.position.copy(controls.target).addScaledVector(dir, r * 2.6 + 0.5);
+      controls.update();
+    }
+    stage.invalidate();
+    return true;
+  }
+  function highlight(id: string | null) {
+    for (const t of tagSprites) drawTag(t, t.userData.n as number, t.userData.part === id ? (t.userData.name as string) : null);
+    for (const [pid, m] of partMats) {
+      m.emissive.set(pid === id ? 0x3d8bff : 0x000000);
+      m.emissiveIntensity = pid === id ? 0.9 : 0;
+    }
+    stage.invalidate();
+  }
+
   function frame(g: Group) {
     const b = new Box3().setFromObject(g);
     const size = b.getSize(new Vector3());
@@ -343,6 +562,9 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
   return {
     show(k) {
       if (k === key) return;
+      // Put the real materials back first, so the old model's own materials get freed.
+      clearCut();
+      cut = false;
       if (model) {
         holder.remove(model);
           model.traverse((o) => {
@@ -352,6 +574,8 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
           if (mat && !sharedMats.has(mat)) mat.dispose();
         });
       }
+      clearCut();
+      cut = false;
       spinners = [];
       blinkers = [];
       model = new Group();
@@ -362,6 +586,9 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
       stage.invalidate();
     },
     current: () => key,
+    cutaway: applyCut,
+    highlight,
+    parts: () => (cut ? [...partObjs.keys()].filter((k) => k !== '__group') : []),
     meshCount: () => {
       let n = 0;
       model?.traverse((o) => {
@@ -372,6 +599,8 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     frames: stage.frames,
     stats: () => ({ ...stage.frameStats(), tier: stage.tier, shadows: stage.shadows }),
     dispose() {
+      clearCut();
+      for (const m of partMats.values()) m.dispose();
       if (model) disposeTree(model);
       for (const m of sharedMats) m.dispose();
       stage.dispose();

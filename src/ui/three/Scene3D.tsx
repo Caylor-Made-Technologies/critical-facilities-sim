@@ -11,7 +11,7 @@ import type { HallApi } from './scenes/hall';
 import type { PlantApi } from './scenes/plant';
 import type { Plant3D } from './plantModel';
 import type { HallVis } from './hallState';
-import { MODEL_CAPTION, type ModelKey } from './models';
+import { CUTAWAYS, MODEL_CAPTION, type ModelKey } from './models';
 import { useQuality } from './quality';
 
 type Status = 'loading' | 'ready' | 'fallback' | 'lost';
@@ -149,11 +149,50 @@ function Hall3DInner({ vis, selected = null, onPick, mode, label, fallback }: { 
 
 function Equipment3DInner({ model, title }: { model: ModelKey; title: string }) {
   const { ref, api, status } = useScene<EquipmentApi>(async (c) => (await import('./scenes/equipment')).mountEquipment(c), 'equipment');
+  const parts = CUTAWAYS[model];
+  const [inside, setInside] = useState(false);
+  const [lit, setLit] = useState<string | null>(null);
   useEffect(() => {
     api?.show(model);
+    setInside(false);
+    setLit(null);
   }, [api, model]);
+  useEffect(() => {
+    api?.cutaway(inside);
+    if (!inside) setLit(null);
+  }, [api, inside]);
+  useEffect(() => {
+    api?.highlight(lit);
+  }, [api, lit]);
+  const label = `3D model: ${title}. ${MODEL_CAPTION[model]}${inside && parts ? ` Cutaway showing ${parts.length} inner parts: ${parts.map((p) => p.name).join(', ')}.` : ''}`;
   return (
-    <Frame status={status} label={`3D model: ${title}. ${MODEL_CAPTION[model]}`} className="scene3d-equip" canvasRef={ref} hint="Drag to turn · pinch to zoom" fallback={<span className="scene3d-fallback">3D view isn't available on this device.</span>} />
+    <div className="eq3d">
+      <Frame status={status} label={label} className="scene3d-equip" canvasRef={ref} hint="Drag to turn · pinch to zoom" fallback={<span className="scene3d-fallback">3D view isn't available on this device.</span>} />
+      {parts && (
+        <div className="eq3d-cut">
+          <button type="button" className={`btn btn-sm${inside ? ' btn-primary' : ''}`} aria-pressed={inside} onClick={() => setInside((v) => !v)}>
+            {inside ? 'Hide inside' : 'See inside'}
+          </button>
+          {inside && (
+            <ol className="eq3d-parts">
+              {parts.map((p, i) => (
+                <li key={p.id}>
+                  <button type="button" className={`eq3d-part${lit === p.id ? ' on' : ''}`} aria-pressed={lit === p.id} onClick={() => setLit((v) => (v === p.id ? null : p.id))}>
+                    <span className="eq3d-num" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    <span>
+                      <strong>{p.name}</strong>
+                      <span className="eq3d-what">{p.what}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

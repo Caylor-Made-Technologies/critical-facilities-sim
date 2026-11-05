@@ -27,7 +27,7 @@ import {
   DoubleSide,
   LineBasicMaterial,
 } from 'three';
-import { addEdges, createStage, edgeMaterial, type ThemeColors } from '../core';
+import { addEdges, createStage, edgeMaterial, type ThemeColors, rand } from '../core';
 import { STATUS_COLOR, heat01, type HallVis, type RackVis } from '../hallState';
 
 export interface HallApi {
@@ -143,13 +143,13 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
   const hot = new Color();
   const seed = (i: number, fresh: boolean) => {
     const z = aisleZ[i % aisleZ.length]!;
-    pos[i * 3] = (Math.random() - 0.5) * hallW;
-    pos[i * 3 + 1] = fresh ? Math.random() * 1.8 : 0;
-    pos[i * 3 + 2] = z + (Math.random() - 0.5) * 0.9;
+    pos[i * 3] = (rand() - 0.5) * hallW;
+    pos[i * 3 + 1] = fresh ? rand() * 1.8 : 0;
+    pos[i * 3 + 2] = z + (rand() - 0.5) * 0.9;
     startZ[i] = z;
-    side[i] = Math.random() < 0.5 ? -1 : 1;
+    side[i] = rand() < 0.5 ? -1 : 1;
     phase[i] = 0;
-    speed[i] = 0.4 + Math.random() * 0.6;
+    speed[i] = 0.4 + rand() * 0.6;
     col[i * 3] = cold.r;
     col[i * 3 + 1] = cold.g;
     col[i * 3 + 2] = cold.b;
@@ -220,7 +220,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
       const pulse = new Mesh(new SphereGeometry(0.07, 12, 10), mPulse);
       pulse.position.copy(bus.position);
       root.add(pulse);
-      pulses.push({ mesh: pulse, row, t: Math.random(), len, x0: -len / 2 });
+      pulses.push({ mesh: pulse, row, t: rand(), len, x0: -len / 2 });
       // Liquid cooling pipes over GPU rows.
       if (v.racks.some((r) => r.row === row && r.gpu)) {
         const pipe = new Mesh(new CylinderGeometry(0.05, 0.05, len, 10), mPipe);

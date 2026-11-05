@@ -23,7 +23,7 @@ declare global {
   }
 }
 
-export const test = base.extend<{ problems: string[]; open: (hash: string, opts?: { three?: boolean; quality?: 'auto' | 'low' | 'medium' | 'high' }) => Promise<void> }>({
+export const test = base.extend<{ problems: string[]; open: (hash: string, opts?: { three?: boolean; quality?: 'auto' | 'low' | 'medium' | 'high'; still?: boolean }) => Promise<void> }>({
   problems: async ({ page }, use) => {
     const problems: string[] = [];
     page.on('console', (m) => {
@@ -54,7 +54,7 @@ export const test = base.extend<{ problems: string[]; open: (hash: string, opts?
         } as typeof orig;
         window.__glLive = () => made.filter((c) => !c.isContextLost()).length;
       }, [three, quality] as const);
-      await page.goto(`./?debug3d${hash}`);
+      await page.goto(`./?debug3d${opts.still ? '&still' : ''}${hash}`);
     });
   },
 });

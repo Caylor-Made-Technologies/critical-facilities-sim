@@ -5860,3 +5860,12 @@ body.has-follow .toast-region { bottom: 84px; }
 .scene3d-lost { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; gap: 10px; padding: 16px; text-align: center; background: color-mix(in srgb, var(--bg) 82%, transparent); }
 .scene3d-lost p { margin: 0; color: var(--text-body); font-size: 0.9rem; }
 .scene3d-lost .btn { justify-self: center; }
+
+/* Equipment cutaway: See inside toggle and numbered parts list */
+.eq3d-cut { margin: -4px 0 14px; }
+.eq3d-parts { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.eq3d-part { all: unset; box-sizing: border-box; display: flex; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-sunk); cursor: pointer; color: var(--text-body); }
+.eq3d-part:focus-visible { outline: 2px solid var(--blue-glow); outline-offset: 2px; }
+.eq3d-part.on { border-color: var(--blue-glow); box-shadow: 0 0 0 1px var(--blue-glow) inset; }
+.eq3d-num { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--blue-button, var(--blue)); color: #fff; font: 800 0.8rem var(--font-head); }
+.eq3d-what { display: block; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4; margin-top: 2px; }

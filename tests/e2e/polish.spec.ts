@@ -104,3 +104,24 @@ test.describe('3D polish', () => {
     expect(st.workMedian).toBeLessThan(33);
   });
 });
+
+test('cutaway: See inside lists the parts, keyboard lights each one', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-dark' && info.project.name !== 'phone-light', 'two projects are enough');
+  await open('#/equipment');
+  await page.fill('#eq-search', 'Chillers');
+  await page.getByRole('button', { name: /^Chillers/ }).first().click();
+  const toggle = page.getByRole('button', { name: 'See inside' });
+  await toggle.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => ((window.__cf3d as Record<string, { frames: () => number }> | undefined)?.equipment?.frames() ?? 0) > 0);
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Hide inside' })).toHaveAttribute('aria-pressed', 'true');
+  const parts = await page.evaluate(() => (window.__cf3d as unknown as { equipment: { parts: () => string[] } }).equipment.parts());
+  expect(parts.sort()).toEqual(['compressor', 'condenser', 'evaporator', 'expansion']);
+  // The CCME order, as a list anyone can read and use without the canvas.
+  await expect(page.locator('.eq3d-parts li strong')).toHaveText(['Compressor', 'Condenser', 'Expansion valve', 'Evaporator']);
+  await page.locator('.eq3d-part').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.eq3d-part').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.scene3d-equip')).toHaveAttribute('aria-label', /Cutaway showing 4 inner parts/);
+});

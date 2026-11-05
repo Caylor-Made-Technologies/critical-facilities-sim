@@ -599,7 +599,9 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
       probe.updateMatrixWorld();
       let a = Infinity, b = -Infinity, c = Infinity, e = -Infinity;
       let i = 0;
-      for (const x of [x0 - 0.8, x1 + 0.8]) for (const y of [0, 2.2]) for (const z of [z0 - 0.8, z1 + 0.8]) {
+      // Include the zone names painted on the floor to the left of the plant.
+      const left = x0 - (model!.zones.length ? 6.9 : 0.8);
+      for (const x of [left, x1 + 0.8]) for (const y of [0, 2.2]) for (const z of [z0 - 0.8, z1 + 0.8]) {
         const v = corners[i++]!.set(x, y, z).project(probe);
         a = Math.min(a, v.x); b = Math.max(b, v.x); c = Math.min(c, v.y); e = Math.max(e, v.y);
       }
