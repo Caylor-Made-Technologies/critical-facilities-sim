@@ -1,14 +1,23 @@
 /** Quick search (Ctrl/⌘ + K): type a few letters, press Enter to jump. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './icons';
-import { search, type Jump } from './search';
+import type { Jump, SearchItem } from './search';
+
+// The search index pulls in every piece of content, so it loads on first open.
+// The box itself is always ready, so nothing typed is lost while it loads.
+let finder: ((q: string) => SearchItem[]) | null = null;
+const loadFinder = () => import('./search').then((m) => (finder = m.search));
 
 export function Palette({ open, onClose, onJump }: { open: boolean; onClose: () => void; onJump: (j: Jump) => void }) {
   const dlg = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
-  const results = useMemo(() => search(q), [q]);
+  const [ready, setReady] = useState(!!finder);
+  useEffect(() => {
+    if (open && !finder) void loadFinder().then(() => setReady(true));
+  }, [open]);
+  const results = useMemo(() => (ready && finder ? finder(q) : []), [q, ready]);
 
   useEffect(() => {
     const d = dlg.current;
@@ -88,7 +97,7 @@ export function Palette({ open, onClose, onJump }: { open: boolean; onClose: () 
               <Icon name="arrow-right" />
             </li>
           ))}
-          {!results.length && <li className="pal-empty">No matches. Try fewer letters.</li>}
+          {!results.length && <li className="pal-empty">{ready ? 'No matches. Try fewer letters.' : 'Loading search…'}</li>}
         </ul>
         <div className="pal-foot" aria-hidden="true">
           <span>

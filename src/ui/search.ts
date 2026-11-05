@@ -10,6 +10,7 @@ import { LESSONS } from '../content/lessons';
 import { PROCEDURES } from '../content/procedures';
 import { SAFETY } from '../content/safety';
 import { TIPS, TIP_CATS } from '../content/tips';
+import { IST_L5, LIFE_STAGES } from '../content/lifecycle';
 import { NAV, type Tab } from './nav';
 
 export type Jump =
@@ -20,7 +21,8 @@ export type Jump =
   | { kind: 'case'; id: string }
   | { kind: 'safety'; id: string }
   | { kind: 'term'; term: string }
-  | { kind: 'tip'; id: string };
+  | { kind: 'tip'; id: string }
+  | { kind: 'life'; id: string };
 
 export interface SearchItem {
   title: string;
@@ -34,6 +36,8 @@ export interface SearchItem {
 export const SEARCH_INDEX: SearchItem[] = [
   ...NAV.map((n) => ({ title: n.label, type: 'Tab', extra: n.desc, jump: { kind: 'tab', tab: n.id } as Jump })),
   ...LESSONS.map((l) => ({ title: l.title, type: 'Walkthrough', extra: `${l.area} ${l.summary}`, jump: { kind: 'lesson', id: l.id } as Jump })),
+  ...LIFE_STAGES.map((s) => ({ title: `${s.n}. ${s.title}`, type: 'Life of a DC', extra: `${s.short} ${s.lesson.map((l) => `${l.h} ${l.p.join(' ')}`).join(' ')} ${s.details.map((d) => d.title).join(' ')}`, jump: { kind: 'life', id: s.id } as Jump })),
+  { title: IST_L5.title, type: 'Drill', extra: `${IST_L5.summary} commissioning integrated systems test`, jump: { kind: 'life', id: 'life-cx' } as Jump },
   ...PROCEDURES.map((p) => ({ title: p.title, type: p.kind === 'mop' ? 'MOP' : 'Drill', extra: p.summary, jump: { kind: 'proc', id: p.id } as Jump })),
   ...EQUIPMENT.map((g) => ({ title: g.title, type: 'Equipment', extra: `${g.group} ${g.summary}`, jump: { kind: 'guide', id: g.id } as Jump })),
   ...CASES.map((c) => ({ title: c.title, type: 'Case study', extra: c.summary, jump: { kind: 'case', id: c.id } as Jump })),

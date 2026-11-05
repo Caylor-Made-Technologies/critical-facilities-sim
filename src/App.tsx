@@ -22,6 +22,7 @@ import { ProceduresTab } from './ui/tabs/ProceduresTab';
 import { PROCEDURES, surpriseDrill } from './content/procedures';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { useSimulation } from './ui/useSimulation';
+import { Palette } from './ui/Palette';
 import { resetQuality } from './ui/three/quality';
 
 import type { LessonState } from './ui/tabs/LearnTab';
@@ -46,12 +47,12 @@ const LOADERS = {
   designs: () => import('./ui/tabs/DesignsTab'),
   cases: () => import('./ui/tabs/CasesTab'),
   quiz: () => import('./ui/tabs/QuizTab'),
-  palette: () => import('./ui/Palette'),
   codes: () => import('./content/codes'),
   uptime: () => import('./content/uptime'),
   change: () => import('./content/change'),
   equipmentData: () => import('./content/equipment'),
   tipsData: () => import('./content/tips'),
+  search: () => import('./ui/search'),
 };
 const AboutTab = lazy(() => LOADERS.about().then((m) => ({ default: m.AboutTab })));
 const SafetyTab = lazy(() => LOADERS.safety().then((m) => ({ default: m.SafetyTab })));
@@ -68,7 +69,6 @@ const NeverDoTab = lazy(() => LOADERS.never().then((m) => ({ default: m.NeverDoT
 const DesignsTab = lazy(() => LOADERS.designs().then((m) => ({ default: m.DesignsTab })));
 const CasesTab = lazy(() => LOADERS.cases().then((m) => ({ default: m.CasesTab })));
 const QuizTab = lazy(() => LOADERS.quiz().then((m) => ({ default: m.QuizTab })));
-const Palette = lazy(() => LOADERS.palette().then((m) => ({ default: m.Palette })));
 type ArticleProps = { eyebrow: string; title: string; intro: string };
 const articlesFrom = (data: () => Promise<Article[]>) =>
   lazy(async () => {
@@ -169,11 +169,8 @@ export function App() {
   const [proc, setProc] = useState<{ p: Procedure; run: ProcRun; started: number; secs?: number } | null>(null);
   const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // Search code loads the first time it's opened.
-  const [paletteUsed, setPaletteUsed] = useState(false);
-  useEffect(() => {
-    if (paletteOpen) setPaletteUsed(true);
-  }, [paletteOpen]);
+  // Life of a Data Center stage to open in Learn (from search).
+  const [lifeOpen, setLifeOpen] = useState<string | null>(null);
   // Fetch every tab once the first page has settled.
   useEffect(() => {
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
@@ -400,6 +397,7 @@ export function App() {
   };
 
   const jump = (j: Jump) => {
+    setLifeOpen(null);
     setSafetyArticle(null);
     setGlossaryQ('');
     setTipQ('');
@@ -423,6 +421,10 @@ export function App() {
     } else if (j.kind === 'safety') {
       setSafetyArticle(j.id);
       setTab('safety');
+    } else if (j.kind === 'life') {
+      setLesson(null);
+      setLifeOpen(j.id);
+      setTab('learn');
     } else if (j.kind === 'tip') {
       const id = j.id;
       void LOADERS.tipsData().then((m) => {
@@ -620,6 +622,10 @@ export function App() {
                 exit={() => setLesson(null)}
                 finish={p.finishLesson}
                 showSim={() => setTab('sim')}
+                p={p}
+                runIst={() => void import('./content/lifecycle').then((m) => startProc(m.IST_L5))}
+                lifeOpen={lifeOpen}
+                key={lifeOpen ?? 'learn'}
               />
             )}
             {tab === 'procedures' && (
@@ -766,11 +772,7 @@ export function App() {
         </>
       )}
 
-      {paletteUsed && (
-        <Suspense fallback={null}>
-          <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
-        </Suspense>
-      )}
+      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
 
       <div className="toast-region" aria-live="polite">
         {toast && (

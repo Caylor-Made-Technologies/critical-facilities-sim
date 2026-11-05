@@ -142,20 +142,20 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </span>
         <div>
           <div className="eyebrow" id="new-h">
-            New: The Caylor Made Blueprint
+            New: Life of a data center
           </div>
           <p>
-            Your career, engineered. Add your resume (it's read on your phone and never uploaded), answer a few
-            questions, take a 2-minute skill check, and get a week-by-week blueprint with a skill radar and your spot on
-            the career ladder. LOTOTO drills now include the try-out and a meter rating check before live-dead-live.
+            Ten stages from an empty field to decommissioning: site selection, design, construction, commissioning (run a
+            mini "pull the plug" test on the live plant), operations, maintenance, growth, incidents and end of life. Each
+            stage has a 3D tour of the campus, a hands-on task and a quiz.
           </p>
         </div>
         <div className="whats-new-btns">
-          <button className="btn btn-primary" type="button" onClick={() => go('mypath')}>
-            Draw my blueprint <Icon name="arrow-right" />
+          <button className="btn btn-primary" type="button" onClick={() => go('learn')}>
+            Start the path <Icon name="arrow-right" />
           </button>
-          <button className="btn" type="button" onClick={() => go('tips')}>
-            Tips & Tricks
+          <button className="btn" type="button" onClick={() => go('mypath')}>
+            My Blueprint
           </button>
         </div>
       </section>

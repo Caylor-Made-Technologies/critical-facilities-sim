@@ -6,6 +6,7 @@ import { HAZARD_HUNTS, LOTO_DRILLS } from '../../content/safetyTools';
 import { EQUIPMENT } from '../../content/equipment';
 import { QUIZ } from '../../content/quiz';
 import { TIPS } from '../../content/tips';
+import { LIFE_STAGES } from '../../content/lifecycle';
 
 describe('content facts stay in sync with the content', () => {
   it('counts match', () => {
@@ -18,5 +19,6 @@ describe('content facts stay in sync with the content', () => {
     expect(FACTS.ladderGoals).toEqual(Object.fromEntries(LADDER.map((r) => [r.id, r.doNow.length])));
     expect([...FACTS.lotoIds]).toEqual(LOTO_DRILLS.map((d) => d.id));
     expect([...FACTS.huntIds]).toEqual(HAZARD_HUNTS.map((d) => d.id));
+    expect([...FACTS.lifeStages]).toEqual(LIFE_STAGES.map((s) => s.id));
   });
 });

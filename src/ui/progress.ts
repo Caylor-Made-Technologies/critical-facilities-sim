@@ -38,11 +38,19 @@ export interface Progress {
   dcCerts: string[];
   /** My Path: answers and resume signals (never the resume text), or null. */
   profile: Profile | null;
+  /** Life of a Data Center: per stage, best quiz %, hands-on task done, tour finished. */
+  life: Record<string, LifeProgress>;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [], profile: null };
+export interface LifeProgress {
+  quiz: number;
+  task: boolean;
+  tour: boolean;
+}
 
-export const XP = { lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [], profile: null, life: {} };
+
+export const XP = { lifeStage: 60, lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
 
 export const LEVELS = [
   { xp: 0, name: 'Rookie', blurb: 'Every pro started here. Take the guided tour.' },
@@ -75,7 +83,28 @@ export function sanitize(raw: unknown): Progress {
     careerChecks: strs(p.careerChecks).filter((x) => /^r\d:\d+$/.test(x)).slice(0, 200),
     dcCerts: strs(p.dcCerts).filter((x) => /^[a-z]{2,8}$/.test(x)).slice(0, 50),
     profile: sanitizeProfile(p.profile),
+    life: sanitizeLife(p.life),
   };
+}
+
+function sanitizeLife(v: unknown): Record<string, LifeProgress> {
+  if (!v || typeof v !== 'object') return {};
+  const out: Record<string, LifeProgress> = {};
+  for (const [k, raw] of Object.entries(v as Record<string, unknown>).slice(0, 30)) {
+    if (!/^life-[a-z]{2,12}$/.test(k) || !raw || typeof raw !== 'object') continue;
+    const r = raw as Record<string, unknown>;
+    const quiz = typeof r.quiz === 'number' && r.quiz >= 0 && r.quiz <= 100 ? r.quiz : 0;
+    out[k] = { quiz, task: r.task === true, tour: r.tour === true };
+  }
+  return out;
+}
+
+/** A Life of a Data Center stage is complete with a passing quiz and its hands-on task done. */
+export const LIFE_PASS = 80;
+export function lifeStageDone(p: Progress, id: string): boolean {
+  const l = p.life?.[id];
+  const task = id === 'life-cx' ? 'life-ist' in p.procs || !!l?.task : !!l?.task;
+  return !!l && l.quiz >= LIFE_PASS && task;
 }
 
 function load(): Progress {
@@ -110,7 +139,8 @@ export function xpOf(p: Progress): number {
     Object.keys(p.procs).length * XP.procedure +
     Object.keys(p.safety ?? {}).length * XP.safety +
     Object.keys(p.daily ?? {}).length * XP.daily +
-    ((p.exam ?? -1) >= 80 ? XP.exam : 0)
+    ((p.exam ?? -1) >= 80 ? XP.exam : 0) +
+    Object.keys(p.life ?? {}).filter((id) => lifeStageDone(p, id)).length * XP.lifeStage
   );
 }
 
@@ -230,6 +260,28 @@ export function useProgress(onGain?: (msg: string) => void) {
       }),
     [commit],
   );
+  // --- Life of a Data Center ---
+  const lifeOf = (p: Progress, id: string): LifeProgress => p.life[id] ?? { quiz: 0, task: false, tour: false };
+  const finishLifeQuiz = useCallback(
+    (id: string, pct: number, answers: Record<string, boolean>) =>
+      commit((p) => {
+        const cur = lifeOf(p, id);
+        // First answers count toward the quiz XP like any question; retries don't overwrite them.
+        const quiz = { ...p.quiz };
+        for (const [q, ok] of Object.entries(answers)) if (!(q in quiz)) quiz[q] = ok;
+        return { ...p, quiz, life: { ...p.life, [id]: { ...cur, quiz: Math.max(cur.quiz, Math.round(pct)) } } };
+      }, pct >= LIFE_PASS ? `Quiz passed: ${Math.round(pct)}%` : `Quiz saved: ${Math.round(pct)}%. ${LIFE_PASS}% passes.`),
+    [commit],
+  );
+  const finishLifeTask = useCallback(
+    (id: string) => commit((p) => (lifeOf(p, id).task ? null : { ...p, life: { ...p.life, [id]: { ...lifeOf(p, id), task: true } } }), 'Hands-on task done.'),
+    [commit],
+  );
+  const finishLifeTour = useCallback(
+    (id: string) => commit((p) => (lifeOf(p, id).tour ? null : { ...p, life: { ...p.life, [id]: { ...lifeOf(p, id), tour: true } } })),
+    [commit],
+  );
+
   /** Replace progress with an imported backup (already sanitized). */
   const restore = useCallback((next: Progress) => {
     save(next);
@@ -244,7 +296,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, saveProfile, togglePathDone, restore, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, saveProfile, togglePathDone, finishLifeQuiz, finishLifeTask, finishLifeTour, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

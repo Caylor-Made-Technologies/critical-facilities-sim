@@ -9,6 +9,8 @@ import type { BoundaryApi, BoundaryState } from './scenes/boundary';
 import type { EquipmentApi } from './scenes/equipment';
 import type { HallApi } from './scenes/hall';
 import type { PlantApi } from './scenes/plant';
+import type { CampusApi } from './scenes/campus';
+import type { Anchor, SceneState } from '../../content/lifecycleTypes';
 import type { Plant3D } from './plantModel';
 import type { HallVis } from './hallState';
 import { CUTAWAYS, MODEL_CAPTION, type ModelKey } from './models';
@@ -248,6 +250,24 @@ function LostCard() {
   );
 }
 
+/** Life of a Data Center: the campus at a stage, with numbered tour stops. */
+function Campus3DInner({ state, stops, active, label }: { state: SceneState; stops: { anchor: Anchor; title: string }[]; active: number | null; label: string }) {
+  const { ref, api, status } = useScene<CampusApi>(async (c) => (await import('./scenes/campus')).mountCampus(c), 'campus', 'visible');
+  const key = stops.map((s) => s.anchor).join(',');
+  useEffect(() => {
+    api?.setState(state);
+  }, [api, state]);
+  useEffect(() => {
+    api?.setStops(stops);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, key]);
+  useEffect(() => {
+    api?.goTo(active === null ? null : (stops[active]?.anchor ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, active, key]);
+  return <Frame status={status} label={label} className="scene3d-campus" canvasRef={ref} hint="Drag to turn · pinch to zoom · two fingers to move" fallback={<span className="scene3d-fallback">3D isn't available on this device. The tour list below has every stop.</span>} />;
+}
+
 // Each scene gets a fresh canvas when the quality tier changes or after a lost context
 // (a WebGL canvas can't be reused).
 type Props<F> = F extends (p: infer P) => unknown ? P : never;
@@ -288,6 +308,14 @@ export function Plant3DView(p: Props<typeof Plant3DViewInner>) {
   return (
     <Reload.Provider value={reload}>
       <Plant3DViewInner key={key} {...p} />
+    </Reload.Provider>
+  );
+}
+export function Campus3D(p: Props<typeof Campus3DInner>) {
+  const [key, reload] = useFresh();
+  return (
+    <Reload.Provider value={reload}>
+      <Campus3DInner key={key} {...p} />
     </Reload.Provider>
   );
 }

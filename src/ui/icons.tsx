@@ -33,6 +33,7 @@ export type IconName =
   | 'skip'
   | 'arrow-right'
   | 'arrow-up'
+  | 'arrow-down'
   | 'arrow-left'
   | 'close'
   | 'info'
@@ -101,6 +102,7 @@ const paths: Record<IconName, ReactElement> = {
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />,
   skip: <path d="M5 5v14l9-7zM18 5v14" />,
   'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
+  'arrow-down': <path d="M12 5v14M6 13l6 6 6-6" />,
   'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
   'arrow-left': <path d="M19 12H5M11 6l-6 6 6 6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,

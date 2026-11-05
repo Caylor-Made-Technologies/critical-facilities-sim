@@ -4,6 +4,10 @@ import { LESSONS, type Lesson, type LessonArea } from '../../content/lessons';
 import { PageHead, SectionTabs } from '../common';
 import { Figure } from '../figures';
 import { Icon } from '../icons';
+import type { ProgressHandle } from '../progress';
+import { lifeStageDone } from '../progress';
+import { FACTS } from '../../content/facts';
+import { LifeTrack } from './LifeTrack';
 
 export interface LessonState {
   lesson: Lesson;
@@ -99,7 +103,9 @@ export function Coach({ state, compact, goTo, onExit, onShowSim, onBackToLesson,
   );
 }
 
-const AREAS: { id: LessonArea; label: string }[] = [
+type Area = LessonArea | 'life';
+const AREAS: { id: Area; label: string }[] = [
+  { id: 'life', label: 'Life of a data center' },
   { id: 'electrical', label: 'Electrical' },
   { id: 'mechanical', label: 'Mechanical' },
   { id: 'safety', label: 'Safety & operations' },
@@ -113,28 +119,37 @@ interface Props {
   exit: () => void;
   finish: (id: string) => void;
   showSim: () => void;
+  p: ProgressHandle;
+  /** Start the Level 5 IST practice on the simulator. */
+  runIst: () => void;
+  /** Open this Life of a Data Center stage (from search). */
+  lifeOpen?: string | null;
 }
 
-export function LearnTab({ active, done, start, goTo, exit, finish, showSim }: Props) {
-  const [area, setArea] = useState<LessonArea>(active?.lesson.area ?? 'electrical');
+export function LearnTab({ active, done, start, goTo, exit, finish, showSim, p, runIst, lifeOpen }: Props) {
+  const [area, setArea] = useState<Area>(active?.lesson.area ?? 'life');
   const counts = Object.fromEntries(
-    AREAS.map((a) => {
+    AREAS.filter((a): a is { id: LessonArea; label: string } => a.id !== 'life').map((a) => {
       const ls = LESSONS.filter((l) => l.area === a.id);
       return [a.id, `${ls.filter((l) => done.includes(l.id)).length}/${ls.length}`];
     }),
-  ) as Record<LessonArea, string>;
+  ) as Partial<Record<Area, string>>;
+  counts.life = `${FACTS.lifeStages.filter((id) => lifeStageDone(p.progress, id)).length}/10`;
   const list = LESSONS.filter((l) => l.area === area);
   return (
     <div className="tab-panel">
-      <PageHead eyebrow="Learn" title="Step-by-step walkthroughs">
-        Short guided lessons. Many drive the simulator for you; others use animated cutaways. Stuck?
-        Press "I don't get it" on any step for a plain-words version.
+      <PageHead eyebrow="Learn" title="Learn the plant">
+        Start with the life of a data center, from an empty field to decommissioning. Then the step-by-step
+        walkthroughs: many drive the simulator for you. Stuck? Press "I don't get it" on any step.
       </PageHead>
       {active ? (
         <Coach state={active} goTo={goTo} onExit={exit} onShowSim={showSim} onFinish={() => finish(active.lesson.id)} />
       ) : (
         <>
           <SectionTabs label="Lesson sections" sections={AREAS} value={area} onChange={setArea} counts={counts} />
+          {area === 'life' ? (
+            <LifeTrack p={p} onRunIst={runIst} openId={lifeOpen} />
+          ) : (
           <div className="lesson-list" key={area}>
             {list.map((l, i) => {
               const isDone = done.includes(l.id);
@@ -155,6 +170,7 @@ export function LearnTab({ active, done, start, goTo, exit, finish, showSim }: P
               );
             })}
           </div>
+          )}
         </>
       )}
     </div>

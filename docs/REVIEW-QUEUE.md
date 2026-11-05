@@ -16,3 +16,12 @@ safety-critical, code-related or numeric content ships.
 | Generator test MOP | `src/content/procedures.ts` (`mop-gen-test`) | Walkdown items and "unloaded test" wording vs. common practice | Open |
 | Cutaways | `src/ui/three/models.ts` (`CUTAWAYS`): UPS, chiller, CRAH inner parts | Part names, flow order (CCME) and one-line descriptions are correct and generic | Open |
 | Hall airflow | 3D data hall particles | Hot/cold aisle flow picture is a fair simplification (supply up from tiles, through racks, exhaust up the hot aisle) | Open |
+| Life of a DC: site selection | `src/content/lifecycleA.ts` (`life-site`) | Utility diversity, lead times, floodplain, air-permit and noise statements | Open |
+| Life of a DC: design | `life-design` | Redundancy and tier-style wording, density ranges, floor loading, 1 ton = 3.517 kW | Open |
+| Life of a DC: construction | `life-build` | Construction sequence, torque marking, hydrostatic testing, flushing, grounding grid | Open |
+| Life of a DC: commissioning | `life-cx`, `IST_L5` in `src/content/lifecycle.ts` | Level 1–5 definitions, load bank notes, IST steps and acceptance criteria | Open |
+| Life of a DC: operations | `src/content/lifecycleB.ts` (`life-ops`) | Shift patterns, alarm triage buckets, PUE/WUE/MTBF/MTTR definitions | Open |
+| Life of a DC: maintenance | `life-pm` | PM calendar buckets (monthly/quarterly/yearly) are fair typical starting points; wet stacking, IR and battery trend notes | Open |
+| Life of a DC: capacity | `life-cap` | Counting capacity at redundancy, A/B planning, breaker loading and nameplate notes | Open |
+| Life of a DC: incidents | `life-incident` | Incident roles, RCA tools (5 whys, fishbone categories) | Open |
+| Life of a DC: decommissioning | `life-decom` | Battery, refrigerant, e-waste, data destruction and fluid disposal statements; lithium-ion shipping note | Open |

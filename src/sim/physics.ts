@@ -487,3 +487,77 @@ export function pue(totalFacilityKw: number, itKw: number): number {
   if (itKw <= 0) return NaN;
   return totalFacilityKw / itKw;
 }
+
+// ---------------------------------------------------------------------------
+// Life of a data center (planning math for the Learn track). Teaching
+// simplifications: real decisions use the site's engineering studies.
+// ---------------------------------------------------------------------------
+
+export const MINUTES_PER_YEAR = 365 * 24 * 60;
+
+/** Expected downtime per year for an availability (0.999 = "three nines" ≈ 525.6 min). */
+export function downtimeMinutesPerYear(availability: number): number {
+  const a = Math.min(1, Math.max(0, availability));
+  return (1 - a) * MINUTES_PER_YEAR;
+}
+
+/**
+ * Weighted site score, 0–100: each factor is rated 0–5 for a site, and each
+ * weight (0–5) says how much that factor matters to this project.
+ */
+export function siteScore(weights: Record<string, number>, ratings: Record<string, number>): number {
+  let sum = 0;
+  let max = 0;
+  for (const [k, w] of Object.entries(weights)) {
+    const ww = Math.max(0, w);
+    sum += ww * Math.min(5, Math.max(0, ratings[k] ?? 0));
+    max += ww * 5;
+  }
+  return max > 0 ? (sum / max) * 100 : 0;
+}
+
+export type Redundancy = 'N' | 'N+1' | '2N';
+
+/** UPS modules to buy for a load: N covers the load; N+1 adds one spare; 2N doubles the whole set. */
+export function upsModulesNeeded(loadKw: number, moduleKw: number, r: Redundancy): number {
+  if (loadKw <= 0 || moduleKw <= 0) return 0;
+  const n = Math.ceil(loadKw / moduleKw);
+  return r === 'N' ? n : r === 'N+1' ? n + 1 : n * 2;
+}
+
+/** IT load from rack count and average density. */
+export const itLoadKw = (racks: number, kwPerRack: number): number => Math.max(0, racks) * Math.max(0, kwPerRack);
+
+export interface CapacityLimits {
+  /** Racks each resource could support at this density. */
+  byPower: number;
+  byCooling: number;
+  bySpace: number;
+  /** The resource that runs out first, and the racks you can actually fill. */
+  limit: 'power' | 'cooling' | 'space';
+  racks: number;
+  /** Capacity paid for but unusable because another resource ran out first. */
+  strandedPowerKw: number;
+  strandedCoolingKw: number;
+  strandedRacks: number;
+}
+
+/** Stranded capacity: power, cooling and floor space each cap the room; the smallest wins. */
+export function capacityLimits(powerKw: number, coolingKw: number, rackSpaces: number, kwPerRack: number): CapacityLimits {
+  const d = Math.max(0.1, kwPerRack);
+  const byPower = Math.floor(Math.max(0, powerKw) / d);
+  const byCooling = Math.floor(Math.max(0, coolingKw) / d);
+  const bySpace = Math.max(0, Math.floor(rackSpaces));
+  const racks = Math.min(byPower, byCooling, bySpace);
+  const limit = racks === bySpace ? 'space' : racks === byPower ? 'power' : 'cooling';
+  return {
+    byPower,
+    byCooling,
+    bySpace,
+    limit,
+    racks,
+    strandedPowerKw: Math.max(0, powerKw - racks * d),
+    strandedCoolingKw: Math.max(0, coolingKw - racks * d),
+    strandedRacks: bySpace - racks,
+  };
+}

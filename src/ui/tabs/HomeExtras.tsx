@@ -113,7 +113,7 @@ function lastTab(): Tab | null {
 
 const QUICK: { tab: Tab; emoji: string; title: string; text: string }[] = [
   { tab: 'mypath', emoji: '📐', title: 'My Blueprint', text: 'Your career, engineered' },
-  { tab: 'learn', emoji: '📘', title: 'Learn the basics', text: 'Step-by-step walkthroughs' },
+  { tab: 'learn', emoji: '🏗️', title: 'Life of a data center', text: 'Field to decommissioning, 10 stages' },
   { tab: 'procedures', emoji: '🎯', title: 'Practice a drill', text: 'Scored MOPs and emergencies' },
   { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${FACTS.tips} tricks for a pinch` },
   { tab: 'tools', emoji: '🧮', title: 'Do the math', text: 'Amps, runtime, tons, fuel' },

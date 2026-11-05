@@ -58,4 +58,17 @@ test.describe('3D visual baselines', () => {
     await page.waitForTimeout(600);
     await expect(page.locator('.scene3d-equip')).toHaveScreenshot('equip-ups-cutaway.png', opts);
   });
+
+  for (const [n, title] of [[4, 'Construction'], [6, 'Operations']] as const) {
+    test(`Life of a DC campus: ${title}`, async ({ page, open }) => {
+      await open('#/learn', { quality: 'medium', still: true });
+      await page.getByRole('button', { name: new RegExp(`Stage ${n}\\b`) }).first().click();
+      await page.getByRole('tab', { name: /^3D tour/ }).click();
+      await page.locator('.scene3d-campus').scrollIntoViewIfNeeded();
+      await page.evaluate(() => window.scrollBy(0, document.querySelector('.scene3d-campus')!.getBoundingClientRect().top - 140));
+      await page.waitForFunction(() => ((window.__cf3d as Record<string, { frames: () => number }> | undefined)?.campus?.frames() ?? 0) > 0);
+      await page.waitForTimeout(600);
+      await expect(page.locator('.scene3d-campus')).toHaveScreenshot(`campus-${title.toLowerCase()}.png`, opts);
+    });
+  }
 });
