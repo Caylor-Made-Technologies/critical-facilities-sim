@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 const KEY = 'cfs-sim-3d';
 const EVT = 'cfs-sim-3d-change';
 
+// Fallback for this visit when storage is blocked.
+let memo: boolean | null = null;
+
 export function get3d(): boolean {
+  if (memo !== null) return memo;
   try {
     return localStorage.getItem(KEY) === '1';
   } catch {
@@ -13,6 +17,7 @@ export function get3d(): boolean {
 }
 
 export function set3d(on: boolean): void {
+  memo = on;
   try {
     localStorage.setItem(KEY, on ? '1' : '0');
   } catch {

@@ -7,6 +7,9 @@
  */
 import {
   BoxGeometry,
+  BufferGeometry,
+  EdgesGeometry,
+  LineSegments,
   CanvasTexture,
   Color,
   CylinderGeometry,
@@ -20,9 +23,11 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  Quaternion,
   Raycaster,
   RingGeometry,
   SphereGeometry,
+  SRGBColorSpace,
   Sprite,
   SpriteMaterial,
   TorusGeometry,
@@ -32,7 +37,8 @@ import {
   type Material,
   type Object3D,
 } from 'three';
-import { addEdges, createStage, edgeMaterial, type ThemeColors } from '../core';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createStage, edgeMaterial, type ThemeColors } from '../core';
 import type { Link3D, Node3D, Plant3D } from '../plantModel';
 
 export interface PlantApi {
@@ -43,6 +49,8 @@ export interface PlantApi {
   nodeState: (id: string) => { state: string; light: string } | null;
   liveLinks: () => number;
   frames: () => number;
+  /** GPU memory counters and where the camera is looking (for automated checks). */
+  info: () => { geometries: number; textures: number; programs: number; calls: number; triangles: number; target: [number, number, number]; flying: boolean };
   dispose: () => void;
 }
 
@@ -91,6 +99,18 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     glow: new MeshBasicMaterial({ color: 0x22d3ee }),
   };
   const edge = edgeMaterial(stage.theme, 0.35);
+  // Equipment shares geometry (same size = same buffer), and every outline is merged
+  // into one line mesh per layout: far fewer draw calls on phones.
+  const geoCache = new Map<string, BufferGeometry>();
+  const geo = <T extends BufferGeometry>(key: string, make: () => T): T => {
+    let g = geoCache.get(key) as T | undefined;
+    if (!g) geoCache.set(key, (g = make()));
+    return g;
+  };
+  let edgeSrc: { key: string; mesh: Mesh }[] = [];
+  let edgeLines: LineSegments | null = null;
+  // Tap targets live on their own layer: hit-tested, never drawn.
+  const HIT_LAYER = 1;
   const lightMats = new Map<string, MeshBasicMaterial>();
   const lightMat = (key: string, c: Color) => {
     let m = lightMats.get(key);
@@ -144,7 +164,8 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     c.width = 256;
     c.height = 96;
     const tex = new CanvasTexture(c);
-    const spr = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    tex.colorSpace = SRGBColorSpace;
+    const spr = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
     spr.scale.set(big ? 2.2 : 1.5, big ? 0.82 : 0.56, 1);
     drawLabel(spr, tag, sub);
     return spr;
@@ -182,21 +203,24 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     ctx.fillStyle = '#' + stage.theme.cyan.getHexString();
     ctx.font = '800 34px Montserrat, system-ui, sans-serif';
     ctx.fillText(label.toUpperCase(), 8, 44);
-    const spr = new Sprite(new SpriteMaterial({ map: new CanvasTexture(c), transparent: true, depthWrite: false, opacity: 0.85 }));
+    const tex = new CanvasTexture(c);
+    tex.colorSpace = SRGBColorSpace;
+    const spr = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.85, toneMapped: false }));
     spr.scale.set(6, 0.75, 1);
     return spr;
   };
 
   // --- Equipment builders (simple, readable shapes) ---
   const box = (g: Group, w: number, h: number, d: number, mat: Material, x = 0, y = h / 2, z = 0, edges = true) => {
-    const m = new Mesh(new BoxGeometry(w, h, d), mat);
+    const key = `box:${w},${h},${d}`;
+    const m = new Mesh(geo(key, () => new BoxGeometry(w, h, d)), mat);
     m.position.set(x, y, z);
-    if (edges && w * h * d > 0.05) addEdges(m, edge);
+    if (edges && w * h * d > 0.05) edgeSrc.push({ key, mesh: m });
     g.add(m);
     return m;
   };
   const cyl = (g: Group, r: number, h: number, mat: Material, x = 0, y = h / 2, z = 0, rotZ = 0) => {
-    const m = new Mesh(new CylinderGeometry(r, r, h, 20), mat);
+    const m = new Mesh(geo(`cyl:${r},${h}`, () => new CylinderGeometry(r, r, h, 20)), mat);
     m.position.set(x, y, z);
     m.rotation.z = rotZ;
     g.add(m);
@@ -206,7 +230,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     const f = new Group();
     f.position.y = y;
     for (let k = 0; k < 4; k++) {
-      const blade = new Mesh(new BoxGeometry(r * 1.8, 0.02, r * 0.35), M.steel);
+      const blade = new Mesh(geo(`blade:${r}`, () => new BoxGeometry(r * 1.8, 0.02, r * 0.35)), M.steel);
       blade.rotation.y = (k / 4) * Math.PI;
       f.add(blade);
     }
@@ -256,7 +280,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
         break;
       case 'breaker': {
         body.push(box(g, 0.5, 0.5, 0.45, M.cabLight));
-        lever = new Mesh(new BoxGeometry(0.08, 0.3, 0.08), M.glow);
+        lever = new Mesh(geo('lever', () => new BoxGeometry(0.08, 0.3, 0.08)), M.glow);
         lever.position.set(0, 0.6, 0.12);
         g.add(lever);
         h = 0.75;
@@ -324,11 +348,13 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
         body.push(box(g, 1.1, 1, 0.6, M.cab));
         h = 1;
     }
-    const light = new Mesh(new SphereGeometry(0.09, 12, 10), lightMat('ok', stage.theme.ok));
+    const light = new Mesh(geo('light', () => new SphereGeometry(0.09, 12, 10)), lightMat('ok', stage.theme.ok));
     light.position.set(0, h + 0.18, 0);
     g.add(light);
     // Invisible, generous tap target
-    const hit = new Mesh(new BoxGeometry(Math.max(1.1, n.kind === 'bus' ? 2.6 : 1.2), h + 0.6, 1.1), M.hit);
+    const hw = Math.max(1.1, n.kind === 'bus' ? 2.6 : 1.2);
+    const hit = new Mesh(geo(`hit:${hw},${h}`, () => new BoxGeometry(hw, h + 0.6, 1.1)), M.hit);
+    hit.layers.set(HIT_LAYER);
     hit.position.y = (h + 0.6) / 2;
     hit.userData.id = n.id;
     g.add(hit);
@@ -339,12 +365,33 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     return { n, group: g, hit, light, body, label, labelText: `${n.tag}|${n.sub}`, lever, spinner };
   }
 
+  /** One line mesh for every equipment outline in this layout. */
+  function buildEdges() {
+    if (edgeLines) {
+      root.remove(edgeLines);
+      edgeLines.geometry.dispose();
+      edgeLines = null;
+    }
+    root.updateMatrixWorld(true);
+    const parts = edgeSrc.map(({ key, mesh }) => {
+      const e = geo(`edges:${key}`, () => new EdgesGeometry(geoCache.get(key)!, 30)).clone();
+      return e.applyMatrix4(mesh.matrixWorld);
+    });
+    edgeSrc = [];
+    if (!parts.length) return;
+    const merged = mergeGeometries(parts, false);
+    parts.forEach((p) => p.dispose());
+    if (!merged) return;
+    edgeLines = new LineSegments(merged, edge);
+    root.add(edgeLines);
+  }
+
   function lockFor(o: NodeObj) {
     if (o.lock) return o.lock;
     const g = new Group();
-    const shackle = new Mesh(new TorusGeometry(0.09, 0.025, 8, 16, Math.PI), M.steel);
+    const shackle = new Mesh(geo('shackle', () => new TorusGeometry(0.09, 0.025, 8, 16, Math.PI)), M.steel);
     shackle.position.y = 0.1;
-    const lbody = new Mesh(new BoxGeometry(0.2, 0.16, 0.08), M.yellow);
+    const lbody = new Mesh(geo('lockbody', () => new BoxGeometry(0.2, 0.16, 0.08)), M.yellow);
     g.add(shackle, lbody);
     g.position.set(0.35, (o.light.position.y ?? 1) - 0.05, 0.35);
     o.group.add(g);
@@ -352,11 +399,14 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     return g;
   }
 
+  // Cables and pipes: one unit cylinder, drawn instanced per color group.
+  const unitCyl = new CylinderGeometry(1, 1, 1, 10);
+  let linkSegs: { link: string; mtx: Matrix4 }[] = [];
+  let linkSig = '';
   function buildLinks(m: Plant3D) {
-    root.remove(linkGroup);
-    linkGroup.traverse((x) => (x as Mesh).geometry?.dispose());
-    linkGroup = new Group();
-    root.add(linkGroup);
+    linkSegs = [];
+    linkSig = '';
+    const q = new Quaternion();
     for (const l of m.links) {
       const isPipe = !!l.temp;
       const y = isPipe ? 0.35 : 0.06;
@@ -366,14 +416,35 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
         const b = new Vector3(l.pts[i + 1]![0], y, l.pts[i + 1]![1]);
         const len = a.distanceTo(b);
         if (len < 0.01) continue;
-        const seg = new Mesh(new CylinderGeometry(r, r, len, 10), M.dark);
-        seg.position.copy(a).add(b).multiplyScalar(0.5);
-        seg.quaternion.setFromUnitVectors(UP, b.clone().sub(a).normalize());
-        seg.userData.link = l.id;
-        linkGroup.add(seg);
+        q.setFromUnitVectors(UP, b.clone().sub(a).normalize());
+        linkSegs.push({ link: l.id, mtx: new Matrix4().compose(a.add(b).multiplyScalar(0.5), q, new Vector3(r, len, r)) });
       }
     }
   }
+  function paintLinks(byId: Map<string, Link3D>, th: ThemeColors) {
+    const groups = new Map<string, { mat: MeshStandardMaterial; mtx: Matrix4[] }>();
+    for (const sg of linkSegs) {
+      const l = byId.get(sg.link);
+      if (!l) continue;
+      const key = l.live ? `${l.temp ?? l.side ?? 'x'}` : 'dead';
+      let g = groups.get(key);
+      if (!g) groups.set(key, (g = { mat: l.live ? linkMat(key, linkColor(l, th), true) : linkMat('dead', th.line, false), mtx: [] }));
+      g.mtx.push(sg.mtx);
+    }
+    const sig = [...groups].map(([k, g]) => `${k}:${g.mtx.length}:${g.mat.uuid}`).join('|') + '#' + linkSegs.length;
+    // Same groups as last time: nothing to rebuild.
+    if (sig === linkSig) return;
+    linkSig = sig;
+    for (const c of linkGroup.children) (c as InstancedMesh).dispose();
+    linkGroup.clear();
+    for (const g of groups.values()) {
+      const im = new InstancedMesh(unitCyl, g.mat, g.mtx.length);
+      g.mtx.forEach((m, i) => im.setMatrixAt(i, m));
+      im.computeBoundingSphere();
+      linkGroup.add(im);
+    }
+  }
+
 
   const linkColor = (l: Link3D, th: ThemeColors): Color => {
     if (l.temp) return l.temp === 'chws' ? th.cyan : l.temp === 'chwr' ? th.blue : l.temp === 'cwc' ? th.ok : th.warn;
@@ -409,12 +480,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     }
     // Links: color by state, rebuild pulse tracks
     const byId = new Map(model.links.map((l) => [l.id, l]));
-    linkGroup.children.forEach((seg) => {
-      const l = byId.get(seg.userData.link as string);
-      if (!l) return;
-      const c = linkColor(l, th);
-      (seg as Mesh).material = l.live ? linkMat(l.temp ?? l.side ?? 'x', c, true) : linkMat('dead', th.line, false);
-    });
+    paintLinks(byId, th);
     pulseTracks = [];
     for (const l of model.links) {
       if (!l.live) continue;
@@ -464,7 +530,9 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     const offset = camera.position.clone().sub(controls.target);
     const dist = Math.min(14, Math.max(6, offset.length()));
     offset.setLength(dist);
-    if (stage.calm) {
+    // Off screen nothing is drawn, so a fly would freeze halfway: jump straight there instead.
+    if (stage.calm || !stage.onScreen()) {
+      fly = null;
       controls.target.copy(to);
       camera.position.copy(to.clone().add(offset));
       controls.update();
@@ -526,6 +594,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
 
   // --- Picking ---
   const ray = new Raycaster();
+  ray.layers.set(HIT_LAYER);
   const ndc = new Vector2();
   const pick = (clientX: number, clientY: number): string | null => {
     const rect = canvas.getBoundingClientRect();
@@ -566,8 +635,6 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
         for (const o of nodes.values()) {
           root.remove(o.group);
           o.group.traverse((x) => {
-            const mesh = x as Mesh;
-            mesh.geometry?.dispose();
             const spr = x as Sprite;
             if ((spr as Sprite).isSprite) {
               (spr.material as SpriteMaterial).map?.dispose();
@@ -576,7 +643,9 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
           });
         }
         nodes = new Map();
+        edgeSrc = [];
         for (const n of m.nodes) nodes.set(n.id, buildNode(n));
+        buildEdges();
         for (const s of zoneSprites) {
           root.remove(s);
           (s.material as SpriteMaterial).map?.dispose();
@@ -636,6 +705,11 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     },
     liveLinks: () => pulseTracks.length,
     frames: stage.frames,
+    info() {
+      const r = stage.renderer.info;
+      const t = controls?.target ?? new Vector3();
+      return { geometries: r.memory.geometries, textures: r.memory.textures, programs: r.programs?.length ?? 0, calls: r.render.calls, triangles: r.render.triangles, target: [t.x, t.y, t.z], flying: !!fly };
+    },
     dispose() {
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointerup', onUp);
@@ -648,6 +722,9 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
       for (const s of zoneSprites) (s.material as SpriteMaterial).map?.dispose();
       for (const m of [...lightMats.values(), ...linkMats.values(), ...Object.values(M), edge, pulseMat]) m.dispose();
       pulseGeo.dispose();
+      unitCyl.dispose();
+      for (const g of geoCache.values()) g.dispose();
+      edgeLines?.geometry.dispose();
       stage.dispose();
     },
   };

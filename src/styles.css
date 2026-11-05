@@ -5776,3 +5776,9 @@ body.has-follow .toast-region { bottom: 84px; }
 .practice3d .mode-switch { margin: 0; }
 .practice3d-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--grad); color: #04101f; flex: none; }
 .practice3d-icon svg { width: 22px; height: 22px; }
+/* Keep the hint clear of the "Go to selected" button, and scroll targets clear of the sticky banner. */
+.plant3d-wrap .scene3d-hint { right: 150px; }
+.plant3d-card, .plant3d-card .scene3d-plant, .comp-card { scroll-margin-top: 130px; }
+@media (max-width: 520px) {
+  .plant3d-wrap .scene3d-hint { right: auto; max-width: calc(100% - 20px); bottom: auto; top: 10px; }
+}

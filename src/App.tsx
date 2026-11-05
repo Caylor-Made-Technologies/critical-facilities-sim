@@ -176,13 +176,16 @@ export function App() {
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     };
     // Slide between tabs in the direction you're moving through the menu.
-    const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void>; ready?: Promise<void> } };
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (doc.startViewTransition && !calm) {
       const root = document.documentElement;
       const from = TAB_IDS.indexOf(tabRef.current);
       root.dataset.vt = TAB_IDS.indexOf(t) >= from ? 'fwd' : 'back';
-      doc.startViewTransition(() => flushSync(swap)).finished.finally(() => delete root.dataset.vt);
+      const vt = doc.startViewTransition(() => flushSync(swap)) as { finished: Promise<void>; ready?: Promise<void> };
+      // A transition can be skipped (e.g. a second tap mid-slide); that's fine, the page still swaps.
+      vt.ready?.catch(() => {});
+      vt.finished.catch(() => {}).finally(() => delete root.dataset.vt);
     } else swap();
     document.getElementById('main')?.focus({ preventScroll: true });
   }, []);
@@ -222,7 +225,9 @@ export function App() {
   const focusStep = useCallback((p: Procedure, i: number) => {
     const st = p.steps[i];
     if (!st) return;
-    setSimView(st.view ?? 'electrical');
+    // Steps with no view of their own (like the pre-job brief) stay on the procedure's plant.
+    const before = p.steps.slice(0, i + 1).reverse().find((x) => x.view)?.view;
+    setSimView(st.view ?? before ?? p.steps.find((x) => x.view)?.view ?? 'electrical');
     if (st.focus) setSelected(st.focus);
   }, []);
   const startProc = (p: Procedure) => {
@@ -442,7 +447,7 @@ export function App() {
             type="button"
             onClick={(e) => {
               const next = resolvedTheme === 'dark' ? 'light' : 'dark';
-              const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+              const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void>; ready?: Promise<void> } };
               const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
               if (!doc.startViewTransition || calm) return update({ theme: next });
               // Reveal the new theme in a circle growing from the button.
@@ -451,7 +456,9 @@ export function App() {
               root.style.setProperty('--vt-x', `${r.left + r.width / 2}px`);
               root.style.setProperty('--vt-y', `${r.top + r.height / 2}px`);
               root.classList.add('theme-vt');
-              doc.startViewTransition(() => flushSync(() => update({ theme: next }))).finished.finally(() => root.classList.remove('theme-vt'));
+              const vt = doc.startViewTransition(() => flushSync(() => update({ theme: next })));
+              vt.ready?.catch(() => {});
+              vt.finished.catch(() => {}).finally(() => root.classList.remove('theme-vt'));
             }}
             aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
           >

@@ -109,6 +109,8 @@ export interface Stage {
   /** Ask for one render (used in reduced-motion mode after changes). */
   invalidate: () => void;
   frames: () => number;
+  /** True while the canvas is on screen and the tab is visible (frames are being drawn). */
+  onScreen: () => boolean;
   dispose: () => void;
 }
 
@@ -245,6 +247,7 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
       dirty = true;
     },
     frames: () => frames,
+    onScreen: () => visible && !document.hidden,
     dispose: () => {
       disposed = true;
       cancelAnimationFrame(raf);
