@@ -18,6 +18,18 @@
     <title>Critical Facilities Simulator</title>
   </head>
   <body>
+    <!-- Brand intro: painted before the app's code arrives; the app removes it. -->
+    <div class="splash" id="boot" aria-hidden="true">
+      <div class="splash-inner">
+        <img src="/critical-facilities-sim/brand/app-mark.png" alt="" width="84" height="84" />
+        <svg class="splash-trace" viewBox="0 0 300 40" focusable="false">
+          <path d="M0 20H90L105 8H195L210 20H300" />
+          <path class="splash-spark" d="M0 20H90L105 8H195L210 20H300" />
+        </svg>
+        <span class="splash-word"><span>C</span><span>A</span><span>Y</span><span>L</span><span>O</span><span>R</span><span>&nbsp;</span><span>M</span><span>A</span><span>D</span><span>E</span></span>
+        <span class="splash-tag">Advanced Engineering. Built Different.</span>
+      </div>
+    </div>
     <div id="root"></div>
     <noscript>This simulator needs JavaScript. Nothing is sent anywhere; it runs entirely in your browser.</noscript>
     <script type="module" src="/src/main.tsx"></script>

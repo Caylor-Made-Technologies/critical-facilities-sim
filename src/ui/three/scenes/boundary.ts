@@ -26,6 +26,8 @@ export interface BoundaryState {
 }
 
 export interface BoundaryApi {
+  /** Frame-time stats and tier, for automated checks (?debug3d). */
+  stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   update: (s: BoundaryState) => void;
   workerX: () => number;
   frames: () => number;
@@ -143,6 +145,7 @@ export function mountBoundary(canvas: HTMLCanvasElement): BoundaryApi {
     },
     workerX: () => worker.position.x,
     frames: stage.frames,
+    stats: () => ({ ...stage.frameStats(), tier: stage.tier, shadows: stage.shadows }),
     dispose: () => stage.dispose(),
   };
 }

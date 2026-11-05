@@ -18,6 +18,7 @@ import {
   Fog,
   HemisphereLight,
   Mesh,
+  PCFSoftShadowMap,
   PerspectiveCamera,
   SRGBColorSpace,
   Scene,
@@ -28,6 +29,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { demote, getTier, type Tier } from './quality';
 
 export interface ThemeColors {
   bg: Color;
@@ -93,6 +95,17 @@ export interface StageOptions {
   maxDpr?: number;
   /** Frame cap for decorative scenes. */
   fps?: number;
+  /** Soft real-time shadows (used only on the High tier). */
+  shadows?: boolean;
+}
+
+export interface FrameStats {
+  /** Median and 95th percentile of the time our own frame work takes (ms). */
+  workMedian: number;
+  workP95: number;
+  /** Median time between drawn frames (ms). */
+  gapMedian: number;
+  samples: number;
 }
 
 export interface Stage {
@@ -111,12 +124,22 @@ export interface Stage {
   frames: () => number;
   /** True while the canvas is on screen and the tab is visible (frames are being drawn). */
   onScreen: () => boolean;
+  /** Quality tier this stage was built for. */
+  tier: Tier;
+  /** Whether real-time shadows are on (High tier and the scene asked for them). */
+  shadows: boolean;
+  /** Point the shadow camera at an area of the floor. */
+  fitShadow: (cx: number, cz: number, radius: number) => void;
+  frameStats: () => FrameStats;
   dispose: () => void;
 }
 
 export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
   const calm = prefersCalm();
-  const dpr = Math.min(window.devicePixelRatio || 1, o.maxDpr ?? 1.75);
+  const tier = getTier();
+  const cap = tier === 'low' ? 1 : tier === 'medium' ? Math.min(1.5, o.maxDpr ?? 1.75) : o.maxDpr ?? 1.75;
+  const dpr = Math.min(window.devicePixelRatio || 1, cap);
+  const shadows = tier === 'high' && !!o.shadows;
   // High-density screens are sharp enough without antialiasing, which is costly on phones.
   const renderer = new WebGLRenderer({ canvas, antialias: dpr < 1.5, alpha: !!o.transparent, powerPreference: 'high-performance' });
   renderer.setPixelRatio(dpr);
@@ -143,6 +166,27 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
   const sun = new DirectionalLight(0xffffff, theme.dark ? 2 : 2.4);
   sun.position.set(8, 14, 10);
   scene.add(hemi, sun);
+  if (shadows) {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFSoftShadowMap;
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.02;
+    scene.add(sun.target);
+  }
+  const fitShadow = (cx: number, cz: number, radius: number) => {
+    if (!shadows) return;
+    sun.position.set(cx + 8, 14, cz + 10);
+    sun.target.position.set(cx, 0, cz);
+    const c = sun.shadow.camera;
+    c.left = c.bottom = -radius;
+    c.right = c.top = radius;
+    c.near = 1;
+    c.far = 60;
+    c.updateProjectionMatrix();
+    sun.shadow.needsUpdate = true;
+  };
 
   let controls: OrbitControls | null = null;
   if (o.interactive) {
@@ -178,11 +222,36 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
     dirty = true;
     if (calm) render();
   };
+  // Frame-time stats (our own work per frame), and an auto step-down when a scene can't keep up.
+  const work: number[] = [];
+  const gaps: number[] = [];
+  let lastDrawn = 0;
+  let demoted = false;
+  const pct = (a: number[], p: number) => {
+    if (!a.length) return 0;
+    const s = [...a].sort((x, y) => x - y);
+    return s[Math.min(s.length - 1, Math.floor(s.length * p))]!;
+  };
+  const record = (t0: number) => {
+    const t1 = performance.now();
+    work.push(t1 - t0);
+    if (lastDrawn) gaps.push(t1 - lastDrawn);
+    lastDrawn = t1;
+    if (work.length > 240) work.shift();
+    if (gaps.length > 240) gaps.shift();
+    // Two seconds of frames slower than ~20 fps of our own work: ask for a lighter tier next time.
+    if (!demoted && tier !== 'low' && work.length >= 60 && pct(work, 0.5) > 50) {
+      demoted = true;
+      demote();
+    }
+  };
   const render = () => {
+    const t0 = performance.now();
     controls?.update();
     renderer.render(scene, camera);
     frames++;
     dirty = false;
+    record(t0);
   };
   const minGap = o.fps ? 1000 / o.fps - 2 : 0;
   const loop = (now: number) => {
@@ -248,6 +317,10 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
     },
     frames: () => frames,
     onScreen: () => visible && !document.hidden,
+    tier,
+    shadows,
+    fitShadow,
+    frameStats: () => ({ workMedian: pct(work, 0.5), workP95: pct(work, 0.95), gapMedian: pct(gaps, 0.5), samples: work.length }),
     dispose: () => {
       disposed = true;
       cancelAnimationFrame(raf);

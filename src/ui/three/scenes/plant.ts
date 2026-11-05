@@ -42,6 +42,8 @@ import { createStage, edgeMaterial, type ThemeColors } from '../core';
 import type { Link3D, Node3D, Plant3D } from '../plantModel';
 
 export interface PlantApi {
+  /** Frame-time stats and tier, for automated checks (?debug3d). */
+  stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   update: (m: Plant3D, selected: string | null, failureMode: boolean) => void;
   focus: (id: string | null) => void;
   pick: (clientX: number, clientY: number) => string | null;
@@ -705,6 +707,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     },
     liveLinks: () => pulseTracks.length,
     frames: stage.frames,
+    stats: () => ({ ...stage.frameStats(), tier: stage.tier, shadows: stage.shadows }),
     info() {
       const r = stage.renderer.info;
       const t = controls?.target ?? new Vector3();

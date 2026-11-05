@@ -107,6 +107,44 @@
   --glow: 0 0 0 1px rgba(27, 99, 235, 0.3), 0 8px 24px rgba(27, 99, 235, 0.12);
 }
 
+/* Before the app sets data-theme (first paint, brand intro): follow the device. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface-raised: #eef3fa;
+    --surface-sunk: #e8eef6;
+    --border: #d5deea;
+    --border-strong: #b7c4d6;
+    --blue-soft: rgba(27, 99, 235, 0.1);
+    --blue-glow: #1b5fd9;
+    --text-heading: #0b1220;
+    --text-body: #26323f;
+    --text-muted: #556274;
+    --text-link: #1b5fd9;
+    --side-a: #1b63eb;
+    --side-b: #7c3aed;
+    --side-c: #0a7550;
+    --side-r: #5a6779;
+    --side-common: #334155;
+    --dead: #a0aec0;
+    --cool: #0284c7;
+    --cool-2: #0f766e;
+    --hot: #c2410c;
+    --ok: #0a7550;
+    --warn: #a15c00;
+    --alarm: #c62828;
+    --info: #1b5fd9;
+    --shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+    --cyan: #0e7490;
+    --grad: linear-gradient(100deg, #1b5fd9 0%, #0e7490 100%);
+    --danger-bg: rgba(198, 40, 40, 0.06);
+    --danger-border: rgba(198, 40, 40, 0.4);
+    --glow: 0 0 0 1px rgba(27, 99, 235, 0.3), 0 8px 24px rgba(27, 99, 235, 0.12);
+  }
+}
+
 /* ---------- Base ---------- */
 *,
 *::before,
@@ -115,6 +153,12 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+}
+/* The page never scrolls sideways (a stray animation can't widen a phone's layout viewport).
+   clip, not hidden, so sticky headers keep working. */
+html,
+body {
+  overflow-x: clip;
 }
 body {
   margin: 0;
@@ -209,6 +253,7 @@ svg.icon {
   position: sticky;
   top: 0;
   z-index: 40;
+  overflow-x: clip;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -5645,6 +5690,8 @@ body.has-follow .toast-region { bottom: 84px; }
   opacity: 0;
   pointer-events: none;
   z-index: 2;
+  /* Stays inside the header: it sweeps across, never past the screen edge. */
+  max-width: 100%;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -5696,6 +5743,18 @@ body.has-follow .toast-region { bottom: 84px; }
 .splash-trace .splash-spark { stroke: #fff; stroke-dasharray: 12 340; stroke-dashoffset: 352; filter: drop-shadow(0 0 6px var(--cyan)); animation: splashSpark 0.8s linear 0.6s forwards; }
 .splash-word { display: flex; font: 800 1.25rem var(--font-head); letter-spacing: 0.22em; color: var(--text-heading); }
 .splash-word span { display: inline-block; animation: letterUp 0.5s var(--out-expo) both; animation-delay: calc(var(--i) * 0.035s + 0.45s); }
+.splash-word span:nth-child(1) { --i: 0; }
+.splash-word span:nth-child(2) { --i: 1; }
+.splash-word span:nth-child(3) { --i: 2; }
+.splash-word span:nth-child(4) { --i: 3; }
+.splash-word span:nth-child(5) { --i: 4; }
+.splash-word span:nth-child(6) { --i: 5; }
+.splash-word span:nth-child(7) { --i: 6; }
+.splash-word span:nth-child(8) { --i: 7; }
+.splash-word span:nth-child(9) { --i: 8; }
+.splash-word span:nth-child(10) { --i: 9; }
+.splash-word span:nth-child(11) { --i: 10; }
+
 .splash-tag { font: 600 0.8rem var(--font-head); letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue-glow); animation: fadeIn 0.5s ease 0.85s both; }
 @keyframes splashOut { to { opacity: 0; visibility: hidden; transform: scale(1.03); } }
 @keyframes splashIcon { from { transform: scale(0.5) rotate(-12deg); opacity: 0; } }
@@ -5782,3 +5841,17 @@ body.has-follow .toast-region { bottom: 84px; }
 @media (max-width: 520px) {
   .plant3d-wrap .scene3d-hint { right: auto; max-width: calc(100% - 20px); bottom: auto; top: 10px; }
 }
+
+/* Tab code still arriving (rare: everything is fetched once the browser is idle). */
+.tab-loading { display: grid; place-items: center; min-height: 50vh; }
+
+/* About → Display: 3D quality picker */
+.q3d-set { border: 0; padding: 0; margin: 0; }
+.q3d-set legend { font-weight: 700; margin-bottom: 8px; }
+.q3d-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.q3d-opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; background: var(--surface-sunk); }
+.q3d-opt.on { border-color: var(--blue-glow); box-shadow: 0 0 0 1px var(--blue-glow) inset; }
+.q3d-opt input { margin: 3px 0 0; accent-color: var(--blue-glow); }
+.q3d-label { font-weight: 700; }
+.q3d-note { grid-column: 2; color: var(--text-muted); font-size: 0.82rem; line-height: 1.35; }
+.home-later { min-height: 60vh; }

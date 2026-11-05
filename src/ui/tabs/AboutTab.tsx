@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { BUSINESS } from '../business';
 import { sanitize, type Progress } from '../progress';
 import { IssuerCredits } from './CareerLadder';
+import { useQuality, type QualityPref } from '../three/quality';
 
 export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: () => void; progress?: Progress; onRestore?: (p: Progress) => void }) {
   const file = useRef<HTMLInputElement>(null);
@@ -64,6 +65,8 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
           </p>
         </section>
 
+        <Display3D />
+
         <section className="card" aria-labelledby="privacy-h">
           <h2 id="privacy-h">Privacy</h2>
           <p>
@@ -71,7 +74,7 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             pixels, and no network requests after the page loads. The simulator runs entirely in your browser.
           </p>
           <p>
-            Your preferences (light/dark theme, °F/°C) and your learning progress (lessons finished, quiz answers,
+            Your preferences (light/dark theme, °F/°C, text size, 2D or 3D, 3D quality) and your learning progress (lessons finished, quiz answers,
             guides read, procedure and safety drill scores, daily challenge days, flashcard boxes, exam score, XP) are saved only in your own browser's local storage so they're remembered next
             time. They never leave your device. You can clear them here at any time:
           </p>
@@ -143,5 +146,38 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
         <IssuerCredits />
       </div>
     </div>
+  );
+}
+
+const QUALITY: { id: QualityPref; label: string; note: string }[] = [
+  { id: 'auto', label: 'Auto', note: 'Picked for this device, and steps down by itself if 3D runs slow.' },
+  { id: 'low', label: 'Low', note: 'Fastest. Sharp enough on most screens, no shadows, Home keeps its still artwork.' },
+  { id: 'medium', label: 'Medium', note: 'Balanced for phones and older laptops.' },
+  { id: 'high', label: 'High', note: 'Full resolution and soft shadows. Best on a laptop or desktop.' },
+];
+
+/** 3D quality: Auto, or pick a tier. Saved on this device only. */
+function Display3D() {
+  const { pref, tier, set } = useQuality();
+  return (
+    <section className="card" aria-labelledby="display-h">
+      <h2 id="display-h">Display</h2>
+      <fieldset className="q3d-set">
+        <legend>3D quality</legend>
+        <div className="q3d-opts">
+          {QUALITY.map((q) => (
+            <label key={q.id} className={`q3d-opt${pref === q.id ? ' on' : ''}`}>
+              <input type="radio" name="q3d" value={q.id} checked={pref === q.id} onChange={() => set(q.id)} />
+              <span className="q3d-label">{q.label}</span>
+              <span className="q3d-note">{q.note}</span>
+            </label>
+          ))}
+        </div>
+        <p className="muted small" aria-live="polite">
+          Using: <strong>{tier[0]!.toUpperCase() + tier.slice(1)}</strong>
+          {pref === 'auto' ? ' (auto)' : ''}. Every 3D view also has a 2D version.
+        </p>
+      </fieldset>
+    </section>
   );
 }

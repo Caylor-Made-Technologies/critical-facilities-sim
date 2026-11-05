@@ -3,7 +3,7 @@
  * Pages: network first, so updates arrive as soon as you're online.
  * Hashed build files, fonts and images: cache first (their names change when they change).
  */
-const CACHE = 'cfs-v3';
+const CACHE = 'cfs-v4';
 const SCOPE = self.registration.scope;
 
 // Precache the page plus the build files and fonts it links to, so the very next visit works offline.
@@ -14,7 +14,15 @@ async function precache() {
   await c.put(SCOPE, res);
   const linked = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css|woff2|png|ico|webmanifest))"/g)].map((m) => new URL(m[1], SCOPE).href);
   const extra = ['brand/logo-mark.png', 'brand/app-mark.png', 'icon-192.png', 'fonts/montserrat-latin-wght-normal.woff2', 'fonts/inter-latin-wght-normal.woff2'].map((p) => SCOPE + p);
-  await c.addAll([...new Set([...linked, ...extra])].filter((u) => u.startsWith(SCOPE)));
+  // Every lazy chunk (tabs, 3D, PDF reader) from the build's list.
+  let built = [];
+  try {
+    const list = await fetch(SCOPE + 'precache.json', { cache: 'no-cache' });
+    if (list.ok) built = (await list.json()).map((f) => SCOPE + f);
+  } catch {
+    /* older build without a list: linked files only */
+  }
+  await c.addAll([...new Set([...linked, ...extra, ...built])].filter((u) => u.startsWith(SCOPE)));
 }
 
 self.addEventListener('install', (e) => {
@@ -44,13 +52,14 @@ self.addEventListener('fetch', (e) => {
           }
           return res;
         })
-        .catch(() => caches.match(SCOPE).then((r) => r || Response.error())),
+        .catch(() => caches.match(SCOPE, { ignoreVary: true, ignoreSearch: true }).then((r) => r || Response.error())),
     );
     return;
   }
 
   e.respondWith(
-    caches.match(req).then(
+    // ignoreVary: the server's Vary (Origin, Accept-Encoding) must not hide a cached hashed file offline.
+    caches.match(req, { ignoreVary: true }).then(
       (hit) =>
         hit ||
         fetch(req).then((res) => {

@@ -50,6 +50,7 @@ export function clearPrefs(): void {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem('cfs-last-tab');
+    localStorage.removeItem('cfs-sim-3d');
   } catch {
     /* nothing to clear */
   }

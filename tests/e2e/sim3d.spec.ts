@@ -50,6 +50,8 @@ test.describe('Simulator in 3D', () => {
 
   test('20 rapid 2D/3D switches free their WebGL contexts and GPU memory', async ({ page, open }) => {
     test.skip(!test.info().project.name.startsWith('laptop'), 'laptop only');
+    // 40 scene builds; each takes ~2 s on a software GPU.
+    test.setTimeout(240_000);
     await open('#/sim');
     await plantReady(page);
     // Let the first frames upload everything before taking the baseline.

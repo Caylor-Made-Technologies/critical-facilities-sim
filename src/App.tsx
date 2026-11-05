@@ -2,14 +2,10 @@
  * App shell: brand header, grouped sidebar (laptop), bottom bar + "More"
  * sheet (phone), hash routing, XP toasts, and every tab.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type React from 'react';
-import { CHANGE } from './content/change';
-import { CODES } from './content/codes';
-import { guideForKind } from './content/equipment';
 import { LESSONS, simForStep, type Lesson } from './content/lessons';
-import { UPTIME } from './content/uptime';
 import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
@@ -17,32 +13,94 @@ import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
 import { TEXT_SIZES, usePrefs } from './ui/prefs';
 import { levelOf, useProgress } from './ui/progress';
 import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
-import { AboutTab } from './ui/tabs/AboutTab';
-import { ArticlesTab } from './ui/tabs/ArticlesTab';
-import { SafetyTab } from './ui/tabs/SafetyTab';
-import { FieldToolsTab } from './ui/tabs/FieldToolsTab';
-import { CareerTab } from './ui/tabs/CareerTab';
-import { TipsTab } from './ui/tabs/TipsTab';
-import { MyPathTab } from './ui/tabs/MyPathTab';
 import type { PathItem } from './content/path';
-import { TIPS } from './content/tips';
 import { rememberTab } from './ui/tabs/HomeExtras';
-import { Palette } from './ui/Palette';
 import type { Jump } from './ui/search';
 import { useCountUp } from './ui/common';
-import { EquipmentTab } from './ui/tabs/EquipmentTab';
-import { FeedbackTab } from './ui/tabs/FeedbackTab';
-import { GlossaryTab } from './ui/tabs/GlossaryTab';
 import { HomeTab } from './ui/tabs/HomeTab';
-import { Coach, LearnTab, type LessonState } from './ui/tabs/LearnTab';
-import { NeverDoTab } from './ui/tabs/NeverDoTab';
 import { ProceduresTab } from './ui/tabs/ProceduresTab';
 import { PROCEDURES, surpriseDrill } from './content/procedures';
-import { DesignsTab } from './ui/tabs/DesignsTab';
-import { CasesTab } from './ui/tabs/CasesTab';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
-import { QuizTab } from './ui/tabs/QuizTab';
 import { useSimulation } from './ui/useSimulation';
+import { resetQuality } from './ui/three/quality';
+
+import type { LessonState } from './ui/tabs/LearnTab';
+import type { Article } from './content/types';
+
+// Every tab except Home, the Simulator and Procedures loads on demand, so the
+// first page is light. All of them are fetched once the browser is idle, so
+// moving around (and offline use) stays instant.
+const LOADERS = {
+  about: () => import('./ui/tabs/AboutTab'),
+  articles: () => import('./ui/tabs/ArticlesTab'),
+  safety: () => import('./ui/tabs/SafetyTab'),
+  tools: () => import('./ui/tabs/FieldToolsTab'),
+  career: () => import('./ui/tabs/CareerTab'),
+  tips: () => import('./ui/tabs/TipsTab'),
+  mypath: () => import('./ui/tabs/MyPathTab'),
+  equipment: () => import('./ui/tabs/EquipmentTab'),
+  feedback: () => import('./ui/tabs/FeedbackTab'),
+  glossary: () => import('./ui/tabs/GlossaryTab'),
+  learn: () => import('./ui/tabs/LearnTab'),
+  never: () => import('./ui/tabs/NeverDoTab'),
+  designs: () => import('./ui/tabs/DesignsTab'),
+  cases: () => import('./ui/tabs/CasesTab'),
+  quiz: () => import('./ui/tabs/QuizTab'),
+  palette: () => import('./ui/Palette'),
+  codes: () => import('./content/codes'),
+  uptime: () => import('./content/uptime'),
+  change: () => import('./content/change'),
+  equipmentData: () => import('./content/equipment'),
+  tipsData: () => import('./content/tips'),
+};
+const AboutTab = lazy(() => LOADERS.about().then((m) => ({ default: m.AboutTab })));
+const SafetyTab = lazy(() => LOADERS.safety().then((m) => ({ default: m.SafetyTab })));
+const FieldToolsTab = lazy(() => LOADERS.tools().then((m) => ({ default: m.FieldToolsTab })));
+const CareerTab = lazy(() => LOADERS.career().then((m) => ({ default: m.CareerTab })));
+const TipsTab = lazy(() => LOADERS.tips().then((m) => ({ default: m.TipsTab })));
+const MyPathTab = lazy(() => LOADERS.mypath().then((m) => ({ default: m.MyPathTab })));
+const EquipmentTab = lazy(() => LOADERS.equipment().then((m) => ({ default: m.EquipmentTab })));
+const FeedbackTab = lazy(() => LOADERS.feedback().then((m) => ({ default: m.FeedbackTab })));
+const GlossaryTab = lazy(() => LOADERS.glossary().then((m) => ({ default: m.GlossaryTab })));
+const LearnTab = lazy(() => LOADERS.learn().then((m) => ({ default: m.LearnTab })));
+const Coach = lazy(() => LOADERS.learn().then((m) => ({ default: m.Coach })));
+const NeverDoTab = lazy(() => LOADERS.never().then((m) => ({ default: m.NeverDoTab })));
+const DesignsTab = lazy(() => LOADERS.designs().then((m) => ({ default: m.DesignsTab })));
+const CasesTab = lazy(() => LOADERS.cases().then((m) => ({ default: m.CasesTab })));
+const QuizTab = lazy(() => LOADERS.quiz().then((m) => ({ default: m.QuizTab })));
+const Palette = lazy(() => LOADERS.palette().then((m) => ({ default: m.Palette })));
+type ArticleProps = { eyebrow: string; title: string; intro: string };
+const articlesFrom = (data: () => Promise<Article[]>) =>
+  lazy(async () => {
+    const [{ ArticlesTab }, articles] = await Promise.all([LOADERS.articles(), data()]);
+    return { default: (p: ArticleProps) => <ArticlesTab {...p} articles={articles} /> };
+  });
+const CodesTab = articlesFrom(() => LOADERS.codes().then((m) => m.CODES));
+const UptimeTab = articlesFrom(() => LOADERS.uptime().then((m) => m.UPTIME));
+const ChangeTab = articlesFrom(() => LOADERS.change().then((m) => m.CHANGE));
+// One chunk at a time, each in an idle moment, so preloading never blocks a tap.
+const preloadAll = () => {
+  const queue = Object.values(LOADERS);
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+  const next = () => {
+    const f = queue.shift();
+    if (!f) return;
+    void f()
+      .catch(() => {})
+      .finally(() => (w.requestIdleCallback ? w.requestIdleCallback(next, { timeout: 2000 }) : window.setTimeout(next, 50)));
+  };
+  next();
+};
+
+/** Placeholder while a tab's code arrives (usually already cached). */
+function TabLoading() {
+  return (
+    <div className="tab-loading" role="status" aria-live="polite">
+      <span className="scene3d-spinner" aria-hidden="true" />
+      <span className="visually-hidden">Loading…</span>
+    </div>
+  );
+}
 
 /** Lessons with simulator actions or focus targets play out in the Simulator tab. */
 const drivesSim = (l: Lesson) => l.steps.some((s) => s.actions || s.focus);
@@ -59,24 +117,25 @@ export function App() {
   const tabRef = useRef(tab);
   tabRef.current = tab;
   // Brand "power-on" intro: once per visit, skipped for reduced motion.
-  const [splash, setSplash] = useState(() => {
-    try {
-      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
-      return !sessionStorage.getItem('cfs-splash');
-    } catch {
-      return false;
-    }
-  });
+  // Brand intro: static markup in index.html (so it paints before the code loads).
+  // First visit this session: let it finish its animation. Otherwise remove it now.
   useEffect(() => {
-    if (!splash) return;
+    const boot = document.getElementById('boot');
+    if (!boot) return;
+    let first = false;
     try {
+      first = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && !sessionStorage.getItem('cfs-splash');
       sessionStorage.setItem('cfs-splash', '1');
     } catch {
       /* storage blocked */
     }
-    const t = window.setTimeout(() => setSplash(false), 1900);
+    if (!first) {
+      boot.remove();
+      return;
+    }
+    const t = window.setTimeout(() => boot.remove(), 1900);
     return () => window.clearTimeout(t);
-  }, [splash]);
+  }, []);
   // Sliding highlight behind the active sidebar and bottom-bar items.
   const sideRef = useRef<HTMLElement>(null);
   const bottomRef = useRef<HTMLElement>(null);
@@ -110,6 +169,17 @@ export function App() {
   const [proc, setProc] = useState<{ p: Procedure; run: ProcRun; started: number; secs?: number } | null>(null);
   const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Search code loads the first time it's opened.
+  const [paletteUsed, setPaletteUsed] = useState(false);
+  useEffect(() => {
+    if (paletteOpen) setPaletteUsed(true);
+  }, [paletteOpen]);
+  // Fetch every tab once the first page has settled.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    const id = window.setTimeout(() => (w.requestIdleCallback ? w.requestIdleCallback(preloadAll, { timeout: 4000 }) : preloadAll()), 2500);
+    return () => window.clearTimeout(id);
+  }, []);
   const [safetyArticle, setSafetyArticle] = useState<string | null>(null);
   const [glossaryQ, setGlossaryQ] = useState('');
   const [tipQ, setTipQ] = useState('');
@@ -163,7 +233,13 @@ export function App() {
 
   useEffect(() => rememberTab(tab), [tab]);
   useEffect(() => {
-    const on = () => setTabState(tabFromHash());
+    // Back/forward or a #/tab link: show the new tab from the top, like a menu tap does.
+    const on = () => {
+      const t = tabFromHash();
+      if (t === tabRef.current) return;
+      setTabState(t);
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    };
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
@@ -311,8 +387,10 @@ export function App() {
   ) : null;
 
   const openGuide = (kind: ComponentKind) => {
-    setGuideId(guideForKind(kind)?.id ?? null);
-    setTab('equipment');
+    void LOADERS.equipmentData().then((m) => {
+      setGuideId(m.guideForKind(kind)?.id ?? null);
+      setTab('equipment');
+    });
   };
   const showKindInSim = (kind: string) => {
     const first = [...h.sim.graph.nodes.values()].find((n) => n.kind === kind);
@@ -346,8 +424,11 @@ export function App() {
       setSafetyArticle(j.id);
       setTab('safety');
     } else if (j.kind === 'tip') {
-      setTipQ(TIPS.find((t) => t.id === j.id)?.title ?? '');
-      setTab('tips');
+      const id = j.id;
+      void LOADERS.tipsData().then((m) => {
+        setTipQ(m.TIPS.find((t) => t.id === id)?.title ?? '');
+        setTab('tips');
+      });
     } else {
       setGlossaryQ(j.term);
       setTab('glossary');
@@ -376,25 +457,6 @@ export function App() {
 
   return (
     <div className="shell">
-      {splash && (
-        <div className="splash" aria-hidden="true">
-          <div className="splash-inner">
-            <img src={`${import.meta.env.BASE_URL}brand/app-mark.png`} alt="" width={84} height={84} />
-            <svg className="splash-trace" viewBox="0 0 300 40" focusable="false">
-              <path d="M0 20H90L105 8H195L210 20H300" />
-              <path className="splash-spark" d="M0 20H90L105 8H195L210 20H300" />
-            </svg>
-            <span className="splash-word">
-              {'CAYLOR MADE'.split('').map((c, i) => (
-                <span key={i} style={{ '--i': i } as React.CSSProperties}>
-                  {c === ' ' ? '\u00a0' : c}
-                </span>
-              ))}
-            </span>
-            <span className="splash-tag">Advanced Engineering. Built Different.</span>
-          </div>
-        </div>
-      )}
       <a className="skip-link" href="#main">
         Skip to content
       </a>
@@ -494,6 +556,7 @@ export function App() {
 
         <div className="content">
           <main id="main" tabIndex={-1} aria-label={current.label} data-tab={tab}>
+            <Suspense fallback={<TabLoading />}>
             {tab === 'home' && (
               <HomeTab
                 p={p}
@@ -580,17 +643,16 @@ export function App() {
             {tab === 'glossary' && <GlossaryTab key={glossaryQ} initialQuery={glossaryQ} boxes={p.progress.cards} onRate={p.rateCard} />}
             {tab === 'safety' && <SafetyTab key={safetyArticle ?? 'safety'} scores={p.progress.safety} onScore={p.finishSafety} openArticle={safetyArticle} />}
             {tab === 'codes' && (
-              <ArticlesTab eyebrow="Codes & standards" title="The rulebook, decoded" intro="Who writes the rules and what each standard means for you on shift, split by electrical, mechanical, fire, and environmental." articles={CODES} />
+              <CodesTab eyebrow="Codes & standards" title="The rulebook, decoded" intro="Who writes the rules and what each standard means for you on shift, split by electrical, mechanical, fire, and environmental."  />
             )}
             {tab === 'uptime' && (
-              <ArticlesTab eyebrow="Uptime" title="Keep the load running" intro="The habits, practices, and emergency response that prevent outages." articles={UPTIME} />
+              <UptimeTab eyebrow="Uptime" title="Keep the load running" intro="The habits, practices, and emergency response that prevent outages."  />
             )}
             {tab === 'change' && (
-              <ArticlesTab
+              <ChangeTab
                 eyebrow="Management of change"
                 title="Change management (MOC)"
                 intro="Every change to a critical system is reviewed, approved, executed step by step, and documented. This is how the industry keeps changes from becoming outages."
-                articles={CHANGE}
               />
             )}
             {tab === 'feedback' && <FeedbackTab />}
@@ -603,11 +665,13 @@ export function App() {
                 }}
                 onResetPrefs={() => {
                   resetPrefs();
+                  resetQuality();
                   p.reset();
                   showToast('Saved settings and progress cleared.');
                 }}
               />
             )}
+            </Suspense>
           </main>
 
           <footer className="app-footer">
@@ -702,7 +766,11 @@ export function App() {
         </>
       )}
 
-      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
+      {paletteUsed && (
+        <Suspense fallback={null}>
+          <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
+        </Suspense>
+      )}
 
       <div className="toast-region" aria-live="polite">
         {toast && (

@@ -30,6 +30,8 @@ import { addEdges, createStage, edgeMaterial, type ThemeColors } from '../core';
 import { STATUS_COLOR, heat01, type HallVis, type RackVis } from '../hallState';
 
 export interface HallApi {
+  /** Frame-time stats and tier, for automated checks (?debug3d). */
+  stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   update: (vis: HallVis, selected?: string | null) => void;
   pick: (clientX: number, clientY: number) => string | null;
   project: (id: string) => { x: number; y: number } | null;
@@ -369,6 +371,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
       return o ? '#' + (o.strip.material as MeshBasicMaterial).color.getHexString() : null;
     },
     frames: stage.frames,
+    stats: () => ({ ...stage.frameStats(), tier: stage.tier, shadows: stage.shadows }),
     dispose() {
       window.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerdown', onDown);

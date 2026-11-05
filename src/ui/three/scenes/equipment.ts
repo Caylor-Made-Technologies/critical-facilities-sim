@@ -23,6 +23,8 @@ import { addEdges, createStage, disposeTree, edgeMaterial } from '../core';
 import type { ModelKey } from '../models';
 
 export interface EquipmentApi {
+  /** Frame-time stats and tier, for automated checks (?debug3d). */
+  stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   show: (key: ModelKey) => void;
   current: () => ModelKey | null;
   meshCount: () => number;
@@ -368,6 +370,7 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
       return n;
     },
     frames: stage.frames,
+    stats: () => ({ ...stage.frameStats(), tier: stage.tier, shadows: stage.shadows }),
     dispose() {
       if (model) disposeTree(model);
       for (const m of sharedMats) m.dispose();

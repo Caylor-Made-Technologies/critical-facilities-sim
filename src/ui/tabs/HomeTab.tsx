@@ -1,9 +1,8 @@
 /** Home: hero, growth path (XP + levels), and a door into every subject. */
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { LESSONS } from '../../content/lessons';
 import { NEVER } from '../../content/neverdo';
-import { QUIZ } from '../../content/quiz';
-import { EQUIPMENT } from '../../content/equipment';
-import { GLOSSARY } from '../../content/glossary';
+import { FACTS } from '../../content/facts';
 import { PROCEDURES } from '../../content/procedures';
 import { ROUNDS } from '../../content/rounds';
 import { grade } from '../../sim';
@@ -15,7 +14,11 @@ import { Hall3D } from '../three/Scene3D';
 import { demoHall } from '../three/hallState';
 
 const DEMO_HALL = demoHall();
-import { BadgeWall, DailyCard, InstallButton, PathCard, QuickStart, TipOfDay } from './HomeExtras';
+import { BadgeWall, InstallButton, PathCard, QuickStart } from './HomeExtras';
+
+const loadDaily = () => import('./HomeDaily');
+const DailyCard = lazy(() => loadDaily().then((m) => ({ default: m.DailyCard })));
+const TipOfDay = lazy(() => loadDaily().then((m) => ({ default: m.TipOfDay })));
 
 
 
@@ -115,13 +118,13 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
               <strong><CountUp value={PROCEDURES.length} /></strong> scored MOPs and drills
             </li>
             <li>
-              <strong><CountUp value={QUIZ.length} /></strong> quiz questions
+              <strong><CountUp value={FACTS.quiz} /></strong> quiz questions
             </li>
             <li>
-              <strong><CountUp value={EQUIPMENT.length} /></strong> equipment guides
+              <strong><CountUp value={FACTS.equipment} /></strong> equipment guides
             </li>
             <li>
-              <strong><CountUp value={GLOSSARY.length} /></strong> terms
+              <strong><CountUp value={FACTS.glossaryTerms.length} /></strong> terms
             </li>
             <li>
               <strong><CountUp value={7} /></strong> redundancy designs
@@ -157,6 +160,7 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
         </div>
       </section>
 
+      <Later>
       <DailyCard p={p} go={go} startProc={startProc} />
 
       <section className="grid growth" aria-labelledby="growth-h">
@@ -193,10 +197,10 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
               <strong>{lessonsDone}</strong>/{LESSONS.length} lessons
             </span>
             <span>
-              <strong>{quizRight}</strong>/{QUIZ.length} quiz correct
+              <strong>{quizRight}</strong>/{FACTS.quiz} quiz correct
             </span>
             <span>
-              <strong>{p.progress.guides.length}</strong>/{EQUIPMENT.length} guides read
+              <strong>{p.progress.guides.length}</strong>/{FACTS.equipment} guides read
             </span>
             <span>
               <strong>{Object.keys(p.progress.procs).length}</strong>/{PROCEDURES.length} procedures run
@@ -273,6 +277,27 @@ export function HomeTab({ p, go, startTour, startProc }: Props) {
           ))}
         </div>
       </section>
+      </Later>
     </div>
   );
+}
+
+/**
+ * Below-the-fold sections mount a moment after the first paint, so the first
+ * screen shows (and answers taps) sooner. Anything printed or scrolled to is
+ * there long before anyone gets to it.
+ */
+function Later({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setReady(true), { timeout: 600 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(() => setReady(true), 50);
+    return () => window.clearTimeout(t);
+  }, []);
+  const hold = <div className="home-later" aria-hidden="true" />;
+  return ready ? <Suspense fallback={hold}>{children}</Suspense> : hold;
 }

@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const test = base.extend<{ problems: string[]; open: (hash: string, opts?: { three?: boolean }) => Promise<void> }>({
+export const test = base.extend<{ problems: string[]; open: (hash: string, opts?: { three?: boolean; quality?: 'auto' | 'low' | 'medium' | 'high' }) => Promise<void> }>({
   problems: async ({ page }, use) => {
     const problems: string[] = [];
     page.on('console', (m) => {
@@ -34,9 +34,12 @@ export const test = base.extend<{ problems: string[]; open: (hash: string, opts?
     void problems;
     await use(async (hash, opts = {}) => {
       const three = opts.three ?? true;
-      await page.addInitScript((on) => {
+      // This machine draws WebGL in software, which Auto maps to Low; tests pin a tier unless they test Auto.
+      const quality = opts.quality ?? 'medium';
+      await page.addInitScript(([on, q]) => {
         sessionStorage.setItem('cfs-splash', '1');
         localStorage.setItem('cfs-sim-3d', on ? '1' : '0');
+        localStorage.setItem('cfs-3d-quality', q as string);
         // Count WebGL contexts that are still alive (for leak checks).
         const made: (WebGLRenderingContext | WebGL2RenderingContext)[] = [];
         const orig = HTMLCanvasElement.prototype.getContext;
@@ -47,7 +50,7 @@ export const test = base.extend<{ problems: string[]; open: (hash: string, opts?
           return ctx;
         } as typeof orig;
         window.__glLive = () => made.filter((c) => !c.isContextLost()).length;
-      }, three);
+      }, [three, quality] as const);
       await page.goto(`./?debug3d${hash}`);
     });
   },

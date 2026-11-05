@@ -1,104 +1,15 @@
 /** Home extras: daily challenge with streak, badge wall, and the install button. */
 import { useEffect, useMemo, useState } from 'react';
 import { PROCEDURES } from '../../content/procedures';
-import { HAZARD_HUNTS } from '../../content/safetyTools';
 import { BADGES } from '../badges';
 import { Confetti } from '../common';
 import { buzz } from '../haptics';
-import { dailyChallenge } from '../daily';
 import { Icon } from '../icons';
 import { streakOf, today, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 import type React from 'react';
-import { TIPS, tipOfDay } from '../../content/tips';
+import { FACTS } from '../../content/facts';
 import { buildPath, itemDone, scoreProfile } from '../../content/path';
-import { TipCard } from './TipsTab';
-
-export function DailyCard({ p, go, startProc }: { p: ProgressHandle; go: (t: Tab) => void; startProc: (id: string) => void }) {
-  const date = today();
-  const ch = useMemo(() => dailyChallenge(date), [date]);
-  const [picks, setPicks] = useState<(number | null)[]>([null, null, null]);
-  const [burst, setBurst] = useState(0);
-  const doneScore = p.progress.daily[date];
-  const answered = picks.every((x) => x !== null);
-  const right = picks.filter((x, i) => x === ch.questions[i]!.answer).length;
-  const streak = streakOf(p.progress.daily);
-  const proc = PROCEDURES.find((x) => x.id === ch.procId)!;
-  const hunt = HAZARD_HUNTS.find((x) => x.id === ch.huntId)!;
-
-  const pick = (qi: number, oi: number) => {
-    if (picks[qi] !== null) return;
-    buzz(oi === ch.questions[qi]!.answer ? 20 : [40, 60, 40]);
-    const next = picks.map((x, i) => (i === qi ? oi : x));
-    setPicks(next);
-    if (next.every((x) => x !== null)) {
-      const score = Math.round((next.filter((x, i) => x === ch.questions[i]!.answer).length / 3) * 100);
-      p.finishDaily(score);
-      if (score === 100) setBurst(Date.now());
-    }
-  };
-
-  return (
-    <section className="card daily" aria-labelledby="daily-h">
-      <div className="daily-top">
-        <div>
-          <div className="eyebrow" id="daily-h">
-            Daily challenge · {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-          </div>
-          <h2 className="h-card">Three questions. One minute. Keep the streak.</h2>
-        </div>
-        <div className={`streak${streak ? ' hot' : ''}`} aria-label={`${streak} day streak`}>
-          <Icon name="flame" />
-          <strong>{streak}</strong>
-          <span>day{streak === 1 ? '' : 's'}</span>
-        </div>
-      </div>
-      {doneScore !== undefined && !answered ? (
-        <p className="daily-done">
-          <Icon name="check" /> Done for today: {doneScore} / 100. Come back tomorrow to grow your streak.
-        </p>
-      ) : (
-        <ol className="daily-qs">
-          {ch.questions.map((q, qi) => (
-            <li key={q.id}>
-              <p className="daily-q">{q.q}</p>
-              <div className="daily-opts" role="group" aria-label={`Question ${qi + 1} answers`}>
-                {q.options.map((o, oi) => {
-                  const chosen = picks[qi] === oi;
-                  const state = picks[qi] === null ? '' : oi === q.answer ? ' right' : chosen ? ' wrong' : ' dim';
-                  return (
-                    <button key={o} type="button" className={`daily-opt${state}`} onClick={() => pick(qi, oi)} disabled={picks[qi] !== null} aria-pressed={chosen}>
-                      {o}
-                    </button>
-                  );
-                })}
-              </div>
-              {picks[qi] !== null && <p className="daily-why">{q.why}</p>}
-            </li>
-          ))}
-        </ol>
-      )}
-      {answered && (
-        <p className="daily-score" aria-live="polite">
-          <strong>
-            {right} of 3 right{right === 3 ? '. Perfect!' : '.'}
-          </strong>{' '}
-          Streak: {streak} day{streak === 1 ? '' : 's'}.
-        </p>
-      )}
-      <div className="daily-more">
-        <span className="muted">Today's practice:</span>
-        <button className="btn btn-sm" type="button" onClick={() => startProc(proc.id)}>
-          <Icon name="play" /> {proc.title}
-        </button>
-        <button className="btn btn-sm" type="button" onClick={() => go('safety')}>
-          <Icon name="eye" /> Hazard hunt: {hunt.title}
-        </button>
-      </div>
-      <Confetti burst={burst} />
-    </section>
-  );
-}
 
 export function BadgeWall({ p }: { p: ProgressHandle }) {
   const got = BADGES.filter((b) => b.earned(p.progress)).length;
@@ -204,7 +115,7 @@ const QUICK: { tab: Tab; emoji: string; title: string; text: string }[] = [
   { tab: 'mypath', emoji: '📐', title: 'My Blueprint', text: 'Your career, engineered' },
   { tab: 'learn', emoji: '📘', title: 'Learn the basics', text: 'Step-by-step walkthroughs' },
   { tab: 'procedures', emoji: '🎯', title: 'Practice a drill', text: 'Scored MOPs and emergencies' },
-  { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${TIPS.length} tricks for a pinch` },
+  { tab: 'tips', emoji: '💡', title: 'Quick tips', text: `${FACTS.tips} tricks for a pinch` },
   { tab: 'tools', emoji: '🧮', title: 'Do the math', text: 'Amps, runtime, tons, fuel' },
   { tab: 'sim', emoji: '⚡', title: 'Break the plant', text: 'Fail things, watch backups' },
   { tab: 'safety', emoji: '🦺', title: 'Stay safe', text: 'Rules, drills, emergency cards' },
@@ -240,32 +151,6 @@ export function QuickStart({ go }: { go: (t: Tab) => void }) {
             <span>{q.text}</span>
           </button>
         ))}
-      </div>
-    </section>
-  );
-}
-
-export function TipOfDay({ p, go }: { p: ProgressHandle; go: (t: Tab) => void }) {
-  const [offset, setOffset] = useState(0);
-  const base = TIPS.indexOf(tipOfDay(today()));
-  const tip = TIPS[(base + offset) % TIPS.length]!;
-  return (
-    <section className="tip-day" aria-labelledby="tipday-h">
-      <div className="roll-head">
-        <h2 id="tipday-h" className="h-card">
-          <span aria-hidden="true">💡</span> {offset === 0 ? 'Tip of the day' : 'Another tip'}
-        </h2>
-        <div className="whats-new-btns">
-          <button className="btn btn-sm" type="button" onClick={() => setOffset(offset + 1)}>
-            <Icon name="reset" /> Next tip
-          </button>
-          <button className="btn btn-sm btn-ghost" type="button" onClick={() => go('tips')}>
-            All {TIPS.length} <Icon name="arrow-right" />
-          </button>
-        </div>
-      </div>
-      <div className="roll-card" key={tip.id} aria-live="polite">
-        <TipCard tip={tip} saved={p.progress.favTips.includes(tip.id)} onSave={() => p.toggleTip(tip.id)} />
       </div>
     </section>
   );
