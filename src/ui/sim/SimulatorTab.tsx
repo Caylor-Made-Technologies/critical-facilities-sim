@@ -5,7 +5,9 @@ import { fmtTemp } from '../format';
 import { Icon, type IconName } from '../icons';
 import { PageHead } from '../common';
 import { useMemo, useState } from 'react';
-import { Hall3D } from '../three/Scene3D';
+import { Hall3D, Plant3DView } from '../three/Scene3D';
+import { plantModel } from '../three/plantModel';
+import { use3d } from '../view3d';
 import { hallVis } from '../three/hallState';
 import type { Units } from '../prefs';
 import type { SimHandle } from '../useSimulation';
@@ -56,6 +58,7 @@ function Kpi({ icon, label, value, tone }: { icon: IconName; label: string; valu
 
 export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGuide, coach, focused, view, setView, units, setUnits }: Props) {
   const { sim, version } = h;
+  const [is3d, set3d] = use3d();
   const sol = sim.solution;
   const racksDown = sim.itDownRacks().length;
   const th = sim.thermal.readout;
@@ -98,6 +101,14 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </button>
             <button type="button" aria-pressed={view === 'mechanical'} onClick={() => setView('mechanical')}>
               <Icon name="pulse" /> Mechanical
+            </button>
+          </div>
+          <div className="seg seg-icons seg-3d" role="group" aria-label="2D or 3D">
+            <button type="button" aria-pressed={!is3d} onClick={() => set3d(false)}>
+              2D
+            </button>
+            <button type="button" aria-pressed={is3d} onClick={() => set3d(true)}>
+              <Icon name="layers" /> 3D
             </button>
           </div>
           <div className="seg seg-icons" role="group" aria-label="Mode">
@@ -211,7 +222,9 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
 
       <div className="sim-layout">
         <div>
-          {view === 'mechanical' ? (
+          {is3d ? (
+            <Plant3DCard sim={sim} version={version} view={view} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
+          ) : view === 'mechanical' ? (
             <MechPlant sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} units={units} onActivate={activate} />
           ) : (
             <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
@@ -295,6 +308,74 @@ function Hall3DCard({ sim, version, selected, onPick }: { sim: SimHandle['sim'];
           <i style={{ background: 'var(--cyan)' }} /> cold air (turns orange as the hall heats)
         </span>
         <span>Pulses on the busway = power flowing</span>
+      </div>
+    </section>
+  );
+}
+
+function Plant3DCard({ sim, version, view, selected, failureMode, onActivate }: { sim: SimHandle['sim']; version: number; view: SimView; selected: string | null; failureMode: boolean; onActivate: (id: string) => void }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const model = useMemo(() => plantModel(sim, view), [sim, version, view]);
+  const failed = model.nodes.filter((n) => n.state === 'failed').length;
+  const locked = model.nodes.filter((n) => n.state === 'maint').length;
+  const live = model.links.filter((l) => l.live).length;
+  const summary = `${view === 'electrical' ? 'Electrical' : 'Mechanical'} plant in 3D: ${model.nodes.length} components, ${failed} failed, ${locked} locked out, ${live} of ${model.links.length} ${view === 'electrical' ? 'feeds carrying power' : 'pipes flowing'}.`;
+  return (
+    <section className={`card plant3d-card${failureMode ? ' failure' : ''}`} aria-label={`3D ${view} plant`}>
+      <div className="plant3d-top">
+        <span className={`chip ${failureMode ? 'chip-alarm' : 'chip-info'}`}>{failureMode ? 'Failure mode: tap equipment to fail or restore it' : 'Explore: tap equipment to learn about it'}</span>
+        <label className="field plant3d-jump">
+          <span>Jump to component</span>
+          <select
+            value={selected && model.nodes.some((n) => n.id === selected) ? selected : ''}
+            onChange={(e) => e.target.value && onActivate(e.target.value)}
+          >
+            <option value="">Choose…</option>
+            {model.nodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.tag} · {n.sub || n.state}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <Plant3DView model={model} selected={selected} failureMode={failureMode} onActivate={onActivate} label={summary} />
+      <div className="legend" aria-hidden="true">
+        {view === 'electrical' ? (
+          <>
+            <span>
+              <i style={{ background: 'var(--side-a)' }} /> A side
+            </span>
+            <span>
+              <i style={{ background: 'var(--side-b)' }} /> B side
+            </span>
+            <span>
+              <i style={{ background: 'var(--dead)' }} /> dead
+            </span>
+            <span>Moving lights = power flowing · breaker lever up = closed</span>
+          </>
+        ) : (
+          <>
+            <span>
+              <i style={{ background: 'var(--cyan)' }} /> chilled supply
+            </span>
+            <span>
+              <i style={{ background: 'var(--blue-glow)' }} /> chilled return
+            </span>
+            <span>
+              <i style={{ background: 'var(--ok)' }} /> condenser to chiller
+            </span>
+            <span>
+              <i style={{ background: 'var(--warn)' }} /> condenser to tower
+            </span>
+          </>
+        )}
+        <span>
+          <i style={{ background: 'var(--alarm)' }} /> failed (blinking)
+        </span>
+        <span>
+          <i style={{ background: 'var(--warn)' }} /> locked out 🔒
+        </span>
       </div>
     </section>
   );

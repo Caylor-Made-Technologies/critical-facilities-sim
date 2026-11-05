@@ -8,6 +8,8 @@ import type React from 'react';
 import type { BoundaryApi, BoundaryState } from './scenes/boundary';
 import type { EquipmentApi } from './scenes/equipment';
 import type { HallApi } from './scenes/hall';
+import type { PlantApi } from './scenes/plant';
+import type { Plant3D } from './plantModel';
 import type { HallVis } from './hallState';
 import { MODEL_CAPTION, type ModelKey } from './models';
 
@@ -116,4 +118,30 @@ export function Boundary3D({ state, label }: { state: BoundaryState; label: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, state.distFt, state.restrictedFt, state.limitedFt, state.arcFt, state.tone]);
   return <Frame status={status} label={label} className="scene3d-boundary" canvasRef={ref} hint="Drag to look around" fallback={<span className="scene3d-fallback">3D view isn't available on this device. Use the 2D view.</span>} />;
+}
+
+export function Plant3DView({ model, selected, failureMode, onActivate, label }: { model: Plant3D; selected: string | null; failureMode: boolean; onActivate: (id: string) => void; label: string }) {
+  const actRef = useRef(onActivate);
+  actRef.current = onActivate;
+  const { ref, api, status } = useScene<PlantApi>(async (c) => (await import('./scenes/plant')).mountPlant(c, { onActivate: (id) => actRef.current(id) }), 'plant');
+  useEffect(() => {
+    api?.update(model, selected, failureMode);
+  }, [api, model, selected, failureMode]);
+  return (
+    <div className="plant3d-wrap">
+      <Frame
+        status={status}
+        label={label}
+        className={`scene3d-plant${failureMode ? ' failure' : ''}`}
+        canvasRef={ref}
+        hint={failureMode ? 'Tap equipment to fail or restore it · drag to turn' : 'Tap equipment for details · drag to turn · two fingers to move'}
+        fallback={<span className="scene3d-fallback">3D isn't available on this device. Switch back to 2D.</span>}
+      />
+      {status === 'ready' && (
+        <button type="button" className="btn btn-sm scene3d-fit" onClick={() => api?.focus(selected)} disabled={!selected}>
+          Go to selected
+        </button>
+      )}
+    </div>
+  );
 }

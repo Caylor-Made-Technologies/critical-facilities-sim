@@ -7,6 +7,7 @@ import { PageHead, SectionTabs } from '../common';
 import { Icon } from '../icons';
 import { fmtSecs } from '../progress';
 import { RoundsPractice } from './RoundsPractice';
+import { use3d } from '../view3d';
 
 type Section = 'mop' | 'drill' | 'rounds';
 const SECTIONS: { id: Section; label: string }[] = [
@@ -94,6 +95,7 @@ export function ProceduresTab({ best, times, start, onRound }: Props) {
         </button>
       )}
 
+      <Practice3DToggle />
       <SectionTabs label="Practice types" sections={SECTIONS} value={section} onChange={setSection} counts={counts} />
 
       {section === 'rounds' ? (
@@ -152,5 +154,31 @@ export function ProceduresTab({ best, times, start, onRound }: Props) {
         </>
       )}
     </div>
+  );
+}
+
+/** Choose 2D or 3D for every MOP and drill (shared with the Simulator's switch). */
+function Practice3DToggle() {
+  const [on, set] = use3d();
+  return (
+    <section className={`card practice3d${on ? ' on' : ''}`} aria-labelledby="p3d-h">
+      <span className="practice3d-icon" aria-hidden="true">
+        <Icon name="layers" />
+      </span>
+      <div>
+        <h2 id="p3d-h" className="h-card">
+          Practice in 3D
+        </h2>
+        <p className="muted small">Run MOPs and drills on a 3D plant: the camera flies to each device as the steps move on. Same scoring as 2D.</p>
+      </div>
+      <div className="mode-switch" role="group" aria-label="Practice view">
+        <button type="button" aria-pressed={!on} onClick={() => set(false)}>
+          2D
+        </button>
+        <button type="button" aria-pressed={on} onClick={() => set(true)}>
+          3D
+        </button>
+      </div>
+    </section>
   );
 }

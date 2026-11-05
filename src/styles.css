@@ -5756,3 +5756,23 @@ body.has-follow .toast-region { bottom: 84px; }
   .scene3d canvas { transition: none; }
   .scene3d-hint { animation: none; }
 }
+
+/* ---------- 3D plant (practice and simulator) ---------- */
+.plant3d-card { padding: 12px; }
+.plant3d-card.failure { border-color: var(--danger-border); }
+.plant3d-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; justify-content: space-between; margin-bottom: 8px; }
+.plant3d-jump { min-width: min(100%, 260px); }
+.plant3d-jump select { min-height: 42px; }
+.plant3d-wrap { position: relative; }
+.scene3d-plant { height: clamp(380px, 62vh, 640px); background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--blue) 14%, var(--surface-sunk)), var(--surface-sunk)); border: 1px solid var(--border); cursor: grab; }
+.scene3d-plant.failure { border-color: var(--danger-border); box-shadow: inset 0 0 0 1px var(--danger-border); }
+.scene3d-fit { position: absolute; right: 10px; bottom: 10px; z-index: 2; }
+.seg-3d button[aria-pressed='true'] { background: var(--grad); color: #04101f; }
+.practice3d { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; border-color: color-mix(in srgb, var(--cyan) 35%, var(--border)); }
+.practice3d.on { box-shadow: var(--glow); }
+.practice3d > div:nth-child(2) { flex: 1 1 220px; }
+.practice3d h2 { margin: 0; }
+.practice3d p { margin: 2px 0 0; }
+.practice3d .mode-switch { margin: 0; }
+.practice3d-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--grad); color: #04101f; flex: none; }
+.practice3d-icon svg { width: 22px; height: 22px; }

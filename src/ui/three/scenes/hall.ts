@@ -316,6 +316,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
   const pick = (clientX: number, clientY: number): string | null => {
     const rect = canvas.getBoundingClientRect();
     ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    scene.updateMatrixWorld();
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObjects(rackObjs.map((o) => o.body), false)[0];
     return (hit?.object.userData.id as string) ?? null;
