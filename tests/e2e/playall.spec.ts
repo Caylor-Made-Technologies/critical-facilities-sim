@@ -4,6 +4,8 @@ import { ROUNDS } from '../../src/content/rounds';
 import type { Procedure } from '../../src/sim/procedure';
 import { test, expect } from './fixtures';
 
+declare const process: { env: Record<string, string | undefined> };
+
 /**
  * Plays every MOP and drill to 100/100 through the real UI, the way a keyboard
  * user would: the "Jump to component" list opens each device's card, then the
@@ -70,6 +72,7 @@ async function play(page: Page, p: Procedure) {
   await page.evaluate(() => (location.hash = '#/procedures'));
   await page.getByRole('tab', { name: p.kind === 'mop' ? /MOP/ : /Emergency drills/ }).first().click();
   await page.getByRole('button', { name: new RegExp(p.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).first().click();
+  if (process.env.E2E_ENGINE === 'v2') await expect(page.locator('html')).toHaveAttribute('data-engine', 'v2');
   await expect(page.locator('#proc-h')).toBeVisible();
   const acts = ACTIONS[p.id] ?? {};
   const eyebrow = page.locator('.proc-card:not(.proc-result) .eyebrow');

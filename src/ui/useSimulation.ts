@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { buildPlant, Simulation, type Topology } from '../sim';
-import { EngineV2 } from '../sim/v2/engine';
+import type { EngineV2 } from '../sim/v2/engine';
 
 /**
  * Internal switch for engine v2 (Phase 4, strangler pattern): add ?engine=v2 to the URL.
@@ -20,10 +20,20 @@ const MAX_GAP_MS = 500;
 export function useSimulation(initial: Topology = '2N') {
   const [topology, setTopologyState] = useState<Topology>(initial);
   const simRef = useRef<Simulation>(new Simulation(buildPlant(initial)));
-  const engineRef = useRef<EngineV2 | null>(ENGINE_V2 ? EngineV2.wrap(simRef.current) : null);
+  // v2 code loads only when the switch is on, so the default bundle doesn't grow.
+  const engineRef = useRef<EngineV2 | null>(null);
+  const wrapRef = useRef<((sim: Simulation) => EngineV2) | null>(null);
+  useEffect(() => {
+    if (!ENGINE_V2) return;
+    void import('../sim/v2/engine').then((m) => {
+      wrapRef.current = (sim) => m.EngineV2.wrap(sim);
+      engineRef.current = m.EngineV2.wrap(simRef.current);
+      document.documentElement.dataset.engine = 'v2'; // lets tests confirm v2 is driving the clock
+    });
+  }, []);
   const adopt = (sim: Simulation) => {
     simRef.current = sim;
-    if (ENGINE_V2) engineRef.current = EngineV2.wrap(sim);
+    if (wrapRef.current) engineRef.current = wrapRef.current(sim);
   };
   const [version, bump] = useReducer((x: number) => x + 1, 0);
   const [running, setRunning] = useState(false);
