@@ -128,7 +128,11 @@ test('every rounds sheet scores 100 when exactly the bad readings are flagged', 
   for (const sheet of ROUNDS) {
     const card = page.locator('article.round-sheet').filter({ has: page.getByRole('heading', { name: sheet.title, exact: true }) });
     for (const r of sheet.readings.filter((r) => r.bad)) {
-      await card.locator('button.reading-btn').filter({ hasText: r.label }).first().click();
+      const btn = card.locator('button.reading-btn').filter({ hasText: r.label }).first();
+      await btn.click();
+      // Confirm the flag took (a tap during the entrance animation can miss); tap again if not.
+      if ((await btn.getAttribute('aria-pressed')) !== 'true') await btn.click();
+      await expect(btn).toHaveAttribute('aria-pressed', 'true');
     }
     await card.getByRole('button', { name: 'Check my round' }).click();
     await expect(card.locator('.round-score')).toContainText('100/100');

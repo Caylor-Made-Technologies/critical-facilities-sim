@@ -37,6 +37,7 @@ Severity: **S1** broken or unsafe content · **S2** wrong result · **S3** visua
 | B-016 | S4 | Content: refrigerant | Never Do, a quiz explanation | "Most refrigerants are heavier than air" | "Refrigerant is heavier than air" (not true of all, e.g. ammonia) | 3 (audit-c) | **Fixed** (Safety already said "most") |
 | B-017 | S4 | Generic-only rule | Tips | Generic tool names | A tip was titled with a brand name for insulation testers | 3 (audit-c) | **Fixed**; new `generic.test.ts` bans ~50 vendor/operator names in all 79 content and UI files (career issuers allowed by the 2026-11-02 rule) |
 | B-018 | S4 | Content: codes | Equipment → EPO guide | Standards named at concept level | Cited a specific article number of the electrical code | 3 (audit-c) | **Fixed** (concept wording + Verify note). Whether the Codes tab keeps standard numbers is the owner's call |
+| B-019 | S4 | Rounds (motion) | Tap readings on a sheet right as the page opens (seen once in 4 live runs, laptop) | Every tap flags the reading | One tap seemed not to register, likely during the card entrance animation | 6 (UI v2 motion) | Open; e2e now confirms each flag |
 
 ## Deferred (with reason)
 - `npm audit`: vite advisory cleared (vite 6.4.5). Remaining vitest / tinypool / @vitest/mocker advisories only clear with vitest 5 (a major upgrade). Dev-only: the test runner is never shipped and runs headless (`vitest run`, no UI or server). Planned as its own task.
