@@ -1,4 +1,4 @@
-# Simulation engine (v1, as of 2026-11-06)
+# Simulation engine (v1, plus the v2 core from Phase 4a)
 
 How the current engine works, written in the Phase 3 audit as the starting point for engine v2
 (Phase 4). Everything here lives in `src/sim/`, which has no UI, DOM or three.js imports.
@@ -89,3 +89,30 @@ fires once per condition), and by actions. The UI reads `events` directly (event
 - Alarms: severity only; no deadband/delay, acknowledge, shelve or first-out.
 - Tick cost is small today (power solve is cached on an input signature); measure before and after v2.
 - Bugs found here are in `docs/BUGS.md` (e.g. B-005: a drill step waited for a condition the thermal model never reaches at 105 °F).
+
+## Engine v2 core (Phase 4a, 2026-11-06)
+
+Built beside v1 (strangler pattern) in `src/sim/v2/`. Turned on with `?engine=v2` in the URL
+(internal switch in `src/ui/useSimulation.ts`); v1 stays the default until Phase 4e.
+
+- `units.ts`: branded unit types (`Kw`, `Kva`, `Kwt`, `DegC`, `DegF`, `Seconds`, …). Mixing units fails
+  `npm run typecheck` (tested with `@ts-expect-error`). Electrical relations (PF, 3-phase amps) and
+  display conversions (°F, gal, gpm, tons, psi) with hand-worked tests.
+- `rng.ts`: seeded `Rng` (mulberry32), state saved in snapshots.
+- `queue.ts`: `EventQueue`, ordered by time then insertion; plain data, snapshot/restore.
+- `engine.ts`: `EngineV2`
+  - fixed `TICK_S = 1`; `advanceReal(realS, speed)` turns frame time into whole ticks, carries the
+    leftover (returned 0–1 for drawing in between), absorbs float error, caps a backlog at 600 ticks;
+  - typed `Action` list (open/close/fail/restore/maint, UPS mode, keys, generator test, EPO, weather,
+    battery age, skip); `apply()` logs every action with its time and result; unknown ids are refused;
+  - `schedule(at, action)` for timed events; `snapshot()` / `fromSnapshot()` / `copy()` / `replay()`;
+  - physics is still the v1 `Simulation` (`engine.sim`), so MOP scoring and every screen read it unchanged.
+- `Simulation.snapshot()` / `restoreSnapshot()` (v1 file) give the whole plant as JSON.
+
+Tests: `v2core.test.ts`, `v2engine.test.ts` (v1/v2 parity, replay, snapshot mid-run, copy
+independence, frame timing no longer changes results, all 8 drills score the same on v1 and v2).
+Browser: `npm run e2e:v2` plays every MOP, drill, rounds sheet and the IST to 100/100 on v2.
+
+Not yet (next sub-phases): UI actions still call `Simulation` methods directly instead of going
+through `EngineV2.apply`, so the action log only covers queued and test actions (wire up in 4d with
+the alarm/time controls). Electrical and thermal models are still v1 (4b, 4c).

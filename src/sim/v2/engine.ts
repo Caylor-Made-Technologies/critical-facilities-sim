@@ -68,10 +68,15 @@ export class EngineV2 {
   /** Real seconds × speed not yet turned into ticks. */
   private acc = 0;
 
-  constructor(topology: Topology = '2N', seed = 1) {
+  constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
     this.rng = new Rng(this.seed);
-    this.sim = new Simulation(buildPlant(topology));
+    this.sim = sim ?? new Simulation(buildPlant(topology));
+  }
+
+  /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
+  static wrap(sim: Simulation, seed = 1): EngineV2 {
+    return new EngineV2(sim.meta.topology, seed, sim);
   }
 
   get t(): number {

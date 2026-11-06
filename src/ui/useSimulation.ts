@@ -4,6 +4,13 @@
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { buildPlant, Simulation, type Topology } from '../sim';
+import { EngineV2 } from '../sim/v2/engine';
+
+/**
+ * Internal switch for engine v2 (Phase 4, strangler pattern): add ?engine=v2 to the URL.
+ * v2 advances the same plant in fixed 1 s ticks, so results no longer depend on frame timing.
+ */
+export const ENGINE_V2 = typeof location !== 'undefined' && /[?&]engine=v2\b/.test(location.search);
 
 /** Target time between screen updates (ms). The engine advances by real elapsed time, so the clock never drifts. */
 const FRAME_MS = 120;
@@ -13,6 +20,11 @@ const MAX_GAP_MS = 500;
 export function useSimulation(initial: Topology = '2N') {
   const [topology, setTopologyState] = useState<Topology>(initial);
   const simRef = useRef<Simulation>(new Simulation(buildPlant(initial)));
+  const engineRef = useRef<EngineV2 | null>(ENGINE_V2 ? EngineV2.wrap(simRef.current) : null);
+  const adopt = (sim: Simulation) => {
+    simRef.current = sim;
+    if (ENGINE_V2) engineRef.current = EngineV2.wrap(sim);
+  };
   const [version, bump] = useReducer((x: number) => x + 1, 0);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -29,7 +41,8 @@ export function useSimulation(initial: Topology = '2N') {
       last = now;
       acc += gap;
       if (acc >= FRAME_MS) {
-        simRef.current.advance((acc / 1000) * speed);
+        if (engineRef.current) engineRef.current.advanceReal(acc / 1000, speed);
+        else simRef.current.advance((acc / 1000) * speed);
         acc = 0;
         bump();
       }
@@ -42,14 +55,14 @@ export function useSimulation(initial: Topology = '2N') {
   /** Rebuild the plant from scratch, optionally in a new topology. */
   const reset = useCallback((t?: Topology) => {
     const next = t ?? simRef.current.meta.topology;
-    simRef.current = new Simulation(buildPlant(next));
+    adopt(new Simulation(buildPlant(next)));
     setTopologyState(next);
     bump();
   }, []);
 
   /** Swap in a prepared simulation (used by the guided walkthroughs). */
   const load = useCallback((next: Simulation) => {
-    simRef.current = next;
+    adopt(next);
     setTopologyState(next.meta.topology);
     setRunning(false);
     bump();
