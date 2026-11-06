@@ -2,6 +2,8 @@
  * App shell: brand header, grouped sidebar (laptop), bottom bar + "More"
  * sheet (phone), hash routing, XP toasts, and every tab.
  */
+import { TabBoundary } from './ui/TabBoundary';
+import { applyUpdate, onUpdateReady } from './ui/swUpdate';
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type React from 'react';
@@ -161,6 +163,9 @@ export function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 2600);
   }, []);
   const p = useProgress(showToast);
+  // A new deploy finished downloading in the background (B-003).
+  const [updateReady, setUpdateReady] = useState(false);
+  useEffect(() => onUpdateReady(() => setUpdateReady(true)), []);
   const h = useSimulation('2N');
   const [mode, setMode] = useState<'explore' | 'failure'>('explore');
   const [selected, setSelected] = useState<string | null>(null);
@@ -558,6 +563,7 @@ export function App() {
 
         <div className="content">
           <main id="main" tabIndex={-1} aria-label={current.label} data-tab={tab}>
+            <TabBoundary key={tab} label={current.label}>
             <Suspense fallback={<TabLoading />}>
             {tab === 'home' && (
               <HomeTab
@@ -678,6 +684,7 @@ export function App() {
               />
             )}
             </Suspense>
+            </TabBoundary>
           </main>
 
           <footer className="app-footer">
@@ -773,6 +780,18 @@ export function App() {
       )}
 
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onJump={jump} />
+
+      {updateReady && (
+        <div className="upd-bar" role="status">
+          <span>A new version of the app is ready.</span>
+          <button className="btn btn-primary" type="button" onClick={applyUpdate}>
+            <Icon name="reset" /> Reload
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={() => setUpdateReady(false)}>
+            Later
+          </button>
+        </div>
+      )}
 
       <div className="toast-region" aria-live="polite">
         {toast && (

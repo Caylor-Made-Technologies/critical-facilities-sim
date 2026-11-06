@@ -5959,3 +5959,71 @@ body.has-follow .toast-region { bottom: 84px; }
   .lc-rank li { grid-template-columns: 1fr 60px 30px; }
   .lc-pager .btn { flex: 1 1 100%; justify-content: center; }
 }
+
+/* Tab error card (TabBoundary, B-002) */
+.tb-card {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  margin-top: 8px;
+}
+.tb-card > svg {
+  width: 28px;
+  height: 28px;
+  color: var(--alarm);
+}
+.tb-card h1 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+.tb-card p {
+  margin: 0;
+  max-width: 60ch;
+}
+.tb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tb-actions .btn {
+  min-height: 44px;
+}
+
+/* New version ready (swUpdate, B-003) */
+.upd-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  bottom: 24px;
+  z-index: 53;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  border: 1px solid color-mix(in srgb, var(--blue) 55%, transparent);
+  color: var(--text-heading);
+  font-weight: 600;
+  box-shadow: var(--glow), var(--shadow);
+}
+.upd-bar .btn {
+  min-height: 44px;
+}
+@media (max-width: 1023px) {
+  .upd-bar {
+    bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .upd-bar {
+    animation: toastIn 0.4s var(--ease);
+  }
+}

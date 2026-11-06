@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { registerServiceWorker } from './ui/swUpdate';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -10,10 +11,4 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Offline support (production only): caches this app's own files in the browser. Nothing is sent anywhere.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
-      /* offline mode unavailable; the app still works online */
-    });
-  });
-}
+if (import.meta.env.PROD) registerServiceWorker(`${import.meta.env.BASE_URL}sw.js`);

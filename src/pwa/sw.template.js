@@ -3,7 +3,9 @@
  * Pages: network first, so updates arrive as soon as you're online.
  * Hashed build files, fonts and images: cache first (their names change when they change).
  */
-const CACHE = 'cfs-v4';
+// Stamped per build by vite.config.ts (src/pwa/swBuild.ts): a new build gives a new name,
+// so the browser installs the new worker and precaches the new files.
+const CACHE = '__CFS_CACHE__';
 const SCOPE = self.registration.scope;
 
 // Precache the page plus the build files and fonts it links to, so the very next visit works offline.
@@ -26,7 +28,13 @@ async function precache() {
 }
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(precache().then(() => self.skipWaiting()));
+  // First install takes over at once. An update waits until the person taps "Reload"
+  // (the page sends 'skip-waiting'), so a tab that is open never loses its files mid-use.
+  e.waitUntil(precache().then(() => (self.registration.active ? undefined : self.skipWaiting())));
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'skip-waiting') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

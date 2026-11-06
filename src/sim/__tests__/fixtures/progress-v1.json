@@ -1,0 +1,17 @@
+{
+  "lessons": ["walk-utility-to-rack", "walk-2n"],
+  "quiz": { "q-ups-1": true, "q-ats-2": false },
+  "guides": ["ups", "generator"],
+  "procs": { "mop-gen-test": 100, "drill-utility": 85, "life-ist": 100 },
+  "times": { "mop-gen-test": 142 },
+  "safety": { "lototo-order": 100 },
+  "daily": { "2026-11-04": 100, "2026-11-05": 67 },
+  "cards": { "ats": 2, "ups": 4 },
+  "exam": 88,
+  "favTips": ["electrical-gfci-vs-breaker"],
+  "careerRung": "r2",
+  "careerChecks": ["r2:0", "r2:1"],
+  "dcCerts": ["cdcp"],
+  "profile": null,
+  "life": { "life-site": { "quiz": 100, "task": true, "tour": true }, "life-cx": { "quiz": 83, "task": false, "tour": true } }
+}

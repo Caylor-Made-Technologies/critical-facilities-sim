@@ -256,6 +256,7 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
     for (const fn of renderFns) fn();
     renderer.render(scene, camera);
     frames++;
+    if (!sharedLut && frames <= 3) findSharedLut(scene, renderer);
     dirty = false;
     record(t0);
   };
@@ -334,7 +335,22 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
       ro?.disconnect();
       io?.disconnect();
       mo.disconnect();
-      controls?.dispose();
+      if (controls) {
+        // three's OrbitControls adds its Control-key listeners to canvas.getRootNode() (the page)
+        // but removes them from getRootNode() at dispose time, when the canvas is already detached,
+        // so they stayed on the page and kept every old scene alive (B-013). Remove them from the page.
+        const c = controls as unknown as { _interceptControlDown?: EventListener; _interceptControlUp?: EventListener };
+        const doc = canvas.ownerDocument;
+        if (c._interceptControlDown) doc.removeEventListener('keydown', c._interceptControlDown, { capture: true });
+        if (c._interceptControlUp) doc.removeEventListener('keyup', c._interceptControlUp, { capture: true });
+        controls.dispose();
+      }
+      // three keeps one shared lookup texture (DFG LUT) for all standard materials, and every renderer
+      // that used it leaves a 'dispose' listener on it, so each closed scene's renderer stayed in memory
+      // (B-013). Disposing the shared texture runs and removes those listeners; any renderer still open
+      // simply uploads it again on its next frame.
+      findSharedLut(scene, renderer);
+      sharedLut?.dispose();
       disposeTree(scene);
       envTex.dispose();
       pmrem.dispose();
@@ -343,6 +359,19 @@ export function createStage(canvas: HTMLCanvasElement, o: StageOptions): Stage {
       if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
     },
   } as Stage;
+}
+
+/** three's one shared DFG lookup texture, found once from any rendered standard material (see dispose). */
+let sharedLut: { dispose: () => void } | null = null;
+function findSharedLut(scene: Scene, renderer: WebGLRenderer): void {
+  if (sharedLut) return;
+  scene.traverse((o) => {
+    const mats = (o as Mesh).material;
+    for (const m of Array.isArray(mats) ? mats : mats ? [mats] : []) {
+      const lut = (renderer.properties.get(m) as { uniforms?: { dfgLUT?: { value?: { dispose: () => void } | null } } }).uniforms?.dfgLUT?.value;
+      if (lut) sharedLut = lut;
+    }
+  });
 }
 
 /** Free every geometry and material under an object. */

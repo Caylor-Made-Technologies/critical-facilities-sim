@@ -1,7 +1,7 @@
 /** About, privacy and terms (checklist points 1, 2, 4, 16, 17, 19, 20). */
 import { useRef, useState } from 'react';
 import { BUSINESS } from '../business';
-import { sanitize, type Progress } from '../progress';
+import { BACKUP_MAX_BYTES, backupJson, parseBackup, type Progress } from '../progress';
 import { IssuerCredits } from './CareerLadder';
 import { useQuality, type QualityPref } from '../three/quality';
 
@@ -10,7 +10,7 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
   const [msg, setMsg] = useState('');
   const download = () => {
     if (!progress) return;
-    const blob = new Blob([JSON.stringify({ app: 'critical-facilities-sim', version: 1, saved: new Date().toISOString(), progress }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([backupJson(progress)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `cf-sim-progress-${new Date().toISOString().slice(0, 10)}.json`;
@@ -20,13 +20,11 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
   };
   const restore = async (f: File | undefined) => {
     if (!f || !onRestore) return;
-    try {
-      if (f.size > 500_000) throw new Error('too big');
-      const data = JSON.parse(await f.text()) as { app?: string; progress?: unknown };
-      if (data.app !== 'critical-facilities-sim') throw new Error('not ours');
-      onRestore(sanitize(data.progress));
+    const p = f.size > BACKUP_MAX_BYTES ? null : parseBackup(await f.text().catch(() => ''), f.size);
+    if (p) {
+      onRestore(p);
       setMsg('Progress restored from your backup.');
-    } catch {
+    } else {
       setMsg('That file is not a Critical Facilities Simulator backup. Nothing was changed.');
     }
     if (file.current) file.current.value = '';

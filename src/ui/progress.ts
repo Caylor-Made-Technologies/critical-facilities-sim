@@ -107,10 +107,58 @@ export function lifeStageDone(p: Progress, id: string): boolean {
   return !!l && l.quiz >= LIFE_PASS && task;
 }
 
+/**
+ * Version of the saved progress shape (B-004). When the shape changes: bump SCHEMA and
+ * add a step to MIGRATIONS that turns version N into N+1. Old saves then upgrade on load.
+ */
+export const SCHEMA = 2;
+const MIGRATIONS: Record<number, (r: Record<string, unknown>) => Record<string, unknown>> = {
+  // v1: saves before 2026-11-06 had no version field. Same fields as v2, so nothing moves.
+  1: (r) => r,
+};
+
+/** Upgrade saved progress from any older version, then sanitize it. Never throws. */
+export function migrate(raw: unknown): Progress {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return sanitize(raw);
+  let r = { ...(raw as Record<string, unknown>) };
+  const v0 = r.schema;
+  let v = typeof v0 === 'number' && Number.isInteger(v0) && v0 >= 1 ? v0 : 1;
+  for (; v < SCHEMA; v++) r = MIGRATIONS[v]?.(r) ?? r;
+  // Newer than this app (a backup from a later version): keep the fields this version understands.
+  return sanitize(r);
+}
+
+/** Largest backup file accepted (bytes). Real backups are a few KB. */
+export const BACKUP_MAX_BYTES = 500_000;
+
+/** Backup file contents for download. */
+export function backupJson(p: Progress, now = new Date()): string {
+  return JSON.stringify({ app: 'critical-facilities-sim', version: 2, saved: now.toISOString(), progress: { ...p, schema: SCHEMA } }, null, 2);
+}
+
+/**
+ * Read a backup file. Returns null (and the caller changes nothing) for anything that
+ * is not one of our backups: too big, not JSON, another app's file, or no progress in it.
+ */
+export function parseBackup(text: string, size = text.length): Progress | null {
+  if (size > BACKUP_MAX_BYTES) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!data || typeof data !== 'object') return null;
+  const d = data as { app?: unknown; progress?: unknown };
+  if (d.app !== 'critical-facilities-sim') return null;
+  if (!d.progress || typeof d.progress !== 'object' || Array.isArray(d.progress)) return null;
+  return migrate(d.progress);
+}
+
 function load(): Progress {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? sanitize(JSON.parse(raw)) : EMPTY;
+    return raw ? migrate(JSON.parse(raw)) : EMPTY;
   } catch {
     return EMPTY;
   }
@@ -118,7 +166,7 @@ function load(): Progress {
 
 function save(p: Progress): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(KEY, JSON.stringify({ ...p, schema: SCHEMA }));
   } catch {
     /* storage blocked: progress lasts for this visit only */
   }
