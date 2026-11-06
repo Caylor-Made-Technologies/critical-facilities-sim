@@ -265,7 +265,7 @@ export const QUIZ: QuizQuestion[] = [
     q: 'The refrigerant leak alarm sounds in the chiller room. What do you do?',
     options: ['Find the leak quickly', 'Leave, let ventilation run, and follow the alarm procedure', 'Hold your breath and reset the alarm', 'Shut the chillers off from inside'],
     answer: 1,
-    why: 'Refrigerant is heavier than air and displaces oxygen. Leave the space, let the emergency ventilation work, and only go back in per procedure with proper monitoring and equipment.',
+    why: 'Most refrigerants are heavier than air and can displace oxygen. Leave the space, let the emergency ventilation work, and only go back in per procedure with proper monitoring and equipment.',
   },
   {
     id: 's-agent',

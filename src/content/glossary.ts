@@ -58,7 +58,7 @@ export const GLOSSARY: Term[] = [
   // Ops & safety
   { term: 'N, N+1, 2N', section: 'Operations & safety', def: 'Redundancy levels: exactly enough, one spare, or two complete independent systems.' },
   { term: 'Concurrently maintainable', section: 'Operations & safety', def: 'Any component can be taken out for planned maintenance without dropping the load.' },
-  { term: 'Fault tolerant', section: 'Operations & safety', def: 'The plant survives any single unplanned failure automatically, even during maintenance.' },
+  { term: 'Fault tolerant', section: 'Operations & safety', def: 'The plant survives any single unplanned failure automatically. While something is out for maintenance, that protection can be reduced.' },
   { term: 'PUE', section: 'Operations & safety', def: 'Power usage effectiveness = total facility power ÷ IT power. Lower is better; 1.0 is perfect.' },
   { term: 'MOP', section: 'Operations & safety', def: 'Method of procedure. Step-by-step script for a planned change.' },
   { term: 'SOP', section: 'Operations & safety', def: 'Standard operating procedure. How routine tasks are done.' },

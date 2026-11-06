@@ -114,7 +114,7 @@ export const CODES: Article[] = [
           ['I: basic', 'Single path, no spares. Maintenance means downtime.', 'N'],
           ['II: redundant components', 'Spare components, still one path.', 'N+1'],
           ['III: concurrently maintainable', 'Any component can be maintained without dropping load. Multiple paths, one active is OK.', '2N paths or N+1 with redundant distribution'],
-          ['IV: fault tolerant', 'Survives any single failure automatically, even during maintenance.', '2N / 2N+1, compartmentalized'],
+          ['IV: fault tolerant', 'Survives any single unplanned failure automatically. While equipment is out for maintenance, that protection can be reduced.', '2N / 2N+1, compartmentalized'],
         ],
       } },
       { callout: 'Tier certifications (e.g. from the Uptime Institute) and TIA-942 ratings are awarded by those organizations after review. This simulator only explains the ideas and does not rate or certify anything.', tone: 'warn', title: 'No certification claims' },

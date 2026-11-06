@@ -25,3 +25,10 @@ safety-critical, code-related or numeric content ships.
 | Life of a DC: capacity | `life-cap` | Counting capacity at redundancy, A/B planning, breaker loading and nameplate notes | Open |
 | Life of a DC: incidents | `life-incident` | Incident roles, RCA tools (5 whys, fishbone categories) | Open |
 | Life of a DC: decommissioning | `life-decom` | Battery, refrigerant, e-waste, data destruction and fluid disposal statements; lithium-ion shipping note | Open |
+| Hot work (audit 2026-11-06) | `src/content/safety.ts` (`hot-work`) | Fire-watch time now "per your program, commonly 30–60 min, newer editions at least 60" and clearance "commonly 35 ft": confirm wording against current editions | Open |
+| Tier IV wording (audit 2026-11-06) | `codes.ts` ratings table, glossary "Fault tolerant", `lessons.ts` | Changed "survives any failure even during maintenance" to "protection can be reduced while equipment is out for maintenance": confirm | Open |
+| Codes table | `src/content/codes.ts` | Standard names/numbers and one-line summaries (e.g. generator weekly inspection + monthly exercise, battery maintenance standards, EPA engine-hour rules) are fair; owner to decide if standard numbers stay (see Phase 3 report) | Open |
+| Field Tools | `src/ui/tabs/FieldToolsTab.tsx`, `src/sim/physics.ts` | Rules of thumb: 0.27 L/kWh diesel with 10% idle floor, UPS runtime t = rated × (1/load)^1.2, battery life halves per 15 °F over 77 °F, 1.08 / 500 / 3.517 constants | Open |
+| Tips numbers | `src/content/tips.ts` | Rules of thumb (80% continuous, 2% voltage imbalance, GFCI ~5 mA, motor FLA ≈ 1.4 × HP at 460 V, 0.07 gal/kWh, BMS-down 15-min logging, EC fan fail-to-full behavior) | Open |
+| Equipment guides | `src/content/equipment.ts` (19 guides) | PM interval tables ("typical"), rounds checks, troubleshooting trees, hazards, EPO code-path note | Open |
+| Simulator engine constants | `src/sim/physics.ts`, `thermal.ts` | Trip points and timings (head-pressure trip, server shutdown inlet, generator start ~10 s, retransfer 5 min, TES size, CDU ride-through): plausible for training; labeled simplified. Full review again after engine v2 (Phase 4) | Open |

@@ -215,7 +215,7 @@ export const LESSONS: Lesson[] = [
         title: 'Concurrently maintainable vs fault tolerant',
         body: [
           'Concurrently maintainable: any component can be taken out for planned maintenance without dropping load (needs redundant paths, like 2N or distributed redundant).',
-          'Fault tolerant: the plant survives an unplanned failure of any component, even during maintenance, automatically.',
+          'Fault tolerant: the plant survives an unplanned failure of any single component automatically. While something is out for maintenance, that protection can be reduced.',
           'Try the other designs in the Simulator: distributed redundant and block redundant reach similar resilience with fewer UPS modules.',
         ],
         simpler: '"Maintainable" means you can fix things without turning anything off. "Fault tolerant" means it survives surprises too.',

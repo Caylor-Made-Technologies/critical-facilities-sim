@@ -737,7 +737,7 @@ export const EQUIPMENT: EquipmentGuide[] = [
     summary: 'A protected button that de-energizes data hall equipment for firefighter safety.',
     howItWorks: [
       'When pressed, EPO opens breakers or shunt-trips equipment feeding the space, and may also shut down HVAC.',
-      'Whether an EPO is required depends on the code path the site follows (NEC Article 645 and NFPA 75) and the AHJ. Many modern sites design to avoid it.',
+      'Whether an EPO is required depends on the code path the site follows (the electrical code rules for IT equipment rooms and the fire standard for IT equipment, in the editions the site adopts) and the AHJ. Many modern sites design to avoid it. Verify with the qualified person at the site and the current code edition.',
       'Accidental EPO activation is a well-known cause of outages, so buttons are guarded with covers and signs.',
     ],
     rounds: ['Cover intact and labeled; button not obstructed; supervisory signal normal.'],

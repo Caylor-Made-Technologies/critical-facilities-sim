@@ -32,6 +32,19 @@ Severity: **S1** broken or unsafe content · **S2** wrong result · **S3** visua
 | B-011 | S4 | About, Feedback | Radio/checkbox rows | 44 px tap rows | Inputs are 13–20 px; the label is tappable, but rows are not checked for 44 px | 6a | Open |
 | B-012 | S2 | Backup restore | Restore a file that has our app name but no progress in it (e.g. hand-edited) | "Not a backup, nothing changed" | It was accepted as empty progress and wiped everything | 3 (audit-b) | **Fixed**: `parseBackup()` refuses it; unit tests for bad, old, newer, empty and huge files |
 | B-013 | S2 | 3D memory | Visit Simulator (3D) and another tab, back and forth | Memory stays flat | Every closed 3D scene stayed in memory (~1.1 MB per Simulator visit; heap 12.6 → 29.6 MB over 10 rounds). Two causes in three.js cleanup: OrbitControls removed its keyboard listener from the detached canvas instead of the page, and the shared DFG lookup texture kept a listener from every old renderer | 3 (audit-b) | **Fixed** in `src/ui/three/core.ts` dispose; e2e: 10 rounds through the 3D tabs must grow the heap < 8 MB (now ~4 MB, levels off) |
+| B-014 | S2 | Content: tiers | Codes ratings table, glossary "Fault tolerant", a lesson | Tier IV = survives any single unplanned failure; protection can be reduced while equipment is out for maintenance | Said it survives any failure "even during maintenance" | 3 (audit-c) | **Fixed** (3 places) + REVIEW-QUEUE |
+| B-015 | S2 | Content: hot work | Safety Center → Hot work permits | Fire-watch time per site program; newer editions of the hot work standard call for at least 60 min | "At least 30 minutes (many sites require 60)" read as if 30 is always enough; "35 feet" with no qualifier | 3 (audit-c) | **Fixed**: per program, commonly 30–60, newer editions ≥ 60, Verify note; clearance "per permit (commonly 35 ft)" + REVIEW-QUEUE |
+| B-016 | S4 | Content: refrigerant | Never Do, a quiz explanation | "Most refrigerants are heavier than air" | "Refrigerant is heavier than air" (not true of all, e.g. ammonia) | 3 (audit-c) | **Fixed** (Safety already said "most") |
+| B-017 | S4 | Generic-only rule | Tips | Generic tool names | A tip was titled with a brand name for insulation testers | 3 (audit-c) | **Fixed**; new `generic.test.ts` bans ~50 vendor/operator names in all 79 content and UI files (career issuers allowed by the 2026-11-02 rule) |
+| B-018 | S4 | Content: codes | Equipment → EPO guide | Standards named at concept level | Cited a specific article number of the electrical code | 3 (audit-c) | **Fixed** (concept wording + Verify note). Whether the Codes tab keeps standard numbers is the owner's call |
+
+## Deferred (with reason)
+- `npm audit`: vite advisory cleared (vite 6.4.5). Remaining vitest / tinypool / @vitest/mocker advisories only clear with vitest 5 (a major upgrade). Dev-only: the test runner is never shipped and runs headless (`vitest run`, no UI or server). Planned as its own task.
+
+## Content accuracy pass (audit-c, 2026-11-06): what was covered
+- Read in full: Safety Center articles (`safety.ts`), safety tools and boundary explorer (`safetyTools.ts`), Never Do, rounds sheets, Codes. Hand-checked every Field Tools formula and every numeric rule of thumb in Tips.
+- Scanned all content + UI: vendor/operator names (now a test), clause-level code references, spelling (0 real typos), internal links (0 broken, from the audit-a sweep).
+- Not read line by line in this pass: Equipment guides, lessons, quiz, glossary, case studies, ladder/career, Life of a DC (reviewed when written in Phase 2). They are in `docs/REVIEW-QUEUE.md` for the expert, and get re-read in Phase 7 (deep dives) when each area is expanded.
 
 ## Not bugs (checked)
 - Blank areas in full-page screenshots (Simulator hall card, 2D rack grid): 3D draws only while on screen and

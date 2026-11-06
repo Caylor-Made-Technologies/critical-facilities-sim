@@ -45,7 +45,7 @@ export const NEVER: Record<NeverSection, NeverRule[]> = {
   ],
   mechanical: [
     { rule: 'NEVER vent refrigerant or handle it without EPA Section 608 certification.', why: 'It is illegal, harms the environment, and in an enclosed room can displace oxygen.' },
-    { rule: 'NEVER enter a chiller room during a refrigerant alarm until the procedure clears you.', why: 'Refrigerant is heavier than air. You can pass out without warning.' },
+    { rule: 'NEVER enter a chiller room during a refrigerant alarm until the procedure clears you.', why: 'Most refrigerants are heavier than air and pool low. You can pass out without warning.' },
     { rule: 'NEVER jumper a flow switch or safety to keep a chiller running.', why: 'Running without flow can freeze and rupture the evaporator tubes, a major failure.' },
     { rule: 'NEVER open a radiator cap or pressurized system that is hot.', why: 'Superheated fluid can flash to steam and cause severe burns.' },
     { rule: 'NEVER close a valve on a running chilled water loop without the MOP.', why: 'It can starve every cooling coil downstream and overheat the data hall.' },

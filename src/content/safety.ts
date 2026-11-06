@@ -304,10 +304,10 @@ export const SAFETY: Article[] = [
       { ol: [
         'Ask first: can the work be done another way (cold cutting, bolting) or moved outside?',
         'Get a hot work permit signed by the person your program names.',
-        'Move or cover combustibles within 35 feet, and cover floor and wall openings.',
+        'Move or cover combustibles within the distance your permit sets (commonly 35 feet), and cover floor and wall openings.',
         'If detectors must be covered to prevent false alarms, that is a fire system impairment: follow the impairment process and notifications.',
         'Have a charged extinguisher and a trained fire watch during the work.',
-        'Keep the fire watch for at least 30 minutes after the work ends (many sites require 60), then check the area again later.',
+        'Keep the fire watch going after the work ends for as long as your program says: commonly 30 to 60 minutes, and newer editions of the hot work fire standard call for at least 60. Then check the area again later. Verify the time with your site program and the current edition.',
       ] },
       { callout: 'Ending the fire watch when the welding stops. Sparks that landed out of sight are the classic cause of hot-work fires.', title: 'Most common mistake', tone: 'warn' },
     ],

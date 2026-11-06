@@ -93,7 +93,7 @@ const RAW: Record<TipCat, Raw[]> = {
     ['One wire in the clamp', 'Clamp around a single conductor to read current. Around a whole cable, the currents cancel. Around all conductors on purpose, it shows leakage.'],
     ['Ghost voltage', 'A high-impedance meter can read voltage induced on a dead wire. Use the meter\'s low-impedance (LoZ) mode to tell a real source from a ghost.'],
     ['Test every combination', 'On 3-phase, test A-B, B-C, A-C, and each phase to ground. One good reading doesn\'t prove the others are dead.'],
-    ['Megger with care', 'Insulation testers put out high voltage. Disconnect VFDs, controls and electronics first, and only test de-energized, locked-out circuits.'],
+    ['Insulation testers: handle with care', 'Insulation testers put out high voltage. Disconnect VFDs, controls and electronics first, and only test de-energized, locked-out circuits.'],
     ['Infrared: compare like to like', 'Compare a connection to the same connection on the other phases. A clear temperature rise over its neighbors deserves a closer look. Shiny metal reads falsely cold.'],
     ['Non-contact testers are a hint', 'A voltage pen is a quick check, not proof something is dead. Use a rated meter and live-dead-live for that.'],
     ['Check the dial before you probe', 'Probing voltage with the meter on amps can blow its fuse or worse. Look at the dial and the lead jacks every time.'],
