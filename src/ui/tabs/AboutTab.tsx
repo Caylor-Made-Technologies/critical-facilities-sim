@@ -140,6 +140,13 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             Fonts: Inter and Montserrat, SIL Open Font License (license files ship in <code>/fonts</code>). All diagrams
             and icons are original artwork drawn in code. No photos are used.
           </p>
+          <p style={{ fontSize: '0.9rem' }}>
+            Trademarks: Kirk Key is a trademark of Kirk Key Interlock Company, a long-time maker of the trapped-key interlocks that
+            the trade still calls a &ldquo;Kirk key&rdquo;. The name is used here, with respect and credit to them, only as that
+            common trade term for teaching. The interlocks in this simulator are generic, not a model of their products, and
+            Caylor Made Technologies has no affiliation with or endorsement from them. Other names of standards and
+            organizations belong to their owners.
+          </p>
         </section>
         <IssuerCredits />
       </div>

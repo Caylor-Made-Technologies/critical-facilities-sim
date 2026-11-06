@@ -22,7 +22,7 @@ export const GLOSSARY: Term[] = [
   { term: 'Paralleling', section: 'Electrical', def: 'Connecting two sources to the same bus. Safe only when they are synchronized (same voltage, frequency, and phase).' },
   { term: 'Back-feed', section: 'Electrical', def: 'Power flowing backward into a circuit that is supposed to be dead. Deadly for people working on it.' },
   { term: 'Main-tie-main', section: 'Electrical', def: 'Two buses, each with a main breaker, joined by a normally open tie. Lets one source feed both buses during maintenance.' },
-  { term: 'Kirk key', section: 'Electrical', def: 'Trapped-key interlock. A key that is trapped while a breaker is closed, enforcing safe operating sequences.' },
+  { term: 'Kirk key', section: 'Electrical', def: 'Trapped-key interlock. A key that is trapped while a breaker is closed, enforcing safe operating sequences. The everyday name comes from Kirk Key Interlock Company, which owns the trademark; used here only as the common trade term, with credit to them (see About).' },
   { term: 'SKRU', section: 'Electrical', def: 'Solenoid key release unit. Holds an interlock key until an electrical condition is met (for example, UPS on static bypass).' },
   { term: 'PDU / RPP', section: 'Electrical', def: 'Power distribution unit (often with a transformer) / remote power panel (no transformer). Final distribution to racks.' },
   { term: 'Busway', section: 'Electrical', def: 'Overhead bus duct with plug-in tap boxes for flexible rack power.' },

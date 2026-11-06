@@ -36,3 +36,13 @@ describe('generic only: no real company or vendor names in content or UI', () =>
     });
   }
 });
+
+describe('trademark credit (owner decision 2026-11-06)', () => {
+  it('while "Kirk key" is used as the trade term, About credits its trademark owner', () => {
+    const uses = Object.entries(FILES).filter(([p, t]) => !p.endsWith('AboutTab.tsx') && /kirk[- ]?key/i.test(t)).length;
+    expect(uses).toBeGreaterThan(0);
+    const about = Object.entries(FILES).find(([p]) => p.endsWith('AboutTab.tsx'))![1];
+    expect(about).toMatch(/Kirk Key is a trademark of Kirk Key Interlock Company/);
+    expect(about).toMatch(/no affiliation with or endorsement/);
+  });
+});
