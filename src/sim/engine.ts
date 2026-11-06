@@ -38,6 +38,20 @@ const BESS_RECHARGE_PER_S = 1 / 3600;
 /** Internal step used when advancing time, so timers resolve to the second. */
 const MAX_STEP_S = 1;
 
+/** JSON-safe copy of a whole plant (see Simulation.snapshot). */
+export interface SimSnapshot {
+  v: 1;
+  topology: PlantMeta['topology'];
+  t: number;
+  batteryAge: BatteryAge;
+  nodes: { id: string; status: Status; state: Component['state'] }[];
+  keys: { id: string; inLock: string | null }[];
+  thermal: ReturnType<ThermalPlant['snapshot']>;
+  ats: { id: string; lossS: number; restoreS: number }[];
+  overloaded: string[];
+  events: SimEvent[];
+}
+
 export class Simulation {
   readonly graph: PlantGraph;
   readonly interlocks: InterlockSystem;
@@ -81,6 +95,49 @@ export class Simulation {
     sim.thermal.step(0);
     sim.solution = solvePower(sim.graph);
     return sim;
+  }
+
+  /**
+   * Full plant state as plain JSON-safe data (engine v2, Phase 4a): every component's status and
+   * state, where every Kirk key is, the thermal plant, timers, clock, battery age and the event log.
+   * restoreSnapshot() on a Simulation built from the same topology gives back the exact same plant.
+   */
+  snapshot(): SimSnapshot {
+    return {
+      v: 1,
+      topology: this.meta.topology,
+      t: this.t,
+      batteryAge: this.batteryAge,
+      nodes: [...this.graph.nodes.values()].map((n) => ({ id: n.id, status: n.status, state: { ...n.state } })),
+      keys: this.interlocks.schemes.flatMap((sc) => sc.keys.map((k) => ({ id: k.id, inLock: k.inLock }))),
+      thermal: this.thermal.snapshot(),
+      ats: [...this.atsTimers].map(([id, v]) => ({ id, ...v })),
+      overloaded: [...this.overloaded],
+      events: this.events.map((e) => ({ ...e })),
+    };
+  }
+
+  /** Put the plant back exactly as a snapshot describes. Throws on a snapshot from another design. */
+  restoreSnapshot(snap: SimSnapshot): void {
+    if (snap.topology !== this.meta.topology) throw new Error(`snapshot is for ${snap.topology}, plant is ${this.meta.topology}`);
+    for (const n of snap.nodes) {
+      const c = this.graph.get(n.id);
+      c.status = n.status;
+      c.state = { ...n.state };
+    }
+    const byId = new Map(snap.keys.map((k) => [k.id, k.inLock]));
+    for (const sc of this.interlocks.schemes) for (const k of sc.keys) if (byId.has(k.id)) k.inLock = byId.get(k.id)!;
+    this.thermal.restore(JSON.parse(JSON.stringify(snap.thermal)));
+    this.atsTimers = new Map(snap.ats.map(({ id, lossS, restoreS }) => [id, { lossS, restoreS }]));
+    this.overloaded = new Set(snap.overloaded);
+    this.t = snap.t;
+    this.batteryAge = snap.batteryAge;
+    this.events = snap.events.map((e) => ({ ...e }));
+    // Re-solve without logging (the log already holds what happened).
+    this.thermal.step(0);
+    this.solution = solvePower(this.graph);
+    this.lastKey = '';
+    this.lastKey = this.solveKey();
   }
 
   // -------------------------------------------------------------------------
