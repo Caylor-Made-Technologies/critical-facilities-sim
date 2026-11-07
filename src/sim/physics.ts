@@ -753,3 +753,180 @@ export function slipAngleDeg(tS: number, slipHz: number = SOURCES.slipHz): numbe
   const a = (((360 * slipHz * tS) % 360) + 360) % 360;
   return a > 180 ? a - 360 : a;
 }
+
+// ---------------------------------------------------------------------------
+// Thermal v2, air side (engine v2, Phase 4c part 1): lumped air nodes, coil, fans, containment.
+// Simplified teaching values (see REVIEW-QUEUE). Not a CFD model.
+// ---------------------------------------------------------------------------
+
+export const AIR = {
+  /** Specific heat of air, kJ/(kg·K), and density at about 20 °C at sea level, kg/m³. */
+  cpKj: 1.006,
+  densityKgM3: 1.2,
+  /** Specific heat of water, kJ/(kg·K) (same value as PHYSICS.waterCpKj). */
+  waterCpKj: 4.186,
+  /** Temperature rise of air through a server at full load (K), about 22 °F. */
+  itDeltaTK: 12,
+  /** One CRAH at 100% fan: air mass flow (kg/s, ≈ 22,000 CFM) and fan power (kW). */
+  crahDesignKgS: 12.4,
+  crahFanKw: 8,
+  /** Lowest CRAH fan speed (fraction of full). */
+  crahMinSpeed: 0.3,
+  /**
+   * Coil effectiveness at full fan speed: share of (return air − chilled water) the coil can take
+   * out of the air. 0.75 gives one CRAH 0.75 × 12.4 × 1.006 × 18 = 168 kW at 36 °C return air and
+   * 18 °C water at full fan, about 12% over its 150 kW nameplate (nameplates are rated at fixed test
+   * conditions; Verify against the unit's selection data). It rises at lower airflow: see coilEffectiveness().
+   */
+  coilEffectivenessDesign: 0.75,
+  /** Coil capacity the fans keep in hand above the heat load before ramping up (valve-then-fan sequence). */
+  coilMargin: 0,
+  /** Time constant for the CRAH fans to follow a cooling call (s). */
+  fanRampTauS: 30,
+  /** Chilled water rise across a CRAH coil at design (K). */
+  coilWaterDeltaTK: 8,
+  /** Rack inlet (cold aisle) setpoint the CRAH valves hold (°C). Same as PHYSICS.supplyAirC. */
+  inletSetpointC: 24,
+  /** Supply air can't get closer than this to the chilled water supply (K). */
+  coilApproachK: 1,
+  /** Air pushed through idle or off racks by cold-aisle pressure, as a share of design IT airflow. */
+  idleRackFlow: 0.1,
+  /** Cold air the fans push beyond what the IT draws, at the pressure setpoint (fraction). */
+  airflowMargin: 0.05,
+  /**
+   * Thermal mass of each air node (kJ/K): air plus the metal it touches. They add up to the v1
+   * hall mass (PHYSICS.hallThermalMassKjPerC = 20,000) so the hall heats at the same rate.
+   */
+  massKjPerK: { cold: 1500, rackIn: 500, rackOut: 12_000, hot: 3000, room: 3000 },
+  /**
+   * Recirculation (hot air back into rack inlets) and bypass (cold air back to the CRAHs without
+   * passing through IT), by containment state. Example values, not measurements.
+   */
+  containment: {
+    full: { recirc: 0.03, bypass: 0.05 },
+    'door-open': { recirc: 0.15, bypass: 0.15 },
+    none: { recirc: 0.25, bypass: 0.3 },
+  },
+  /** Extra recirculation when every blanking panel is missing (scales with the missing share). */
+  blankingRecirc: 0.1,
+  /** Extra bypass per unit of perforated-tile open area above what the IT needs (ratio − 1). */
+  tileBypassPerExcess: 0.2,
+  /** Largest bypass fraction allowed (keeps the airflow balance sensible). */
+  maxBypass: 0.6,
+  /**
+   * ASHRAE TC 9.9 inlet ranges (°C), values only. Recommended applies to all classes;
+   * allowable by equipment class A1–A4.
+   */
+  recommendedC: [18, 27] as const,
+  allowableC: { A1: [15, 32], A2: [10, 35], A3: [5, 40], A4: [5, 45] } as const,
+} as const;
+
+export type AshraeClass = keyof typeof AIR.allowableC;
+export type ContainmentMode = keyof typeof AIR.containment;
+
+/**
+ * Heat carried by a fluid stream: Q = ṁ × cp × ΔT.
+ * Units: kg/s × kJ/(kg·K) × K → kW. Example: 10 kg/s of air warmed 12 K → 10 × 1.006 × 12 = 120.7 kW.
+ * Source type: standard sensible-heat relation.
+ */
+export function heatFlowKw(massKgS: number, cpKj: number, deltaTK: number): number {
+  return massKgS * cpKj * deltaTK;
+}
+
+/** Mass flow (kg/s) that carries `kw` with a rise of `deltaTK`: ṁ = Q / (cp × ΔT). Zero for ΔT ≤ 0. */
+export function massFlowForKw(kw: number, cpKj: number, deltaTK: number): number {
+  return deltaTK > 0 ? Math.max(0, kw) / (cpKj * deltaTK) : 0;
+}
+
+/** Volume flow (m³/s) of an air mass flow: V = ṁ / ρ. Example: 12 kg/s ÷ 1.2 = 10 m³/s (≈ 21,190 CFM). */
+export function airVolumeM3s(massKgS: number, a: typeof AIR = AIR): number {
+  return massKgS / a.densityKgM3;
+}
+
+/**
+ * Fan and pump affinity laws, at speed fraction N (1 = full speed):
+ *   flow ∝ N, head (pressure) ∝ N², power ∝ N³.
+ * Example: 80% speed → 80% flow, 64% head, 51.2% power.
+ * Source type: standard affinity laws (same machine, same fluid, ignoring efficiency changes).
+ */
+export function affinity(speed: number): { flow: number; head: number; power: number } {
+  const n = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  return { flow: n, head: n * n, power: n * n * n };
+}
+
+/**
+ * Exact step of a lumped first-order node toward its steady state:
+ *   T ← T + (Tss − T) × (1 − e^(−dt/τ)).
+ * Stable for any dt (it can never overshoot Tss). τ = ∞ (no flow) leaves T unchanged; τ ≤ 0 jumps.
+ * Example: T 20, Tss 30, dt 10, τ 10 → 20 + 10 × (1 − e^(−1)) = 26.32.
+ * Source type: exact solution of dT/dt = (Tss − T)/τ over one step.
+ */
+export function relaxExact(t: number, tss: number, dtS: number, tauS: number): number {
+  if (tauS === Infinity || !(dtS > 0)) return t;
+  if (!(tauS > 0)) return tss;
+  return t + (tss - t) * (1 - Math.exp(-dtS / tauS));
+}
+
+/**
+ * Time constant of a mixed node: τ = C / (ṁ × cp). Units: kJ/K ÷ (kg/s × kJ/(kg·K)) → s.
+ * Example: 3000 kJ/K with 75 kg/s of air → 3000 / (75 × 1.006) = 39.8 s. No flow → ∞.
+ */
+export function nodeTauS(massKjPerK: number, flowKgS: number, cpKj: number = AIR.cpKj): number {
+  return flowKgS > 1e-9 ? massKjPerK / (flowKgS * cpKj) : Infinity;
+}
+
+/**
+ * Coil effectiveness at fan speed N: ε = 1 − e^(−NTU), NTU = NTU_design × N^(−0.4)
+ * (air-side UA grows about as airflow^0.6, so NTU = UA/(ṁ·cp) grows as airflow drops).
+ * NTU_design = −ln(1 − ε_design). Example: ε_design 0.8 → NTU 1.609; at N = 0.5,
+ * NTU = 1.609 × 0.5^(−0.4) = 2.123 → ε = 1 − e^(−2.123) = 0.880 (pass ε_design to test other values).
+ * Source type: ε-NTU method with a textbook airflow exponent; simplified.
+ */
+export function coilEffectiveness(speed: number, design: number = AIR.coilEffectivenessDesign): number {
+  const n = Number.isFinite(speed) ? Math.min(1, Math.max(0.05, speed)) : 1;
+  const ntu = -Math.log(1 - design) * n ** -0.4;
+  return 1 - Math.exp(-ntu);
+}
+
+/**
+ * Most heat a coil can take out of the air: Q = ε × ṁ × cp × (T_air,in − T_water,in), never negative.
+ * Example: ε 0.8, 12.4 kg/s, air 36 °C, water 18 °C → 0.8 × 12.4 × 1.006 × 18 = 179.6 kW.
+ * Source type: effectiveness (ε-NTU) form with air as the smaller capacity stream.
+ */
+export function coilMaxKw(effectiveness: number, airKgS: number, airInC: number, waterInC: number, a: typeof AIR = AIR): number {
+  return Math.max(0, effectiveness * heatFlowKw(airKgS, a.cpKj, airInC - waterInC));
+}
+
+/**
+ * Mix of two air streams by mass: T = (1 − f) × A + f × B. Example: 3% of 36 °C into 24 °C → 24.36 °C.
+ */
+export function mixC(a: number, b: number, fracB: number): number {
+  const f = Math.min(1, Math.max(0, fracB));
+  return (1 - f) * a + f * b;
+}
+
+export type InletClassBand = 'below' | 'recommended' | 'allowable' | 'over';
+
+/**
+ * Where an inlet temperature sits against the ASHRAE TC 9.9 ranges for an equipment class.
+ * Example: 30 °C on A1 → 'allowable'; 33 °C on A1 → 'over'; 33 °C on A2 → 'allowable'.
+ */
+export function inletClassBand(c: number, cls: AshraeClass = 'A1', a: typeof AIR = AIR): InletClassBand {
+  const [rLo, rHi] = a.recommendedC;
+  const [aLo, aHi] = a.allowableC[cls];
+  if (!Number.isFinite(c)) return 'over';
+  if (c >= rLo && c <= rHi) return 'recommended';
+  if (c >= aLo && c <= aHi) return 'allowable';
+  return c < aLo ? 'below' : 'over';
+}
+
+/** Recirculation and bypass fractions from containment, blanking panels (share missing) and tile open area. */
+export function airPaths(mode: ContainmentMode, blankingMissing: number, tileRatio: number, a: typeof AIR = AIR): { recirc: number; bypass: number } {
+  const base = a.containment[mode] ?? a.containment.full;
+  const miss = Number.isFinite(blankingMissing) ? Math.min(1, Math.max(0, blankingMissing)) : 0;
+  const tiles = Number.isFinite(tileRatio) ? Math.max(0, tileRatio) : 1;
+  return {
+    recirc: Math.min(1, base.recirc + a.blankingRecirc * miss),
+    bypass: Math.min(a.maxBypass, base.bypass + a.tileBypassPerExcess * Math.max(0, tiles - 1)),
+  };
+}

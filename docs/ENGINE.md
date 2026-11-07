@@ -152,3 +152,70 @@ the alarm/time controls). Electrical and thermal models are still v1 (4b, 4c).
 
 Not modeled yet (later phases): closed-transition retransfer that actually waits for the in-phase window,
 STS sub-cycle transfer timing, eco-mode transfer on a utility event, paralleling-gear sync and load sharing.
+
+## Engine v2 air side (Phase 4c part 1, 2026-11-07)
+
+`src/sim/v2/airside.ts` (`AirsideModel`, `engine.air`), formulas in `physics.ts` (`AIR`,
+`heatFlowKw`, `massFlowForKw`, `airVolumeM3s`, `affinity`, `relaxExact`, `nodeTauS`,
+`coilEffectiveness`, `coilMaxKw`, `mixC`, `inletClassBand`, `airPaths`). Simplified; not a CFD model.
+
+**Nodes** (lumped, one per hall): cold aisle → rack inlet → rack outlet → hot aisle → room/return → CRAH.
+Thermal masses (kJ/K) cold 1,500 · rack in 500 · rack out 12,000 (server metal) · hot 3,000 · room 3,000,
+adding up to v1's 20,000 so a fully uncooled hall heats at the same rate.
+
+**Update.** Airflows are fixed for the tick, then each node moves with the exact step
+`T += (Tss − T)(1 − e^(−dt/τ))`, `τ = C / (ṁ·cp)` (no flow → τ = ∞ → no change). If `dt/τ > 1` for any
+node the tick is split into sub-steps (≤ 50) so every update has `dt/τ ≤ 1` (tested). Normal ops need 1.
+
+**Airflows.**
+- IT: `ṁ_it = Q_air / (cp × 12 K)` (server ΔT ≈ 22 °F). GPU racks put 20% of their heat in the air (v1 rule).
+  Idle racks still pass 10% of design airflow when the CRAHs run (cold-aisle pressure), carrying no heat.
+- CRAH fans hold the cold-aisle pressure: `ṁ_crah = ṁ_it × 1.05 / (1 − bypass)`, speed N clamped 0.3–1;
+  when the coil valves are wide open and still short, fans ramp up to the speed whose coil capacity covers
+  IT + fan heat (valve-then-fan, τ 30 s). Fan kW = 8 × N³ per unit (affinity laws); fan heat goes into the supply air.
+- Containment sets base recirculation / bypass: full 3% / 5%, door open 15% / 15%, none 25% / 30%.
+  Missing blanking adds up to +10% recirculation; tile open area above need adds bypass (0.2 per unit
+  excess); too few tiles cap the cold air delivered, so racks pull room air (starved cold aisle).
+- Mass balance: rack intake = cold air used + hot-aisle leak + starved room air; bypass returns to the room.
+
+**Coil.** `Q_max = ε(N) × ṁ_crah × cp × (T_return − T_chws) × CHW flow fraction`,
+`ε = 1 − e^(−NTU)`, `NTU = −ln(1 − 0.75) × N^(−0.4)` (ε 0.75 at full fan, higher when slower;
+168 kW per unit at 36 °C return / 18 °C water, ~12% over the 150 kW nameplate: Verify). The valve holds the
+rack inlet at 24 °C (supply colder to offset recirculation) but never below CHW + 1 K. CHW supply and
+flow are read from v1 thermal until the hydronic model (4c part 2) replaces them.
+
+**Checks.** Inlet band against ASHRAE TC 9.9 values: recommended 18–27 °C; allowable A1 15–32, A2 10–35,
+A3 5–40, A4 5–45 (class A1 by default). Rack-inlet trip at 40 °C, clear below 27 °C (same as v1).
+
+**Invariants (tests).** Steady state: IT air heat + fan heat = coil heat, ±1%, in 7 air-path settings.
+Snapshot → JSON → restore and replay from the action log give identical air state. Full v2 tick < 4 ms
+(measured ~0.2 ms). No NaN with everything off (EPO).
+
+**What it shows (2N plant, mild day):** inlet 24.0 °C, supply 23.2 °C, return 34.5 °C, fans 79% (31 kW
+for 8 units), coils at 87% of capacity. Door open: fans 43 kW, return 31.6 °C, supply 21.4 °C, inlet held.
+No containment: fans 100% (64 kW), coils maxed, inlet 25.7 °C. Two CRAHs down: fans 100%, inlet held.
+Three down: inlet ~25.7 °C (above setpoint, inside recommended). All CHW pumps lost: supply air reaches
+return temperature within a minute, inlet trip in ~4 min.
+
+**New typed actions** (logged, replayable, off by default): `containment` (full / door-open / none),
+`blanking` (share missing 0–1), `tiles` (open-area ratio 0.2–3).
+
+**Shadow and switch.** Default `tripSource: 'v1'`: v1 thermal trips racks; the air model only records
+`tripAt` / `clearAt`. `setTripSource(sim, 'v2')` sets `ThermalPlant.hallTripExternal`, so v1 skips its
+hall trip/clear and the air model trips and clears racks with the same messages and thresholds.
+
+**Parity (2026-11-07), `airparity.test.ts`:**
+- Scoring: all 8 drills score the same (score, done, racks down) with v2 owning the trip. The 7 MOPs, the IST
+  and 23 of 24 auto-played runs (incl. surprise picks) also matched in a one-off probe; the one miss was a
+  surprise utility loss left unrepaired for ~7.5 h (one side's generators run out of fuel, 4 of 8 CRAHs stop):
+  v1 runs away and trips at 31,382 s, v2 holds below the trip.
+- Canonical cases: trip / no-trip agree for N+2 (2 CRAHs down), 1 chiller down, all CHW pumps down, all CRAHs down.
+- **Differences (kept on v1):** (1) on total cooling loss v2 trips sooner, ~45% of v1's time (CHW pumps: 251 s vs
+  567 s), because supply air jumps to return temperature at once while v1 rises linearly from 24 °C;
+  (2) with 3–4 of 8 CRAHs down v2 settles at a higher inlet (coil capacity rises with return air), v1 runs
+  away to a trip (fixed coil capacity, B-020). Both are v2 being closer to a real floor. Trips stay on v1
+  until the owner OKs the switch (one call: `engine.air.setTripSource(sim, 'v2')`, then flip the default).
+
+Limits: one lumped hall (no per-row or per-rack hot spots, so missing blanking shows up as more coil
+and fan work, not a hot rack); no stratification; no humidity or latent load on the CRAH coil; no
+heat loss to the building; the valve controller is ideal (no PI tuning, no hunting).

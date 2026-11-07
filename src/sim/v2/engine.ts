@@ -17,10 +17,11 @@
  * procedure scoring read.
  */
 import { Simulation, type SimSnapshot } from '../engine';
-import type { BatteryAge } from '../physics';
+import type { BatteryAge, ContainmentMode } from '../physics';
 import { buildPlant, type Topology } from '../plant/builder';
 import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
+import { AirsideModel, type AirState } from './airside';
 import { ElectricalModel, type ElecState } from './electrical';
 import { SourcesModel, type SourcesState } from './sources';
 import { EventQueue, type Scheduled } from './queue';
@@ -46,6 +47,10 @@ export type Action =
   | { a: 'blockHeater'; id: string; on: boolean }
   | { a: 'failToStart'; p: number }
   | { a: 'eco'; system: string; on: boolean }
+  /** Air-side scenario switches (Phase 4c part 1). */
+  | { a: 'containment'; mode: ContainmentMode }
+  | { a: 'blanking'; missing: number }
+  | { a: 'tiles'; ratio: number }
   /** Let time pass in one go (used by "skip ahead" and by replays of it). */
   | { a: 'skip'; s: number };
 
@@ -67,6 +72,8 @@ export interface EngineSnapshot {
   elec?: ElecState;
   /** Sources detail state (Phase 4b part 2). */
   sources?: SourcesState;
+  /** Air-side thermal state (Phase 4c part 1). */
+  air?: AirState;
 }
 
 export class EngineV2 {
@@ -81,6 +88,8 @@ export class EngineV2 {
   readonly elec = new ElectricalModel();
   /** Generator start stages, fail-to-start, block heaters, load-step dip, UPS and ATS detail (Phase 4b part 2). */
   readonly sources = new SourcesModel();
+  /** Data hall air side: aisles, racks, CRAH coils and fans, containment (Phase 4c part 1). */
+  readonly air = new AirsideModel();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
@@ -88,6 +97,7 @@ export class EngineV2 {
     this.sim = sim ?? new Simulation(buildPlant(topology));
     this.elec.init(this.sim, this.rng);
     this.sources.init(this.sim);
+    this.air.init(this.sim);
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -143,6 +153,7 @@ export class EngineV2 {
     this.sim.advance(dt);
     this.elec.step(this.sim, dt);
     this.sources.step(this.sim, this.rng);
+    this.air.step(this.sim, dt);
   }
 
   /** Run whole ticks for `seconds` of sim time (rounded down to whole ticks). */
@@ -179,6 +190,7 @@ export class EngineV2 {
       sim: this.sim.snapshot(),
       elec: this.elec.snapshot(),
       sources: this.sources.snapshot(),
+      air: this.air.snapshot(),
     };
   }
 
@@ -191,6 +203,10 @@ export class EngineV2 {
     e.actions = s.log.map((x) => ({ ...x, action: { ...x.action } }));
     if (s.elec) e.elec.restore(s.elec);
     if (s.sources) e.sources.restore(s.sources);
+    if (s.air) {
+      e.air.restore(s.air);
+      e.air.setTripSource(e.sim, s.air.tripSource);
+    }
     return e;
   }
 
@@ -250,6 +266,12 @@ export class EngineV2 {
         return this.sources.setFailToStart(x.p);
       case 'eco':
         return this.sources.setEco(s, x.system, x.on);
+      case 'containment':
+        return this.air.setContainment(x.mode);
+      case 'blanking':
+        return this.air.setBlanking(x.missing);
+      case 'tiles':
+        return this.air.setTiles(x.ratio);
       case 'skip':
         if (!(Number.isFinite(x.s) && x.s > 0)) return { ok: false, reason: 'Skip needs a positive time.' };
         for (let left = x.s; left > 1e-9; left -= TICK_S) this.step(Math.min(TICK_S, left));

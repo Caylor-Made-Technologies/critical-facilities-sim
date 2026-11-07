@@ -1,0 +1,370 @@
+/**
+ * Engine v2 air side (Phase 4c part 1): lumped air nodes for the data hall, CRAH coils and fans,
+ * containment, blanking panels and perforated tiles. Labeled "simplified, not a CFD model".
+ *
+ * Five nodes, each a lumped temperature with its own thermal mass (air + the metal it touches):
+ *
+ *   CRAH coil + fan ──► cold aisle ──► rack inlet ──► rack outlet ──► hot aisle ──► room / return ──► CRAH
+ *                          │  bypass ─────────────────────────────────────────────────►│
+ *                          │            ▲ leak (hot air back over/through racks)  │     │
+ *                                       └──────────────────────────────────────────┘     │
+ *                                       ▲ starved cold aisle: racks pull room air ◄──────┘
+ *
+ * Each tick (fixed 1 s) the airflows are worked out first (IT fans, CRAH fans, tiles), then every
+ * node relaxes toward its mixed steady state with the exact step T += (Tss − T)(1 − e^(−dt/τ)),
+ * τ = C / (ṁ·cp). If any dt/τ > 1 the tick is split into sub-steps so dt/τ ≤ 1 always holds.
+ *
+ * Shadow mode (default): reads the v1 plant (rack heat, CRAHs running, chilled water supply and
+ * flow) and predicts rack-inlet trips next to v1 without changing anything. With `tripSource`
+ * set to 'v2' it owns the rack-inlet trip instead of v1 (switched only after the parity test).
+ * Every formula is in physics.ts.
+ */
+import type { Simulation } from '../engine';
+import {
+  AIR,
+  affinity,
+  airPaths,
+  type AshraeClass,
+  coilEffectiveness,
+  coilMaxKw,
+  type ContainmentMode,
+  heatFlowKw,
+  inletClassBand,
+  type InletClassBand,
+  massFlowForKw,
+  nodeTauS,
+  PHYSICS,
+  relaxExact,
+} from '../physics';
+import type { ActionResult } from '../types';
+
+export type AirNode = 'cold' | 'rackIn' | 'rackOut' | 'hot' | 'room';
+export const AIR_NODES: readonly AirNode[] = ['cold', 'rackIn', 'rackOut', 'hot', 'room'];
+
+export interface AirState {
+  temps: Record<AirNode, number>;
+  containment: ContainmentMode;
+  /** Share of blanking panels missing, 0–1. */
+  blankingMissing: number;
+  /** Perforated-tile open area ÷ what the IT needs (1 = matched). */
+  tileRatio: number;
+  cls: AshraeClass;
+  /** Design IT airflow (kg/s), fixed at start: what the tiles were laid out for. */
+  itDesignKgS: number;
+  /** Predicted (shadow) or applied (v2) hall trip latch. */
+  tripped: boolean;
+  /** Sim time of the last predicted trip / clear (shadow record for the parity test). */
+  tripAt: number | null;
+  clearAt: number | null;
+  /** Who trips racks on high inlet: v1 thermal (default) or this model. */
+  tripSource: 'v1' | 'v2';
+  /** Fan speed the cooling call asks for (valve wide open → fans ramp up); follows with a lag. */
+  coolSpeed: number;
+}
+
+/** Everything worked out for one tick (also the readout). */
+export interface AirReading {
+  temps: Record<AirNode, number>;
+  itHeatKw: number;
+  fanKw: number;
+  coilKw: number;
+  coilMaxKw: number;
+  /** Chilled water through all running CRAH coils (kg/s) at the design water ΔT. */
+  coilWaterKgS: number;
+  itAirKgS: number;
+  crahAirKgS: number;
+  crahsRunning: number;
+  fanSpeed: number;
+  /** Effective recirculation (share of IT intake that is not CRAH supply air) and bypass. */
+  recirc: number;
+  bypass: number;
+  supplyC: number;
+  inletBand: InletClassBand;
+  tripped: boolean;
+}
+
+interface Flows {
+  /** IT heat into the air (kW) and IT fan airflow (kg/s). */
+  heat: number;
+  it: number;
+  /** Air through the racks: IT fans, or a little pushed through idle racks by the CRAHs. */
+  rack: number;
+  crah: number;
+  leak: number;
+  starve: number;
+  coldUsed: number;
+  byp: number;
+  roomIn: number;
+  hotToRoom: number;
+  fanKw: number;
+  speed: number;
+  n: number;
+}
+
+const MAX_SUBSTEPS = 50;
+
+export class AirsideModel {
+  state: AirState = {
+    temps: { cold: 23.6, rackIn: 24, rackOut: 36, hot: 36, room: 35 },
+    containment: 'full',
+    blankingMissing: 0,
+    tileRatio: 1,
+    cls: 'A1',
+    itDesignKgS: 0,
+    tripped: false,
+    tripAt: null,
+    clearAt: null,
+    tripSource: 'v1',
+    coolSpeed: 0,
+  };
+  reading!: AirReading;
+  /** Sub-steps used in the last tick (tests check dt/τ ≤ 1 per sub-step). */
+  lastSubsteps = 1;
+  lastMaxDtOverTau = 0;
+
+  init(sim: Simulation): void {
+    this.state.itDesignKgS = massFlowForKw(this.itHeatKw(sim), AIR.cpKj, AIR.itDeltaTK);
+    this.settle(sim);
+  }
+
+  /** Jump straight to the steady state for the present plant (start-up, tests). */
+  settle(sim: Simulation): void {
+    let f = this.flows(sim);
+    for (let i = 0; i < 2000; i++) {
+      if (i % 50 === 0) {
+        this.state.coolSpeed = this.coolingSpeed(sim);
+        f = this.flows(sim);
+      }
+      const next = this.targets(sim, f).tss;
+      let moved = 0;
+      for (const k of AIR_NODES) {
+        moved = Math.max(moved, Math.abs(next[k] - this.state.temps[k]));
+        this.state.temps[k] = next[k];
+      }
+      if (moved < 1e-9) break;
+    }
+    this.reading = this.read(sim, f);
+  }
+
+  // --- Inputs from the plant ---------------------------------------------------------------------
+
+  /** Heat the air side has to carry: powered, running racks; GPU racks send most heat to liquid. */
+  itHeatKw(sim: Simulation): number {
+    let kw = 0;
+    for (const r of sim.graph.byKind('rack')) {
+      if (!sim.solution.energized.has(r.id) || r.state.thermalTrip) continue;
+      const heat = r.state.demandKw ?? 0;
+      kw += r.highDensity ? heat * (1 - PHYSICS.gpuLiquidFraction) : heat;
+    }
+    return kw;
+  }
+
+  private crahsRunning(sim: Simulation): number {
+    return sim.graph
+      .byKind('crah')
+      .filter((n) => (n.status === 'online' || n.status === 'standby') && sim.solution.energized.has(n.id)).length;
+  }
+
+  /** Airflows for this tick (fixed for the tick; temperatures don't change them). */
+  private flows(sim: Simulation): Flows {
+    const st = this.state;
+    const heat = this.itHeatKw(sim);
+    const it = massFlowForKw(heat, AIR.cpKj, AIR.itDeltaTK);
+    const n = this.crahsRunning(sim);
+    const { recirc, bypass } = airPaths(st.containment, st.blankingMissing, st.tileRatio);
+    // Fans hold the cold-aisle pressure (supply what the IT draws plus a margin, plus what bypasses),
+    // or run faster when the coils need more air to carry the heat (valve-then-fan), whichever is higher.
+    const want = (it * (1 + AIR.airflowMargin)) / (1 - bypass);
+    const speed = n > 0 ? Math.min(1, Math.max(AIR.crahMinSpeed, want / (n * AIR.crahDesignKgS), st.coolSpeed)) : 0;
+    const crah = n * AIR.crahDesignKgS * affinity(speed).flow;
+    const fanKw = n * AIR.crahFanKw * affinity(speed).power;
+    // Cold air that reaches rack fronts: limited by bypass and by the tiles' open area.
+    const tileCap = st.tileRatio * st.itDesignKgS * (1 + AIR.airflowMargin);
+    const delivered = Math.min(crah * (1 - bypass), tileCap);
+    const rack = Math.max(it, crah > 0 ? Math.min(crah, AIR.idleRackFlow * st.itDesignKgS) : 0);
+    const leak = recirc * rack;
+    const starve = Math.max(0, rack - leak - delivered);
+    const coldUsed = Math.max(0, rack - leak - starve);
+    const byp = Math.max(0, crah - coldUsed);
+    const hotToRoom = rack - leak;
+    return { heat, it, rack, crah, leak, starve, coldUsed, byp, roomIn: hotToRoom + byp, hotToRoom, fanKw, speed, n };
+  }
+
+  /** Coil duty and each node's steady state for the present temperatures. */
+  private targets(sim: Simulation, f: Flows): { tss: Record<AirNode, number>; coil: number; coilMax: number; supply: number } {
+    const T = this.state.temps;
+    const cp = AIR.cpKj;
+    const chws = sim.thermal.state.chwSupplyC;
+    const water = sim.thermal.readout?.chwFlowFraction ?? 1;
+    const ret = T.room;
+    let coil = 0;
+    let coilMax = 0;
+    let supply = ret;
+    let fanRise = 0;
+    if (f.crah > 0) {
+      fanRise = f.fanKw / heatFlowKw(f.crah, cp, 1);
+      coilMax = coilMaxKw(coilEffectiveness(f.speed), f.crah, ret, chws) * Math.min(1, Math.max(0, water));
+      // Valve holds the rack inlet at setpoint: supply cold enough to offset the hot air mixed in.
+      let coldTarget = AIR.inletSetpointC;
+      if (f.coldUsed > 1e-9) coldTarget = (AIR.inletSetpointC * f.rack - f.leak * T.hot - f.starve * T.room) / f.coldUsed;
+      const supplyTarget = Math.max(chws + AIR.coilApproachK, coldTarget - fanRise);
+      const wanted = Math.max(0, heatFlowKw(f.crah, cp, ret - supplyTarget));
+      coil = Math.min(coilMax, wanted);
+      supply = ret - coil / heatFlowKw(f.crah, cp, 1);
+    }
+    const tss: Record<AirNode, number> = { ...T };
+    if (f.crah > 0) tss.cold = supply + fanRise;
+    if (f.rack > 0) {
+      tss.rackIn = (f.coldUsed * T.cold + f.leak * T.hot + f.starve * T.room) / f.rack;
+      tss.rackOut = T.rackIn + f.heat / heatFlowKw(f.rack, AIR.cpKj, 1);
+      tss.hot = T.rackOut;
+    }
+    if (f.roomIn > 1e-9) tss.room = (f.hotToRoom * T.hot + f.byp * T.cold) / f.roomIn;
+    return { tss, coil, coilMax, supply };
+  }
+
+  private taus(f: Flows): Record<AirNode, number> {
+    const m = AIR.massKjPerK;
+    return {
+      cold: nodeTauS(m.cold, f.crah),
+      rackIn: nodeTauS(m.rackIn, f.rack),
+      rackOut: nodeTauS(m.rackOut, f.rack),
+      hot: nodeTauS(m.hot, f.rack),
+      room: nodeTauS(m.room, f.roomIn),
+    };
+  }
+
+  // --- Tick ----------------------------------------------------------------------------------------
+
+  /**
+   * Lowest fan speed whose coil capacity covers the heat load (IT + fans) with a margin, at the
+   * present return air and chilled water (bisection; capacity rises with speed).
+   */
+  private coolingSpeed(sim: Simulation): number {
+    const n = this.crahsRunning(sim);
+    if (n === 0) return 0;
+    const chws = sim.thermal.state.chwSupplyC;
+    const water = Math.min(1, Math.max(0, sim.thermal.readout?.chwFlowFraction ?? 1));
+    const ret = this.state.temps.room;
+    // Fan heat at the present cooling call (from state only, so a restored snapshot gives the same answer).
+    const fanKw = n * AIR.crahFanKw * affinity(Math.max(AIR.crahMinSpeed, this.state.coolSpeed)).power;
+    const need = (this.itHeatKw(sim) + fanKw) * (1 + AIR.coilMargin);
+    const cap = (s: number) => coilMaxKw(coilEffectiveness(s), n * AIR.crahDesignKgS * s, ret, chws) * water;
+    if (cap(1) <= need) return 1;
+    let lo: number = AIR.crahMinSpeed;
+    if (cap(lo) >= need) return lo;
+    let hi = 1;
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2;
+      if (cap(mid) >= need) hi = mid;
+      else lo = mid;
+    }
+    return hi;
+  }
+
+  step(sim: Simulation, dt: number): void {
+    sim.thermal.hallTripExternal = this.state.tripSource === 'v2';
+    if (!(dt > 0)) return;
+    this.state.coolSpeed = relaxExact(this.state.coolSpeed, this.coolingSpeed(sim), dt, AIR.fanRampTauS);
+    const f = this.flows(sim);
+    const tau = this.taus(f);
+    const minTau = Math.min(...AIR_NODES.map((k) => tau[k]));
+    const n = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil(dt / minTau)));
+    const h = dt / n;
+    this.lastSubsteps = n;
+    this.lastMaxDtOverTau = Number.isFinite(minTau) ? h / minTau : 0;
+    for (let i = 0; i < n; i++) {
+      const { tss } = this.targets(sim, f);
+      for (const k of AIR_NODES) this.state.temps[k] = relaxExact(this.state.temps[k], tss[k], h, tau[k]);
+    }
+    this.reading = this.read(sim, f);
+    this.trips(sim);
+  }
+
+  private read(sim: Simulation, f: Flows): AirReading {
+    const { coil, coilMax, supply } = this.targets(sim, f);
+    const T = { ...this.state.temps };
+    return {
+      temps: T,
+      itHeatKw: f.heat,
+      fanKw: f.fanKw,
+      coilKw: coil,
+      coilMaxKw: coilMax,
+      coilWaterKgS: massFlowForKw(coil, AIR.waterCpKj, AIR.coilWaterDeltaTK),
+      itAirKgS: f.it,
+      crahAirKgS: f.crah,
+      crahsRunning: f.n,
+      fanSpeed: f.speed,
+      recirc: f.rack > 0 ? (f.leak + f.starve) / f.rack : 0,
+      bypass: f.crah > 0 ? f.byp / f.crah : 0,
+      supplyC: supply,
+      inletBand: inletClassBand(T.rackIn, this.state.cls),
+      tripped: this.state.tripped,
+    };
+  }
+
+  /** Rack-inlet over-temperature: same thresholds and messages as v1 (server shutdown 40 °C, clear below 27 °C). */
+  private trips(sim: Simulation): void {
+    const st = this.state;
+    const inlet = st.temps.rackIn;
+    const own = st.tripSource === 'v2';
+    if (!st.tripped && inlet > PHYSICS.serverShutdownC) {
+      st.tripped = true;
+      st.tripAt = sim.t;
+      if (own) {
+        sim.thermal.state.hallTripped = true;
+        for (const r of sim.graph.byKind('rack')) {
+          if (!r.state.thermalTrip && sim.solution.energized.has(r.id)) {
+            r.state.thermalTrip = true;
+            sim.log('critical', r.tag, `${r.tag} thermal shutdown (inlet ${Math.round((inlet * 9) / 5 + 32)} °F).`);
+          }
+        }
+      }
+    } else if (st.tripped && inlet < PHYSICS.ashraeRecommendedC[1]) {
+      st.tripped = false;
+      st.clearAt = sim.t;
+      if (own) {
+        sim.thermal.state.hallTripped = false;
+        const gpuTripped = (rackNum: number) => sim.thermal.state.gpu[Math.ceil(rackNum / 4)]?.tripped;
+        for (const r of sim.graph.byKind('rack')) {
+          if (r.state.thermalTrip && !(r.highDensity && gpuTripped(Number(r.id.slice(2))))) r.state.thermalTrip = false;
+        }
+        sim.log('info', 'BMS', 'Hall inlet temperatures back in range. Air-cooled IT can be restarted.');
+      }
+    }
+  }
+
+  // --- Scenario switches (typed actions) --------------------------------------------------------
+
+  setContainment(mode: ContainmentMode): ActionResult {
+    if (!(mode in AIR.containment)) return { ok: false, reason: 'Unknown containment state.' };
+    this.state.containment = mode;
+    return { ok: true };
+  }
+
+  setBlanking(missing: number): ActionResult {
+    if (!(Number.isFinite(missing) && missing >= 0 && missing <= 1)) return { ok: false, reason: 'Missing blanking share must be 0–1.' };
+    this.state.blankingMissing = missing;
+    return { ok: true };
+  }
+
+  setTiles(ratio: number): ActionResult {
+    if (!(Number.isFinite(ratio) && ratio >= 0.2 && ratio <= 3)) return { ok: false, reason: 'Tile open-area ratio must be 0.2–3.' };
+    this.state.tileRatio = ratio;
+    return { ok: true };
+  }
+
+  /** Who trips racks on high inlet. 'v2' only after the parity test passes (see ENGINE.md). */
+  setTripSource(sim: Simulation, src: 'v1' | 'v2'): void {
+    this.state.tripSource = src;
+    sim.thermal.hallTripExternal = src === 'v2';
+  }
+
+  snapshot(): AirState {
+    return JSON.parse(JSON.stringify(this.state)) as AirState;
+  }
+
+  restore(s: AirState): void {
+    this.state = JSON.parse(JSON.stringify(s)) as AirState;
+  }
+}

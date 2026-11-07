@@ -126,6 +126,11 @@ const fmtF = (c: number) => `${Math.round((c * 9) / 5 + 32)} °F`;
 export class ThermalPlant {
   state: State;
   readout!: ThermalReadout;
+  /**
+   * When true, the hall rack-inlet trip and its clear are owned by engine v2's air-side model
+   * (src/sim/v2/airside.ts) and skipped here. False (default) keeps v1 behavior.
+   */
+  hallTripExternal = false;
 
   constructor(private host: ThermalHost, weather: WeatherId = 'mild') {
     const outDew = dewPointC(WEATHER[weather].dryBulbC, WEATHER[weather].rh);
@@ -330,7 +335,9 @@ export class ThermalPlant {
     st.hallInletC = stepTemp(st.hallInletC, airHeat, airCap, dt, P.hallThermalMassKjPerC, P.supplyAirC, 90);
 
     // Hall over-temperature: air-cooled servers protect themselves.
-    if (!st.hallTripped && st.hallInletC > P.serverShutdownC) {
+    if (this.hallTripExternal) {
+      // Engine v2 air side decides rack-inlet trips (it runs right after this step).
+    } else if (!st.hallTripped && st.hallInletC > P.serverShutdownC) {
       st.hallTripped = true;
       for (const r of g.byKind('rack')) {
         if (!r.state.thermalTrip && this.host.solution.energized.has(r.id)) {
