@@ -134,6 +134,21 @@ the alarm/time controls). Electrical and thermal models are still v1 (4b, 4c).
 - State (`split`, `txRise`, `heat`) is in `EngineSnapshot.elec`. Tick cost ~0.3 ms (budget test < 4 ms).
 - Normal operation and every drill/MOP never come near a trip (parity tests unchanged).
 
-Still to do in 4b part 2: UPS modes (double conversion / eco / bypass, float / discharge / recharge,
-temperature and age derating), generator start stages (crank, build voltage and frequency, ready,
-transfer; fail-to-start; block heater; load-step dip), ATS/STS timing with an in-phase check.
+## Engine v2 sources detail (Phase 4b part 2, 2026-11-07)
+
+`src/sim/v2/sources.ts` (`SourcesModel`, `engine.sources`), formulas in `physics.ts` (`SOURCES`,
+`genStage`, `stepFrequencyHz`, `batteryTempFactor`, `slipAngleDeg`).
+
+- `genStage(sim, id)`: off / crank (0–3 s) / build-vf (3–8 s) / ready (8 s+) / online, inside v1's 10 s start.
+- Scenario switches (typed actions, logged and replayable): `blockHeater` (off adds 15 s to a start),
+  `failToStart` (seeded chance; a generator that rolls "no" keeps cranking and is declared failed by
+  overcrank at 45 s), `eco` (UPS system on eco mode: efficiency readout).
+- `busFrequencyHz(sim, bus)`: dip after a load step (> 5% of online generator capacity), first-order recovery.
+- `ups(sim, id)`: mode (double conversion / eco / battery / static bypass / off), battery state
+  (float / discharge / recharge / off), SOC, runtime derated for age (v1) and UPS-room temperature, efficiency.
+- `ats(sim, id)`: position, normal available, slip angle and in-phase flag while both sources are live.
+- Parity: defaults (heater on, chance 0) never change generator state, UPS mode or ATS position, so every
+  drill/MOP scores as on v1. State is in `EngineSnapshot.sources`.
+
+Not modeled yet (later phases): closed-transition retransfer that actually waits for the in-phase window,
+STS sub-cycle transfer timing, eco-mode transfer on a utility event, paralleling-gear sync and load sharing.

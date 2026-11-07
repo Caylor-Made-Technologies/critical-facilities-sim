@@ -676,3 +676,80 @@ export function breakerTripTimeS(multiple: number, e: typeof ELEC = ELEC): numbe
   if (multiple >= e.stPickup) return e.stDelayS;
   return e.ltBandS * (6 / multiple) ** 2;
 }
+
+// ---------------------------------------------------------------------------
+// Sources detail (engine v2, Phase 4b part 2): generator start stages, load-step dip, UPS modes,
+// battery temperature derating, ATS in-phase window. Simplified teaching values (see REVIEW-QUEUE).
+// ---------------------------------------------------------------------------
+
+export const SOURCES = {
+  /** Start sequence inside the existing start delay (genStartDelayS = 10 s): crank, build voltage and frequency, ready to close. */
+  crankS: 3,
+  buildVfS: 5,
+  /** Extra seconds a cold engine needs when its block heater is off. */
+  coldStartExtraS: 15,
+  /** A generator that will not start is declared failed (overcrank) after this long. */
+  overcrankS: 45,
+  /** Load-step frequency dip: % of nominal per 100% load step, and recovery time constant. */
+  dipPctPerFullStep: 10,
+  dipRecoverTauS: 2,
+  nominalHz: 60,
+  /** Example efficiencies: double conversion, eco (on bypass, inverter on standby), static bypass. */
+  effDoubleConversion: 0.96,
+  effEco: 0.99,
+  effBypass: 0.995,
+  /** Battery capacity loss per °C below 25 °C (about 1%/°C), floored. Heat does not add runtime; it shortens life. */
+  battCapPerDegC: 0.01,
+  battCapFloor: 0.5,
+  /** Example generator frequency slip against the returning utility, and the in-phase window (±°). */
+  slipHz: 0.1,
+  inPhaseWindowDeg: 10,
+} as const;
+
+export type GenStage = 'off' | 'crank' | 'build-vf' | 'ready' | 'online';
+
+/**
+ * Generator start stage from seconds since the start signal (simplified, within a 10 s start):
+ * 0–3 s crank, 3–8 s build voltage and frequency, 8 s+ ready to close. Negative/NaN → crank.
+ * Source type: generic description of a standby generator start sequence.
+ */
+export function genStage(elapsedS: number, s: typeof SOURCES = SOURCES): Exclude<GenStage, 'off' | 'online'> {
+  const e = Number.isFinite(elapsedS) ? elapsedS : 0;
+  if (e < s.crankS) return 'crank';
+  if (e < s.crankS + s.buildVfS) return 'build-vf';
+  return 'ready';
+}
+
+/**
+ * Frequency during a load step (simplified first-order recovery):
+ * f(t) = nominal × (1 − dip × e^(−t/τ)), dip = dipPctPerFullStep% × step fraction (0–1, clamped).
+ * Example: 50% step → 5% dip → 57 Hz at the step, 60 − 3 × e^(−1) = 58.9 Hz after 2 s.
+ * Real dips depend on engine, governor, alternator and load type; check the manufacturer's data.
+ * Source type: simplified textbook first-order response.
+ */
+export function stepFrequencyHz(stepFrac: number, sinceS: number, s: typeof SOURCES = SOURCES): number {
+  const f = Number.isFinite(stepFrac) ? Math.min(1, Math.max(0, stepFrac)) : 0;
+  const t = Number.isFinite(sinceS) ? Math.max(0, sinceS) : Infinity;
+  return s.nominalHz * (1 - (s.dipPctPerFullStep / 100) * f * Math.exp(-t / s.dipRecoverTauS));
+}
+
+/**
+ * Battery capacity factor from temperature: 1 at or above 25 °C, −1% per °C below, floored at 0.5.
+ * Example: 15 °C → 1 − 0.01 × 10 = 0.90. Heat is not rewarded: it shortens battery life instead
+ * (see batteryLifeYears). Source type: common lead-acid rule of thumb.
+ */
+export function batteryTempFactor(tempC: number, s: typeof SOURCES = SOURCES): number {
+  if (!Number.isFinite(tempC) || tempC >= 25) return 1;
+  return Math.max(s.battCapFloor, 1 - s.battCapPerDegC * (25 - tempC));
+}
+
+/**
+ * Phase angle between a generator and the returning utility, −180…180°, from the slip frequency:
+ * angle = 360 × slip × t (wrapped). Example: 0.1 Hz slip → one full turn every 10 s.
+ * Source type: standard relation for two sources at slightly different frequencies.
+ */
+export function slipAngleDeg(tS: number, slipHz: number = SOURCES.slipHz): number {
+  if (!Number.isFinite(tS) || !Number.isFinite(slipHz)) return 0;
+  const a = (((360 * slipHz * tS) % 360) + 360) % 360;
+  return a > 180 ? a - 360 : a;
+}

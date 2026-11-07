@@ -22,6 +22,7 @@ import { buildPlant, type Topology } from '../plant/builder';
 import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
 import { ElectricalModel, type ElecState } from './electrical';
+import { SourcesModel, type SourcesState } from './sources';
 import { EventQueue, type Scheduled } from './queue';
 import { Rng } from './rng';
 
@@ -41,6 +42,10 @@ export type Action =
   | { a: 'epo' }
   | { a: 'weather'; w: WeatherId }
   | { a: 'batteryAge'; age: BatteryAge }
+  /** Scenario switches (Phase 4b part 2). */
+  | { a: 'blockHeater'; id: string; on: boolean }
+  | { a: 'failToStart'; p: number }
+  | { a: 'eco'; system: string; on: boolean }
   /** Let time pass in one go (used by "skip ahead" and by replays of it). */
   | { a: 'skip'; s: number };
 
@@ -60,6 +65,8 @@ export interface EngineSnapshot {
   sim: SimSnapshot;
   /** Electrical model state (Phase 4b). Missing in 4a snapshots: rebuilt from the seed. */
   elec?: ElecState;
+  /** Sources detail state (Phase 4b part 2). */
+  sources?: SourcesState;
 }
 
 export class EngineV2 {
@@ -72,12 +79,15 @@ export class EngineV2 {
   private acc = 0;
   /** Load flow, transformer heating and breaker protection (Phase 4b). */
   readonly elec = new ElectricalModel();
+  /** Generator start stages, fail-to-start, block heaters, load-step dip, UPS and ATS detail (Phase 4b part 2). */
+  readonly sources = new SourcesModel();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
     this.rng = new Rng(this.seed);
     this.sim = sim ?? new Simulation(buildPlant(topology));
     this.elec.init(this.sim, this.rng);
+    this.sources.init(this.sim);
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -132,6 +142,7 @@ export class EngineV2 {
   private step(dt: number): void {
     this.sim.advance(dt);
     this.elec.step(this.sim, dt);
+    this.sources.step(this.sim, this.rng);
   }
 
   /** Run whole ticks for `seconds` of sim time (rounded down to whole ticks). */
@@ -167,6 +178,7 @@ export class EngineV2 {
       log: this.actions.map((x) => ({ ...x, action: { ...x.action } })),
       sim: this.sim.snapshot(),
       elec: this.elec.snapshot(),
+      sources: this.sources.snapshot(),
     };
   }
 
@@ -178,6 +190,7 @@ export class EngineV2 {
     e.queue.restore(s.queue);
     e.actions = s.log.map((x) => ({ ...x, action: { ...x.action } }));
     if (s.elec) e.elec.restore(s.elec);
+    if (s.sources) e.sources.restore(s.sources);
     return e;
   }
 
@@ -231,6 +244,12 @@ export class EngineV2 {
         return s.setWeather(x.w);
       case 'batteryAge':
         return s.setBatteryAge(x.age);
+      case 'blockHeater':
+        return this.sources.setHeater(s, x.id, x.on);
+      case 'failToStart':
+        return this.sources.setFailToStart(x.p);
+      case 'eco':
+        return this.sources.setEco(s, x.system, x.on);
       case 'skip':
         if (!(Number.isFinite(x.s) && x.s > 0)) return { ok: false, reason: 'Skip needs a positive time.' };
         for (let left = x.s; left > 1e-9; left -= TICK_S) this.step(Math.min(TICK_S, left));
