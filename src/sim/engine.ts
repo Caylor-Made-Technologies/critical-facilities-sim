@@ -479,6 +479,16 @@ export class Simulation {
     return { ok: true };
   }
 
+  /** Protection trip (engine v2 protection model): the breaker opens itself and alarms. */
+  tripBreaker(id: string, why: string): ActionResult {
+    const b = this.graph.get(id);
+    if (b.kind !== 'breaker' || !b.state.closed) return { ok: false, reason: `${b.tag} is not a closed breaker.` };
+    b.state.closed = false;
+    this.log('alarm', b.tag, `${b.tag} TRIPPED: ${why}. Find the cause before reclosing.`);
+    this.resolve();
+    return { ok: true };
+  }
+
   openBreaker(id: string): ActionResult {
     const b = this.graph.get(id);
     if (b.kind !== 'breaker') return { ok: false, reason: `${b.tag} is not a breaker.` };

@@ -116,3 +116,24 @@ Browser: `npm run e2e:v2` plays every MOP, drill, rounds sheet and the IST to 10
 Not yet (next sub-phases): UI actions still call `Simulation` methods directly instead of going
 through `EngineV2.apply`, so the action log only covers queued and test actions (wire up in 4d with
 the alarm/time controls). Electrical and thermal models are still v1 (4b, 4c).
+
+## Engine v2 electrical model (Phase 4b, part 1, 2026-11-07)
+
+`src/sim/v2/electrical.ts` (`ElectricalModel`, owned by `EngineV2` as `engine.elec`), formulas in
+`physics.ts` (`ELEC`, `kvaOf`, `kvarOf`, `lineAmps`, `phaseImbalancePct`, `transformerRiseC`,
+`approach`, `breakerTripTimeS`). Simplified; not a load-flow or coordination study.
+
+- `read(sim, id)` → voltage, kW, kVA, PF, line amps, per-phase amps, imbalance %, loading of nameplate.
+  Voltages: MV service 12.47 kV, LV 480 V, rack level 415 V (below a PDU). PF is the kW-weighted mix of
+  the loads below (IT 0.98, VFD motors 0.95); a UPS not on static bypass shows its 0.99 input PF upstream.
+- Each rack gets a small seeded phase split (±6 %) from the engine Rng, so imbalance is realistic and
+  replayable; mechanical loads are balanced.
+- `step()` each tick: transformer rise follows `transformerRiseC(loading)` with a 1 h lag; each closed
+  breaker's thermal memory heats by dt / trip time while above pickup and cools (10 min) otherwise;
+  at 1 it calls `Simulation.tripBreaker()` (an `alarm` event "TRIPPED: …", not a `Blocked:` warning).
+- State (`split`, `txRise`, `heat`) is in `EngineSnapshot.elec`. Tick cost ~0.3 ms (budget test < 4 ms).
+- Normal operation and every drill/MOP never come near a trip (parity tests unchanged).
+
+Still to do in 4b part 2: UPS modes (double conversion / eco / bypass, float / discharge / recharge,
+temperature and age derating), generator start stages (crank, build voltage and frequency, ready,
+transfer; fail-to-start; block heater; load-step dip), ATS/STS timing with an in-phase check.

@@ -561,3 +561,118 @@ export function capacityLimits(powerKw: number, coolingKw: number, rackSpaces: n
     strandedRacks: bySpace - racks,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Electrical load flow and protection (engine v2, Phase 4b). Simplified teaching models,
+// not a load-flow study or a coordination study. Every number here is a typical example.
+// ---------------------------------------------------------------------------
+
+export const ELEC = {
+  /** Example voltages (line to line). MV service is a common US example; LV distribution 480 V; rack level 415 V. */
+  mvVolts: 12_470,
+  lvVolts: 480,
+  rackVolts: 415,
+  /** Typical power factors: modern server power supplies, VFD-driven motors, a double-conversion UPS input. */
+  pfIt: 0.98,
+  pfMotorVfd: 0.95,
+  pfUpsInput: 0.99,
+  /** Largest per-rack phase skew used to seed realistic small imbalance (±fraction of the rack's load). */
+  rackPhaseSkew: 0.06,
+  /** Transformer: example rated winding temperature rise at full load (°C), ambient, exponent, time constant. */
+  txRatedRiseC: 80,
+  txAmbientC: 30,
+  txRiseExponent: 1.6,
+  txTauS: 3600,
+  /** Breaker trip unit (LSI concept): long-time pickup, long-time band (s at 6× pickup), short-time pickup and delay, instantaneous pickup and clearing time. */
+  ltPickup: 1.0,
+  ltBandS: 10,
+  stPickup: 6,
+  stDelayS: 0.3,
+  instPickup: 10,
+  instClearS: 0.05,
+  /** Thermal memory cools off with this time constant once the overload is gone. */
+  ltCoolTauS: 600,
+} as const;
+
+/**
+ * Apparent power: S = P ÷ PF.
+ * Units: kW → kVA. Assumes sinusoidal power factor (ignores harmonic distortion).
+ * Valid: P ≥ 0; PF clamped to 0.05–1, so a bad PF never gives Infinity or NaN.
+ * Source type: standard textbook relation.
+ */
+export function kvaOf(kw: number, pf: number): number {
+  const p = Number.isFinite(kw) ? Math.max(0, kw) : 0;
+  const f = Number.isFinite(pf) ? Math.min(1, Math.max(0.05, pf)) : 1;
+  return p / f;
+}
+
+/**
+ * Reactive power: Q = P × tan(acos PF).
+ * Units: kW → kvar. Example: 100 kW at PF 0.8 → 100 × 0.75 = 75 kvar.
+ * Source type: standard textbook relation.
+ */
+export function kvarOf(kw: number, pf: number): number {
+  const f = Number.isFinite(pf) ? Math.min(1, Math.max(0.05, pf)) : 1;
+  return Math.max(0, kw) * Math.tan(Math.acos(f));
+}
+
+/**
+ * Three-phase line current: I = S × 1000 ÷ (√3 × V_LL).
+ * Units: kVA, V → A. Balanced load assumed. V ≤ 0 → 0.
+ * Source type: standard textbook relation.
+ */
+export function lineAmps(kva: number, vLL: number): number {
+  return vLL > 0 && kva > 0 ? (kva * 1000) / (Math.sqrt(3) * vLL) : 0;
+}
+
+/**
+ * Phase imbalance: largest deviation from the average phase value, as % of the average
+ * (the usual motor-standard definition). Works for currents or voltages.
+ * Example: 100, 104, 96 A → avg 100, max deviation 4 → 4 %.
+ * Zero or invalid average → 0. Source type: standard industry definition.
+ */
+export function phaseImbalancePct(a: number, b: number, c: number): number {
+  const avg = (a + b + c) / 3;
+  if (!(avg > 0)) return 0;
+  return (Math.max(Math.abs(a - avg), Math.abs(b - avg), Math.abs(c - avg)) / avg) * 100;
+}
+
+/**
+ * Transformer steady-state temperature rise (simplified): rise = ratedRise × loading^n.
+ * Units: loading as a fraction of nameplate kVA (clamped 0–2); °C out.
+ * Assumes rise scales with losses (mostly I²R); n ≈ 1.6 lumps winding and cooling behavior.
+ * Not a thermal model of a real unit: use the manufacturer's data and loading guide.
+ * Example: 80 °C rated rise at 50 % load → 80 × 0.5^1.6 = 80 × 0.3299 = 26.4 °C.
+ * Source type: simplified textbook relation (loss-proportional rise).
+ */
+export function transformerRiseC(loading: number, ratedRiseC: number = ELEC.txRatedRiseC, n: number = ELEC.txRiseExponent): number {
+  const l = Number.isFinite(loading) ? Math.min(2, Math.max(0, loading)) : 0;
+  return ratedRiseC * Math.pow(l, n);
+}
+
+/**
+ * First-order approach to a target: x + (target − x) × (1 − e^(−dt/τ)).
+ * Units: any; dt and τ in seconds. τ ≤ 0 jumps straight to the target.
+ * Source type: standard first-order (lumped) response.
+ */
+export function approach(x: number, target: number, dtS: number, tauS: number): number {
+  if (!(tauS > 0)) return target;
+  return x + (target - x) * (1 - Math.exp(-Math.max(0, dtS) / tauS));
+}
+
+/**
+ * Breaker trip time for a current at `multiple` × the long-time pickup (simplified LSI trip unit).
+ *   - below the long-time pickup: never (Infinity);
+ *   - long time (overload): I²t curve through the band time at 6×: t = band × (6 / M)²;
+ *   - short time (≥ stPickup): fixed delay;
+ *   - instantaneous (≥ instPickup): clearing time.
+ * Units: multiple (unitless) → seconds. Example: band 10 s at 1.5× → 10 × (6/1.5)² = 160 s.
+ * Simplified for training: real trip units have tolerance bands, I²t ramps and settings from a
+ * coordination study. Source type: simplified textbook inverse-time characteristic.
+ */
+export function breakerTripTimeS(multiple: number, e: typeof ELEC = ELEC): number {
+  if (!Number.isFinite(multiple) || multiple <= e.ltPickup) return Infinity;
+  if (multiple >= e.instPickup) return e.instClearS;
+  if (multiple >= e.stPickup) return e.stDelayS;
+  return e.ltBandS * (6 / multiple) ** 2;
+}

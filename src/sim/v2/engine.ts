@@ -21,6 +21,7 @@ import type { BatteryAge } from '../physics';
 import { buildPlant, type Topology } from '../plant/builder';
 import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
+import { ElectricalModel, type ElecState } from './electrical';
 import { EventQueue, type Scheduled } from './queue';
 import { Rng } from './rng';
 
@@ -57,6 +58,8 @@ export interface EngineSnapshot {
   queue: { items: Scheduled<Action>[]; seq: number };
   log: LoggedAction[];
   sim: SimSnapshot;
+  /** Electrical model state (Phase 4b). Missing in 4a snapshots: rebuilt from the seed. */
+  elec?: ElecState;
 }
 
 export class EngineV2 {
@@ -67,11 +70,14 @@ export class EngineV2 {
   private actions: LoggedAction[] = [];
   /** Real seconds × speed not yet turned into ticks. */
   private acc = 0;
+  /** Load flow, transformer heating and breaker protection (Phase 4b). */
+  readonly elec = new ElectricalModel();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
     this.rng = new Rng(this.seed);
     this.sim = sim ?? new Simulation(buildPlant(topology));
+    this.elec.init(this.sim, this.rng);
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -119,7 +125,13 @@ export class EngineV2 {
   /** One fixed step: run everything due now, then advance TICK_S. */
   tick(): void {
     for (const s of this.queue.popDue(this.sim.t)) this.apply(s.event);
-    this.sim.advance(TICK_S);
+    this.step(TICK_S);
+  }
+
+  /** Advance the plant and the electrical model together (dt ≤ 1 s per call). */
+  private step(dt: number): void {
+    this.sim.advance(dt);
+    this.elec.step(this.sim, dt);
   }
 
   /** Run whole ticks for `seconds` of sim time (rounded down to whole ticks). */
@@ -154,6 +166,7 @@ export class EngineV2 {
       queue: this.queue.snapshot(),
       log: this.actions.map((x) => ({ ...x, action: { ...x.action } })),
       sim: this.sim.snapshot(),
+      elec: this.elec.snapshot(),
     };
   }
 
@@ -164,6 +177,7 @@ export class EngineV2 {
     e.acc = Number.isFinite(s.acc) ? Math.max(0, s.acc) : 0;
     e.queue.restore(s.queue);
     e.actions = s.log.map((x) => ({ ...x, action: { ...x.action } }));
+    if (s.elec) e.elec.restore(s.elec);
     return e;
   }
 
@@ -183,7 +197,7 @@ export class EngineV2 {
         // Whole ticks up to the action; a fractional gap (from a 'skip') is advanced exactly.
         const gap = x.t - e.sim.t;
         if (gap >= TICK_S) e.tick();
-        else e.sim.advance(gap);
+        else e.step(gap);
       }
       e.apply(x.action);
     }
@@ -219,7 +233,7 @@ export class EngineV2 {
         return s.setBatteryAge(x.age);
       case 'skip':
         if (!(Number.isFinite(x.s) && x.s > 0)) return { ok: false, reason: 'Skip needs a positive time.' };
-        s.advance(x.s);
+        for (let left = x.s; left > 1e-9; left -= TICK_S) this.step(Math.min(TICK_S, left));
         return { ok: true };
     }
   }
