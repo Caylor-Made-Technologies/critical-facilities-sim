@@ -111,3 +111,13 @@ test('memory stays flat across 10 rounds through the 3D tabs (no leaks)', async 
   // After it, ~4 MB of browser caches that level off. 8 MB catches a real leak without flaking.
   expect(after.heap - base.heap).toBeLessThan(8);
 });
+
+test('typing straight after Ctrl+K on a 6× slower CPU keeps every letter', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-dark', 'one project is enough');
+  await open('#/home', { three: false });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('stranded');
+  await expect(page.locator('dialog input').first()).toHaveValue('stranded');
+});
