@@ -52,7 +52,9 @@ async function passQuiz(page: Page, s: LifeStage) {
 test.describe('Life of a Data Center', () => {
   test('all 10 stages: lesson, tour, task, details, mistakes, quiz', async ({ page, open }, info) => {
     test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
-    test.setTimeout(300_000);
+    // 10 stages × (3D tour + task + quiz) in one test: ~2–3 min alone, slower under the full parallel suite
+    // on a software GPU. Each step still has its own 15 s expect timeout.
+    test.setTimeout(480_000);
     await open('#/learn', { quality: 'low' });
     await expect(page.getByRole('heading', { name: 'Life of a data center' })).toBeVisible();
     for (const s of LIFE_STAGES) {
