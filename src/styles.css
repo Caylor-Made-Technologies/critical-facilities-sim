@@ -6034,3 +6034,17 @@ body.has-follow .toast-region { bottom: 84px; }
 .eff-table th { text-align: left; font-weight: 500; padding: 0.2rem 0.5rem 0.2rem 0; }
 .eff-table td { text-align: right; font-variant-numeric: tabular-nums; padding: 0.2rem 0; }
 .eff-table .eff-total th, .eff-table .eff-total td { font-weight: 700; border-top: 1px solid var(--border); }
+
+/* Engine v2 alarm list */
+.alarm-panel { margin-top: 0.75rem; }
+.alarm-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.alarm-head h3 { margin: 0; font-size: 1rem; }
+.alarm-flood { margin: 0.5rem 0; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-strong); font-weight: 600; }
+.alarm-list { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.5rem; }
+.alarm-row { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; border-left-width: 4px; }
+.alarm-row.is-unack { border-left-color: currentColor; }
+.alarm-line { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.alarm-meta { font-size: 0.85rem; margin-top: 0.15rem; }
+.alarm-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+.alarm-fault summary { cursor: pointer; margin-top: 0.4rem; }
+.alarm-fault ol { margin: 0.25rem 0 0; padding-left: 1.25rem; }

@@ -1166,3 +1166,27 @@ export function transformerLossKw(ratingKva: number, loading: number, energized 
   const l = Math.max(0, Number.isFinite(loading) ? loading : 0);
   return ratingKva * (e.txNoLoadFrac + e.txLoadLossFrac * l * l);
 }
+
+// ---------------------------------------------------------------------------
+// Alarm system (engine v2, Phase 4d): example setpoints and alarm-management numbers.
+// ---------------------------------------------------------------------------
+
+export const ALARM = {
+  upsLowSocPct: 25,
+  fuelLowPct: 25,
+  /** CHW supply alarm: this far above setpoint (K). */
+  chwHighK: 2,
+  chwFlowLowPct: 90,
+  tesLowPct: 20,
+  /** Condenser leaving water alarm (°C): 3 K below the 40 °C head pressure trip. */
+  condHighC: 37,
+  upsRoomHighC: 30,
+  /** Chattering: this many activations of one alarm inside the window (s). */
+  chatterCount: 3,
+  chatterWindowS: 60,
+  /** Flood: more than this many new alarms inside the window (a common benchmark is 10 per 10 min per operator). */
+  floodCount: 10,
+  floodWindowS: 600,
+  /** Shelving is always time-limited (s). */
+  maxShelveS: 8 * 3600,
+} as const;

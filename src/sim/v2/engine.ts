@@ -16,11 +16,11 @@
  * MOP, drill and screen keeps working. `engine.sim` is the adapter the current UI and
  * procedure scoring read.
  */
+import { applyToSim, type Action } from '../actions';
 import { Simulation, type SimSnapshot } from '../engine';
-import type { BatteryAge, ContainmentMode } from '../physics';
 import { buildPlant, type Topology } from '../plant/builder';
-import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
+import { AlarmSystem, type AlarmsState, type AlarmSummary } from './alarms';
 import { AirsideModel, type AirState } from './airside';
 import { readEfficiency, type EfficiencyReading } from './efficiency';
 import { ElectricalModel, type ElecState } from './electrical';
@@ -36,27 +36,7 @@ export const MAX_TICKS_PER_CALL = 600;
 const EPS = 1e-6;
 
 /** Everything that can change the plant, as plain data (so it can be logged, queued and replayed). */
-export type Action =
-  | { a: 'open' | 'close' | 'fail' | 'restore' | 'maint'; id: string }
-  | { a: 'upsMode'; system: string; mode: 'static-bypass' | 'auto' }
-  | { a: 'removeKey'; lock: string }
-  | { a: 'insertKey'; key: string; lock: string }
-  | { a: 'genTest'; id: string; on: boolean }
-  | { a: 'epo' }
-  | { a: 'weather'; w: WeatherId }
-  | { a: 'batteryAge'; age: BatteryAge }
-  /** Scenario switches (Phase 4b part 2). */
-  | { a: 'blockHeater'; id: string; on: boolean }
-  | { a: 'failToStart'; p: number }
-  | { a: 'eco'; system: string; on: boolean }
-  /** Air-side scenario switches (Phase 4c part 1). */
-  | { a: 'containment'; mode: ContainmentMode }
-  | { a: 'blanking'; missing: number }
-  | { a: 'tiles'; ratio: number }
-  /** Reset a chiller after a v2 protection trip (Phase 4c part 2). */
-  | { a: 'chillerReset'; id: string }
-  /** Let time pass in one go (used by "skip ahead" and by replays of it). */
-  | { a: 'skip'; s: number };
+export type { Action } from '../actions';
 
 export interface LoggedAction {
   t: number;
@@ -80,6 +60,8 @@ export interface EngineSnapshot {
   air?: AirState;
   /** Hydronic state (Phase 4c part 2). */
   hyd?: HydState;
+  /** Alarm states (Phase 4d). */
+  alarms?: AlarmsState;
 }
 
 export class EngineV2 {
@@ -98,6 +80,8 @@ export class EngineV2 {
   readonly air = new AirsideModel();
   /** Chilled water and condenser loops, pumps, chillers, TES (Phase 4c part 2). */
   readonly hyd = new HydronicModel();
+  /** Alarm system: priorities, delays, deadbands, ack/shelve, first-out, flood (Phase 4d). */
+  readonly alarms = new AlarmSystem();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
@@ -108,6 +92,7 @@ export class EngineV2 {
     this.air.init(this.sim);
     this.hyd.init(this.sim, this.air.reading.coilKw);
     this.feedChw();
+    this.alarms.init(this.sim);
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -172,6 +157,16 @@ export class EngineV2 {
     this.hyd.publish(this.sim);
     this.feedChw();
     this.air.step(this.sim, dt);
+    this.alarms.step(this.alarmCtx);
+  }
+
+  private get alarmCtx() {
+    return { sim: this.sim, air: this.air, hyd: this.hyd, sources: this.sources };
+  }
+
+  /** The alarm list as an operator sees it now. */
+  get alarmSummary(): AlarmSummary {
+    return this.alarms.summary(this.alarmCtx);
   }
 
   /** Air side reads chilled water from v2 hydronics once that output is switched in. */
@@ -216,6 +211,7 @@ export class EngineV2 {
       sources: this.sources.snapshot(),
       air: this.air.snapshot(),
       hyd: this.hyd.snapshot(),
+      alarms: this.alarms.snapshot(),
     };
   }
 
@@ -236,6 +232,7 @@ export class EngineV2 {
       e.hyd.restore(s.hyd);
       e.feedChw();
     }
+    if (s.alarms) e.alarms.restore(s.alarms);
     return e;
   }
 
@@ -265,33 +262,11 @@ export class EngineV2 {
   private dispatch(x: Action): ActionResult {
     const s = this.sim;
     switch (x.a) {
-      case 'open':
-        return s.openBreaker(x.id);
-      case 'close':
-        return s.closeBreaker(x.id);
-      case 'fail':
-        return s.fail(x.id);
       case 'restore': {
         const r = s.restore(x.id);
         if (r.ok && this.hyd.state.chillers[x.id]) this.hyd.reset(x.id);
         return r;
       }
-      case 'maint':
-        return s.setMaintenance(x.id);
-      case 'upsMode':
-        return s.setUpsSystemMode(x.system, x.mode);
-      case 'removeKey':
-        return s.removeKey(x.lock);
-      case 'insertKey':
-        return s.insertKey(x.key, x.lock);
-      case 'genTest':
-        return s.testGenerator(x.id, x.on);
-      case 'epo':
-        return s.emergencyPowerOff();
-      case 'weather':
-        return s.setWeather(x.w);
-      case 'batteryAge':
-        return s.setBatteryAge(x.age);
       case 'blockHeater':
         return this.sources.setHeater(s, x.id, x.on);
       case 'failToStart':
@@ -306,10 +281,20 @@ export class EngineV2 {
         return this.air.setTiles(x.ratio);
       case 'chillerReset':
         return this.hyd.reset(x.id);
+      case 'ack':
+        return this.alarms.ack(x.alarm, s.t);
+      case 'ackAll':
+        return this.alarms.ackAll(s.t);
+      case 'shelve':
+        return this.alarms.shelve(x.alarm, x.s, s.t);
+      case 'unshelve':
+        return this.alarms.unshelve(x.alarm);
       case 'skip':
         if (!(Number.isFinite(x.s) && x.s > 0)) return { ok: false, reason: 'Skip needs a positive time.' };
         for (let left = x.s; left > 1e-9; left -= TICK_S) this.step(Math.min(TICK_S, left));
         return { ok: true };
+      default:
+        return applyToSim(s, x) ?? { ok: false, reason: 'Action not possible.' };
     }
   }
 }

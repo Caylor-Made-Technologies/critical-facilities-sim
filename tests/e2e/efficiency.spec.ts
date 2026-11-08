@@ -27,3 +27,30 @@ test('engine v2: live PUE tile and breakdown add up, with Verify and simplified-
   const axe = await new AxeBuilder({ page }).include('.eff-panel').analyze();
   expect(axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
 });
+
+// Engine v2 only (Phase 4d): alarm list, first-out, acknowledge, time-limited shelving, fault help.
+test('engine v2: a failure raises a first-out alarm that can be acknowledged and shelved', async ({ page, open }) => {
+  test.skip(process.env.E2E_ENGINE !== 'v2', 'the alarm list is behind ?engine=v2');
+  await open('#/sim', { three: false });
+  await expect(page.locator('html')).toHaveAttribute('data-engine', 'v2');
+  const panel = page.locator('.alarm-panel');
+  await expect(panel.getByText('No alarms')).toBeVisible();
+  await page.getByRole('button', { name: /Mechanical/ }).first().click();
+  await page.getByRole('button', { name: /^CRAH-101, / }).first().click();
+  await page.locator('section.comp-card').getByRole('button', { name: 'Fail it' }).click();
+  // Paused: alarms scan once a second, so step one tick (the new time control).
+  await page.getByRole('button', { name: 'Step one second' }).click();
+  const row = panel.locator('.alarm-row', { hasText: 'CRAH-101' });
+  await expect(row).toBeVisible();
+  await expect(row.getByText('First out')).toBeVisible();
+  await expect(row.getByText(/New \(not acknowledged\)/)).toBeVisible();
+  await row.getByRole('button', { name: /Acknowledge CRAH-101/ }).click();
+  await expect(row.getByText('Acknowledged')).toBeVisible();
+  await row.locator('summary').click();
+  await expect(row.getByText(/What to check/)).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include('.alarm-panel').analyze();
+  expect(axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
+  await row.getByRole('button', { name: /Shelve CRAH-101/ }).click();
+  await expect(panel.locator('.alarm-row', { hasText: 'CRAH-101' })).toHaveCount(0);
+  await expect(panel.getByText(/Shelved \(come back by themselves\): CRAH-101\.FAIL/)).toBeVisible();
+});

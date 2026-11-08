@@ -3,7 +3,8 @@
  * in a ref; a version counter tells React when to re-render.
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { buildPlant, Simulation, type Topology } from '../sim';
+import { buildPlant, Simulation, type ActionResult, type Topology } from '../sim';
+import { applyToSim, type Action } from '../sim/actions';
 import type { EngineV2 } from '../sim/v2/engine';
 
 /**
@@ -79,15 +80,39 @@ export function useSimulation(initial: Topology = '2N') {
     bump();
   }, []);
 
-  /** Run an operator action against the engine and re-render. */
+  /**
+   * Run plant-touching code that is not an operator action (the procedure runner's scoring and story
+   * beats) and re-render. Operator actions use `apply`.
+   */
   const act = useCallback(<R,>(fn: (sim: Simulation) => R): R => {
     const r = fn(simRef.current);
     bump();
     return r;
   }, []);
 
+  /**
+   * Every operator action goes through here as plain data (Phase 4d): on engine v2 it is applied, logged
+   * and replayable through EngineV2.apply; on v1 it is done straight on the plant.
+   */
+  const apply = useCallback((action: Action): ActionResult => {
+    const e = engineRef.current;
+    const r = e ? e.apply(action) : (applyToSim(simRef.current, action) ?? { ok: false as const, reason: 'Needs engine v2.' });
+    bump();
+    return r;
+  }, []);
+
+  /** Advance exactly one second (one engine v2 tick) while paused. */
+  const step = useCallback(() => {
+    const e = engineRef.current;
+    if (e) e.tick();
+    else simRef.current.advance(1);
+    bump();
+  }, []);
+
   return {
     sim: simRef.current,
+    apply,
+    step,
     /** Engine v2 wrapper when ?engine=v2 is on (null on v1 or while v2 loads). */
     engine: engineRef.current,
     version,

@@ -1,6 +1,7 @@
 /** Details card for the selected component: live readings, explainer and actions. */
 import { useState } from 'react';
 import { loadFraction, type ActionResult, type Component, type Lock, type Simulation } from '../../sim';
+import type { Action } from '../../sim/actions';
 import { Figure } from '../figures';
 import { fmtTemp } from '../format';
 import { Icon } from '../icons';
@@ -9,7 +10,7 @@ import type { Units } from '../prefs';
 interface Props {
   sim: Simulation;
   id: string;
-  act: <R>(fn: (s: Simulation) => R) => R;
+  apply: (a: Action) => ActionResult;
   onClose: () => void;
   onOpenGuide: (kind: Component['kind']) => void;
   units: Units;
@@ -26,7 +27,7 @@ function statusChip(n: Component, energized: boolean) {
   return <span className="chip chip-ok">Online</span>;
 }
 
-export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Props) {
+export function ComponentCard({ sim, id, apply, onClose, onOpenGuide, units }: Props) {
   const th = sim.thermal.readout;
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const n = sim.graph.get(id);
@@ -35,8 +36,8 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Pro
   const load = sol.loadKw.get(id) ?? 0;
   const frac = loadFraction(sim.graph, sol, id);
 
-  const run = (fn: (s: Simulation) => ActionResult) => {
-    const r = act(fn);
+  const run = (a: Action) => {
+    const r = apply(a);
     setMsg(r.ok ? { ok: true, text: r.message ?? 'Done.' } : { ok: false, text: r.reason });
   };
 
@@ -170,12 +171,12 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Pro
                 {l.permissive && <> · releases only when {l.permissive.label}</>}
                 <div className="card-actions" style={{ marginTop: 6 }}>
                   {key && (
-                    <button className="btn" type="button" onClick={() => run((s) => s.removeKey(l.id))}>
+                    <button className="btn" type="button" onClick={() => run({ a: 'removeKey', lock: l.id })}>
                       Remove key
                     </button>
                   )}
                   {!key && fits && (
-                    <button className="btn" type="button" onClick={() => run((s) => s.insertKey(fits.id, l.id))}>
+                    <button className="btn" type="button" onClick={() => run({ a: 'insertKey', key: fits.id, lock: l.id })}>
                       Insert key {fits.code}
                     </button>
                   )}
@@ -194,49 +195,49 @@ export function ComponentCard({ sim, id, act, onClose, onOpenGuide, units }: Pro
       <div className="card-actions">
         {n.kind === 'breaker' &&
           (n.state.closed ? (
-            <button className="btn" type="button" onClick={() => run((s) => s.openBreaker(id))}>
+            <button className="btn" type="button" onClick={() => run({ a: 'open', id })}>
               Open breaker
             </button>
           ) : (
-            <button className="btn" type="button" onClick={() => run((s) => s.closeBreaker(id))}>
+            <button className="btn" type="button" onClick={() => run({ a: 'close', id })}>
               Close breaker
             </button>
           ))}
         {upsSystem &&
           (n.state.upsMode === 'static-bypass' ? (
-            <button className="btn" type="button" onClick={() => run((s) => s.setUpsSystemMode(upsSystem, 'auto'))}>
+            <button className="btn" type="button" onClick={() => run({ a: 'upsMode', system: upsSystem, mode: 'auto' })}>
               UPS {upsSystem} back to inverter
             </button>
           ) : (
-            <button className="btn" type="button" onClick={() => run((s) => s.setUpsSystemMode(upsSystem, 'static-bypass'))}>
+            <button className="btn" type="button" onClick={() => run({ a: 'upsMode', system: upsSystem, mode: 'static-bypass' })}>
               UPS {upsSystem} to static bypass
             </button>
           ))}
         {n.kind === 'generator' &&
           (n.state.manualRun ? (
-            <button className="btn" type="button" onClick={() => run((s) => s.testGenerator(id, false))}>
+            <button className="btn" type="button" onClick={() => run({ a: 'genTest', id, on: false })}>
               Stop test run
             </button>
           ) : (
             n.state.genState === 'off' &&
             n.status !== 'failed' &&
             n.status !== 'maintenance' && (
-              <button className="btn" type="button" onClick={() => run((s) => s.testGenerator(id, true))}>
+              <button className="btn" type="button" onClick={() => run({ a: 'genTest', id, on: true })}>
                 Start test run
               </button>
             )
           ))}
         {(n.status === 'online' || n.status === 'standby') && n.kind !== 'rack' && n.domain !== 'life-safety' && (
-          <button className="btn" type="button" onClick={() => run((s) => s.setMaintenance(id))}>
+          <button className="btn" type="button" onClick={() => run({ a: 'maint', id })}>
             Take out of service
           </button>
         )}
         {n.status === 'failed' || n.status === 'maintenance' ? (
-          <button className="btn btn-primary" type="button" onClick={() => run((s) => s.restore(id))}>
+          <button className="btn btn-primary" type="button" onClick={() => run({ a: 'restore', id })}>
             {n.status === 'maintenance' ? 'Return to service' : 'Restore'}
           </button>
         ) : (
-          <button className="btn btn-danger" type="button" onClick={() => run((s) => s.fail(id))}>
+          <button className="btn btn-danger" type="button" onClick={() => run({ a: 'fail', id })}>
             Fail it
           </button>
         )}

@@ -20,6 +20,7 @@ import { OneLine } from './OneLine';
 import { plantIssues, StatusBanner } from './StatusBanner';
 
 const EfficiencyPanel = lazy(() => import('./EfficiencyPanel'));
+const AlarmPanel = lazy(() => import('./AlarmPanel'));
 
 export type SimView = 'electrical' | 'mechanical';
 
@@ -75,7 +76,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
   const activate = (id: string) => {
     if (mode === 'failure') {
       const n = sim.graph.get(id);
-      h.act((s) => (n.status === 'failed' ? s.restore(id) : s.fail(id)));
+      h.apply({ a: n.status === 'failed' ? 'restore' : 'fail', id });
       if (!h.running) h.setRunning(true);
     }
     setSelected(id);
@@ -132,9 +133,14 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
                 </button>
               ))}
             </div>
-            <button className="btn" type="button" onClick={() => h.act((s) => s.advance(10))} aria-label="Skip ahead 10 seconds">
+            <button className="btn" type="button" onClick={() => h.apply({ a: 'skip', s: 10 })} aria-label="Skip ahead 10 seconds">
               <Icon name="skip" /> 10s
             </button>
+            {h.engine && !h.running && (
+              <button className="btn" type="button" onClick={h.step} aria-label="Step one second">
+                1s
+              </button>
+            )}
           </div>
         </div>
         <details className="dock-more" open={wide}>
@@ -163,7 +169,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </label>
             <label className="field">
               Outdoor weather
-              <select value={sim.thermal.state.weather} onChange={(e) => h.act((s) => s.setWeather(e.target.value as WeatherId))}>
+              <select value={sim.thermal.state.weather} onChange={(e) => h.apply({ a: 'weather', w: e.target.value as WeatherId })}>
                 {(Object.keys(WEATHER) as WeatherId[]).map((w) => (
                   <option key={w} value={w}>
                     {WEATHER[w].label}
@@ -173,7 +179,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </label>
             <label className="field">
               UPS battery age
-              <select value={sim.batteryAge} onChange={(e) => h.act((s) => s.setBatteryAge(e.target.value as BatteryAge))}>
+              <select value={sim.batteryAge} onChange={(e) => h.apply({ a: 'batteryAge', age: e.target.value as BatteryAge })}>
                 {(Object.keys(BATTERY_AGES) as BatteryAge[]).map((a) => (
                   <option key={a} value={a}>
                     {BATTERY_AGES[a].label}
@@ -225,6 +231,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
       {h.engine && (
         <Suspense fallback={null}>
           <EfficiencyPanel engine={h.engine} units={units} />
+          <AlarmPanel engine={h.engine} apply={h.apply} />
         </Suspense>
       )}
       <span className="visually-hidden" aria-live="polite">
@@ -265,7 +272,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         </div>
         <aside className="side-panel" aria-label="Details">
           {selected && (
-            <ComponentCard key={selected} sim={sim} id={selected} act={h.act} onClose={() => setSelected(null)} onOpenGuide={onOpenGuide} units={units} />
+            <ComponentCard key={selected} sim={sim} id={selected} apply={h.apply} onClose={() => setSelected(null)} onOpenGuide={onOpenGuide} units={units} />
           )}
           {view === 'mechanical' ? (
             <BmsPanel sim={sim} units={units} />
