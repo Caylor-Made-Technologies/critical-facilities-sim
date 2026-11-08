@@ -304,3 +304,42 @@ the total, total ÷ IT = the tile, axe clean (`tests/e2e/efficiency.spec.ts`, pa
 
 Limits: no lighting, office or generator block-heater loads; no humidifier or reheat energy; a fixed
 condenser pump head; transformer and UPS loss curves are single examples; no altitude correction.
+
+## Engine v2 alarms, faults and time controls (Phase 4d, 2026-11-08)
+
+**Actions.** `src/sim/actions.ts` holds the `Action` type and the one v1 dispatch (`applyToSim`). Every
+operator action in the UI (component card buttons, Failure-mode taps, weather, battery age, Skip 10 s,
+alarm ack/shelve) is sent as an `Action` through `useSimulation().apply`: on v2 that is `EngineV2.apply`
+(logged with its time, replayable); on v1 it is done straight on the plant. Skip on v2 now runs real
+ticks (before, it advanced only the v1 plant). The procedure runner's scripted story beats still run
+through `act` (they are content, not operator actions).
+
+**Time controls.** Run/Pause, 1× / 10× / 60×, Skip 10 s, and (v2, paused) Step 1 s = one tick.
+
+**Alarm system** (`src/sim/v2/alarms.ts`, `engine.alarms`, `engine.alarmSummary`; setpoints in
+`physics.ts` `ALARM`). Named after the alarm-management ideas in ISA-18.2; no text from the standard.
+- ~75 alarms built from the plant: utility loss, UPS on battery / low battery / static bypass, generator
+  failed / fuel low, breaker tripped, chiller tripped, CHW supply high, CHW flow low, tank discharging /
+  low, condenser water high, equipment failed (pumps, towers, CRAHs, CDUs, DOAS, CRAC), rack inlet above
+  recommended / above allowable, IT racks down, containment door open, hall humidity, UPS room hot, GPU throttling.
+- Priority critical / high / medium / low; analog setpoint + deadband; on-delay and off-delay.
+- States normal → unacknowledged → acknowledged → normal, or → returned to normal unacknowledged.
+- Shelving is time-limited (max 8 h; the UI shelves for 30 min) and comes back by itself.
+- Suppressed by design while the equipment is in maintenance.
+- First-out per group (electrical / cooling / hall): the first alarm while the group was quiet.
+- Chattering: 3+ activations in 60 s. Flood: more than 10 new alarms in 10 min.
+- No standing alarms in normal operation (2N, N, block; mild and winter), tested.
+- State in `EngineSnapshot.alarms`; snapshot/restore/replay identical (tested). Tick with alarms ~0.4 ms.
+
+**Fault-symptom library** (`src/content/faults.ts`, 15 faults): causes, alarms (ids or `*` patterns),
+trend signature, correct response, nuisance lesson where useful, and an `inject` recipe. Tests: every
+listed alarm exists; every alarm's fault link exists; injecting each fault brings in its alarms within
+its stated time. The alarm list shows each alarm's "What to check" from the library.
+
+**UI (behind `?engine=v2`):** lazy `AlarmPanel` under the KPI tiles: priority chip, first-out and
+chattering badges, value, state and age, Acknowledge / Shelve 30 min / Acknowledge all, flood banner,
+shelved and suppressed lists, and the site-alarm-philosophy-first note. e2e: fail CRAH-101, step 1 s,
+first-out alarm, acknowledge, fault help, axe clean, shelve (in `e2e:v2`).
+
+Limits: alarms are evaluated once per tick (1 s); no alarm rationalization records, no audible
+annunciation, no operator-specific alarm rates; one operator console.
