@@ -930,3 +930,136 @@ export function airPaths(mode: ContainmentMode, blankingMissing: number, tileRat
     bypass: Math.min(a.maxBypass, base.bypass + a.tileBypassPerExcess * Math.max(0, tiles - 1)),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Thermal v2, hydronic (engine v2, Phase 4c part 2): chilled water and condenser loops, VFD pumps on a
+// system curve, chiller lift and part-load, stratified chilled-water storage. Simplified teaching values.
+// ---------------------------------------------------------------------------
+
+export const HYD = {
+  /** Water density (kg/m³) and gravity (m/s²). */
+  waterDensity: 998,
+  gravity: 9.81,
+  /** Chilled water design ΔT (K) and supply setpoint (°C): same as PHYSICS.chwDeltaTC / chwSupplyC. */
+  chwDeltaTK: 8,
+  chwSetpointC: 18,
+  /** One CHW pump at design: flow (kg/s, carries 1,400 kWt at 8 K ≈ 660 gpm) and head (kPa ≈ 84 ft). */
+  pumpDesignKgS: 41.8,
+  pumpDesignHeadKpa: 250,
+  /** Shutoff head as a multiple of design head (pump curve shape). */
+  pumpShutoffRatio: 1.25,
+  /** Pump + motor + VFD efficiency (wire to water). */
+  pumpEff: 0.75,
+  pumpMinSpeed: 0.3,
+  /** Differential pressure setpoint held at the remote coil (kPa ≈ 15 psi). */
+  dpSetpointKpa: 100,
+  /** Thermal mass of the CHW supply and return sides (kJ/K): together PHYSICS.chwLoopMassKjPerC. */
+  chwSupplyMassKjPerK: 85_000,
+  chwReturnMassKjPerK: 85_000,
+  /** Condenser water loop: mass (kJ/K), flow per running pump (kg/s, 1,800 kWt over 5.5 K), heat of compression share. */
+  cwMassKjPerK: 40_000,
+  cwPumpKgS: 78.2,
+  heatOfCompression: 1.17,
+  /** Water-cooled chiller design lift: condenser leaving − CHW supply (K), and capacity change per K of extra lift. */
+  designLiftK: 17,
+  capPerLiftK: 0.012,
+  capFactorRange: [0.7, 1.1] as const,
+  /** Smallest lift a chiller runs at (K): head pressure control keeps the condenser this far above CHW. */
+  minLiftK: 10,
+  /** Lowest tower leaving water (°C): fans cycle and bypass valves open to keep it from freezing. */
+  towerMinLeavingC: 5,
+  /** Part-load power curve: kW fraction = a + b·PLR + c·PLR² (1 at full load). DOE-2-style example. */
+  plr: [0.17, 0.32, 0.51] as const,
+  /** Evaporator minimum flow (fraction of one chiller's design flow) and how long it may sit below it. */
+  minFlowFrac: 0.4,
+  minFlowDelayS: 10,
+  /** Anti-short-cycle: minimum time between normal starts, and minimum run time before staging off (s). */
+  startToStartS: 600,
+  minRunS: 600,
+  /** Stratified tank: below this charge the thermocline reaches the outlet and supply warms. */
+  thermoclineFrac: 0.1,
+  /** Most the tank's piping can discharge (kWt). */
+  tesMaxDischargeKw: 2500,
+} as const;
+
+/**
+ * Pump head at flow q and speed N (affinity-scaled quadratic curve): H = H0·N² − a·q²,
+ * H0 = shutoff head, a = (H0 − H_design) / q_design². Units kPa, kg/s.
+ * Example (design pump): H0 = 312.5, a = 62.5/41.8² = 0.03577; at N 1, q 41.8 → 250 kPa; at N 0.8, q 20 → 200 − 14.31 = 185.7 kPa.
+ */
+export function pumpHeadKpa(qKgS: number, speed: number, h: typeof HYD = HYD): number {
+  const h0 = h.pumpDesignHeadKpa * h.pumpShutoffRatio;
+  const a = (h0 - h.pumpDesignHeadKpa) / h.pumpDesignKgS ** 2;
+  return h0 * speed * speed - a * qKgS * qKgS;
+}
+
+/**
+ * System curve with a DP setpoint at the remote coil: H = DPsp + k·Q², k fixed by the design point
+ * (two pumps' design flow at design head). Example: k = 150 / 83.6² = 0.02146; Q 50 kg/s → 100 + 53.66 = 153.7 kPa.
+ */
+export function systemHeadKpa(qTotalKgS: number, h: typeof HYD = HYD): number {
+  const k = (h.pumpDesignHeadKpa - h.dpSetpointKpa) / (2 * h.pumpDesignKgS) ** 2;
+  return h.dpSetpointKpa + k * qTotalKgS * qTotalKgS;
+}
+
+/**
+ * Speed n pumps in parallel need to deliver qTotal against the system curve (clamped to min speed),
+ * or, if full speed isn't enough, the flow they reach at full speed.
+ * Solves H0·N² − a·(Q/n)² = DPsp + k·Q². Example: 2 pumps, 50 kg/s → N = √((153.66 + 0.03577·625)/312.5) = 0.7505.
+ */
+export function pumpOperatingPoint(qTotalKgS: number, n: number, h: typeof HYD = HYD): { speed: number; flowKgS: number; headKpa: number } {
+  if (n <= 0 || !(qTotalKgS > 0)) return { speed: 0, flowKgS: 0, headKpa: 0 };
+  const h0 = h.pumpDesignHeadKpa * h.pumpShutoffRatio;
+  const a = (h0 - h.pumpDesignHeadKpa) / h.pumpDesignKgS ** 2;
+  const k = (h.pumpDesignHeadKpa - h.dpSetpointKpa) / (2 * h.pumpDesignKgS) ** 2;
+  const need = Math.sqrt((systemHeadKpa(qTotalKgS, h) + a * (qTotalKgS / n) ** 2) / h0);
+  if (need <= 1) {
+    const speed = Math.max(h.pumpMinSpeed, need);
+    // At min speed the valves throttle: flow stays at demand, head rises along the pump curve.
+    return { speed, flowKgS: qTotalKgS, headKpa: pumpHeadKpa(qTotalKgS / n, speed, h) };
+  }
+  const q = Math.sqrt((h0 - h.dpSetpointKpa) / (a / (n * n) + k));
+  return { speed: 1, flowKgS: q, headKpa: systemHeadKpa(q, h) };
+}
+
+/**
+ * Hydraulic power of a water flow: P = V̇ × ΔP / η, V̇ = ṁ / ρ. Units: m³/s × kPa → kW.
+ * Example: 41.8 kg/s at 250 kPa, η 0.75 → (41.8/998) × 250 / 0.75 = 13.96 kW (≈ 18.7 hp).
+ */
+export function pumpKw(flowKgS: number, headKpa: number, h: typeof HYD = HYD): number {
+  return Math.max(0, ((flowKgS / h.waterDensity) * headKpa) / h.pumpEff);
+}
+
+/**
+ * Water-cooled chiller capacity factor from lift (condenser leaving − CHW supply):
+ * 1 − 0.012 × (lift − 17), clamped 0.7–1.1. Example: lift 22 K → 1 − 0.06 = 0.94.
+ */
+export function chillerLiftFactor(liftK: number, h: typeof HYD = HYD): number {
+  const f = 1 - h.capPerLiftK * (liftK - h.designLiftK);
+  return Math.min(h.capFactorRange[1], Math.max(h.capFactorRange[0], Number.isFinite(f) ? f : 1));
+}
+
+/**
+ * Part-load power fraction: a + b·PLR + c·PLR² (= 1 at full load). Example: PLR 0.5 → 0.17 + 0.16 + 0.1275 = 0.4575,
+ * so half load takes 46% of full-load kW (better kW/ton at part load).
+ */
+export function partLoadPowerFrac(plr: number, h: typeof HYD = HYD): number {
+  const x = Math.min(1, Math.max(0, Number.isFinite(plr) ? plr : 0));
+  const [a, b, c] = h.plr;
+  return a + b * x + c * x * x;
+}
+
+/** kW per ton of cooling: kW ÷ (kWt / 3.517). Example: 250 kW making 1,400 kWt → 0.628 kW/ton. */
+export function kwPerTon(kw: number, kwt: number): number {
+  return kwt > 0 ? kw / (kwt / 3.517) : 0;
+}
+
+/**
+ * Share of a stratified tank's discharge rate still available at charge `soc`:
+ * 1 above the thermocline fraction, falling linearly to 0 as the warm layer reaches the outlet.
+ * Example: soc 0.05 with thermocline 0.1 → 0.5.
+ */
+export function tesDeliverable(soc: number, h: typeof HYD = HYD): number {
+  const s = Number.isFinite(soc) ? Math.max(0, soc) : 0;
+  return s >= h.thermoclineFrac ? 1 : s / h.thermoclineFrac;
+}

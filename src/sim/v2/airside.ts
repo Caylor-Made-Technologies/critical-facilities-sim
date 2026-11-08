@@ -147,6 +147,13 @@ export class AirsideModel {
     this.reading = this.read(sim, f);
   }
 
+  /** Chilled water the coils see: from the v2 hydronic model when it is switched in, else v1 thermal. */
+  chw: { supplyC: number; flowFrac: number } | null = null;
+
+  private chwIn(sim: Simulation): { supplyC: number; flowFrac: number } {
+    return this.chw ?? { supplyC: sim.thermal.state.chwSupplyC, flowFrac: sim.thermal.readout?.chwFlowFraction ?? 1 };
+  }
+
   // --- Inputs from the plant ---------------------------------------------------------------------
 
   /** Heat the air side has to carry: powered, running racks; GPU racks send most heat to liquid. */
@@ -195,8 +202,8 @@ export class AirsideModel {
   private targets(sim: Simulation, f: Flows): { tss: Record<AirNode, number>; coil: number; coilMax: number; supply: number } {
     const T = this.state.temps;
     const cp = AIR.cpKj;
-    const chws = sim.thermal.state.chwSupplyC;
-    const water = sim.thermal.readout?.chwFlowFraction ?? 1;
+    const { supplyC: chws, flowFrac: chwFlow } = this.chwIn(sim);
+    const water = chwFlow;
     const ret = T.room;
     let coil = 0;
     let coilMax = 0;
@@ -244,8 +251,8 @@ export class AirsideModel {
   private coolingSpeed(sim: Simulation): number {
     const n = this.crahsRunning(sim);
     if (n === 0) return 0;
-    const chws = sim.thermal.state.chwSupplyC;
-    const water = Math.min(1, Math.max(0, sim.thermal.readout?.chwFlowFraction ?? 1));
+    const { supplyC: chws, flowFrac: chwFlow } = this.chwIn(sim);
+    const water = Math.min(1, Math.max(0, chwFlow));
     const ret = this.state.temps.room;
     // Fan heat at the present cooling call (from state only, so a restored snapshot gives the same answer).
     const fanKw = n * AIR.crahFanKw * affinity(Math.max(AIR.crahMinSpeed, this.state.coolSpeed)).power;

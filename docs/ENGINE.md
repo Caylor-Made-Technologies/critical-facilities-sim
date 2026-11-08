@@ -220,3 +220,50 @@ puts v1 back (v2 then only records `tripAt` / `clearAt`, used by the canonical p
 Limits: one lumped hall (no per-row or per-rack hot spots, so missing blanking shows up as more coil
 and fan work, not a hot rack); no stratification; no humidity or latent load on the CRAH coil; no
 heat loss to the building; the valve controller is ideal (no PI tuning, no hunting).
+
+## Engine v2 hydronic model (Phase 4c part 2, 2026-11-08)
+
+`src/sim/v2/hydronic.ts` (`HydronicModel`, `engine.hyd`), formulas in `physics.ts` (`HYD`, `pumpHeadKpa`,
+`systemHeadKpa`, `pumpOperatingPoint`, `pumpKw`, `chillerLiftFactor`, `partLoadPowerFrac`, `kwPerTon`,
+`tesDeliverable`; reuses `chillerCop`, `towerLeavingLoadedC`, `economizerFraction`, `relaxExact`). Simplified.
+
+**Nodes:** CHW supply and CHW return (85,000 kJ/K each, together v1's loop mass), condenser water
+(40,000 kJ/K), TES tank (stored kJ). Exact exponential step, `τ = C/(ṁ·cp)`, sub-steps keep `dt/τ ≤ 1`.
+
+**Each tick:**
+1. Load = v2 air-coil duty + CDU and DOAS coil duty (still from v1). Required flow `ṁ = Q / (4.186 × 8 K)`.
+2. CHW pumps (VFD, parallel): pump curve `H = H0·N² − a·q²` (H0 = 1.25 × 250 kPa design), system curve
+   `H = DPsp + k·Q²` (DP setpoint 100 kPa at the remote coil). Speed solves pump = system; holding the DP
+   setpoint sets a speed floor (√(100/312.5) = 57%). Pumps staged by design flow (41.8 kg/s each).
+   Not enough pump → full speed and a flow fraction < 1. Power `V̇·ΔP/η` (η 0.75).
+3. Economizer: v1's wet-bulb rule for now (part 3 adds modes with hysteresis).
+4. Chillers, lead/lag like v1 (call at < 105% of need, stage off when the rest carry 125%), start 120 s,
+   rapid restart 180 s after a stop, plus: **anti-short-cycle** (10 min start-to-start for normal starts),
+   **minimum run** 10 min before staging off, **low evaporator flow trip** (< 40% of design for 10 s; a
+   minimum-flow bypass keeps 110% when the pumps can, so it trips only when they can't), **high head trip**
+   (condenser leaving > 40 °C, from the lagging condenser node). Trips latch until Restore / `chillerReset`.
+   Capacity from lift: `1 − 0.012 × (lift − 17 K)`, clamped 0.7–1.1. Power: full-load kW from `chillerCop`
+   (lift never below 10 K, head pressure control), times part-load curve `0.17 + 0.32·PLR + 0.51·PLR²`.
+5. TES: discharges the shortfall up to 2,500 kW; stratified, so below 10% charge the warm layer reaches
+   the outlet and the deliverable rate falls linearly to 0 (supply warms before the tank reads empty).
+   Recharges at up to 300 kW from spare chiller capacity (v1 rule).
+6. Condenser water: heat of rejection = water-cooled chiller output × 1.17 + economizer; tower leaving from
+   v1's loaded-approach formula, held ≥ 5 °C (fans cycle / bypass in winter).
+
+**What it shows:** mild day 18.0 / 26.0 °C, 2 pumps at 86% (192 kPa, 17 kW), partial economizer 921 kW,
+one chiller at 0.32 kW/ton. 105 °F: two chillers at 0.46 kW/ton. Winter: full economizer, condenser 5 °C.
+All chillers lost: tank carries ~1,270 kW for ~35 min, then supply warms.
+
+**Switched in by default** (`chwSource: 'v2'`): `publish()` writes CHW supply/return, flow fraction, TES,
+chiller modes and timers, condenser and economizer into the v1 readout and `chwSupplyC`/`tesKj` into v1
+state, so screens, CDUs/DOAS (still v1) and procedure checks read v2; the air side's coils use v2 CHW.
+
+**Parity (`hydparity.test.ts`):** in shadow, chiller modes and TES discharge agree on > 99% of ticks
+and TES charge within 5% through 7 of 8 drills. Recorded difference, drill-towers (31% of ticks): v1's
+condenser jumps instantly and trips at once, v2's condenser lags; and v2 keeps a chiller on for its
+minimum run where v1 stages it straight off. All 8 drills score identically with v2 owning chilled water.
+
+**Invariants:** steady heat in = economizer + chillers ±1% (3 weathers); snapshot/replay identical; tick < 4 ms.
+
+Limits: one CHW loop (no primary/secondary split or decoupler), no per-chiller evaporator valves, no
+pump curves per model, tower fan staging not modeled (approach formula), CDU and DOAS loads still v1.

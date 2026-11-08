@@ -23,6 +23,7 @@ import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
 import { AirsideModel, type AirState } from './airside';
 import { ElectricalModel, type ElecState } from './electrical';
+import { HydronicModel, type HydState } from './hydronic';
 import { SourcesModel, type SourcesState } from './sources';
 import { EventQueue, type Scheduled } from './queue';
 import { Rng } from './rng';
@@ -51,6 +52,8 @@ export type Action =
   | { a: 'containment'; mode: ContainmentMode }
   | { a: 'blanking'; missing: number }
   | { a: 'tiles'; ratio: number }
+  /** Reset a chiller after a v2 protection trip (Phase 4c part 2). */
+  | { a: 'chillerReset'; id: string }
   /** Let time pass in one go (used by "skip ahead" and by replays of it). */
   | { a: 'skip'; s: number };
 
@@ -74,6 +77,8 @@ export interface EngineSnapshot {
   sources?: SourcesState;
   /** Air-side thermal state (Phase 4c part 1). */
   air?: AirState;
+  /** Hydronic state (Phase 4c part 2). */
+  hyd?: HydState;
 }
 
 export class EngineV2 {
@@ -90,6 +95,8 @@ export class EngineV2 {
   readonly sources = new SourcesModel();
   /** Data hall air side: aisles, racks, CRAH coils and fans, containment (Phase 4c part 1). */
   readonly air = new AirsideModel();
+  /** Chilled water and condenser loops, pumps, chillers, TES (Phase 4c part 2). */
+  readonly hyd = new HydronicModel();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
@@ -98,6 +105,8 @@ export class EngineV2 {
     this.elec.init(this.sim, this.rng);
     this.sources.init(this.sim);
     this.air.init(this.sim);
+    this.hyd.init(this.sim, this.air.reading.coilKw);
+    this.feedChw();
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -153,7 +162,16 @@ export class EngineV2 {
     this.sim.advance(dt);
     this.elec.step(this.sim, dt);
     this.sources.step(this.sim, this.rng);
+    this.hyd.step(this.sim, this.air.reading.coilKw, dt);
+    this.hyd.publish(this.sim);
+    this.feedChw();
     this.air.step(this.sim, dt);
+  }
+
+  /** Air side reads chilled water from v2 hydronics once that output is switched in. */
+  private feedChw(): void {
+    const r = this.hyd.reading;
+    this.air.chw = this.hyd.state.chwSource === 'v2' && r ? { supplyC: r.chwsC, flowFrac: r.flowFrac } : null;
   }
 
   /** Run whole ticks for `seconds` of sim time (rounded down to whole ticks). */
@@ -191,6 +209,7 @@ export class EngineV2 {
       elec: this.elec.snapshot(),
       sources: this.sources.snapshot(),
       air: this.air.snapshot(),
+      hyd: this.hyd.snapshot(),
     };
   }
 
@@ -206,6 +225,10 @@ export class EngineV2 {
     if (s.air) {
       e.air.restore(s.air);
       e.air.setTripSource(e.sim, s.air.tripSource);
+    }
+    if (s.hyd) {
+      e.hyd.restore(s.hyd);
+      e.feedChw();
     }
     return e;
   }
@@ -242,8 +265,11 @@ export class EngineV2 {
         return s.closeBreaker(x.id);
       case 'fail':
         return s.fail(x.id);
-      case 'restore':
-        return s.restore(x.id);
+      case 'restore': {
+        const r = s.restore(x.id);
+        if (r.ok && this.hyd.state.chillers[x.id]) this.hyd.reset(x.id);
+        return r;
+      }
       case 'maint':
         return s.setMaintenance(x.id);
       case 'upsMode':
@@ -272,6 +298,8 @@ export class EngineV2 {
         return this.air.setBlanking(x.missing);
       case 'tiles':
         return this.air.setTiles(x.ratio);
+      case 'chillerReset':
+        return this.hyd.reset(x.id);
       case 'skip':
         if (!(Number.isFinite(x.s) && x.s > 0)) return { ok: false, reason: 'Skip needs a positive time.' };
         for (let left = x.s; left > 1e-9; left -= TICK_S) this.step(Math.min(TICK_S, left));
