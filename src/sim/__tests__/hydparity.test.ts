@@ -44,10 +44,8 @@ function play(p: P, mode: 'v1' | 'v2', watch?: (e: EngineV2) => void, chw: 'v1' 
     if (st.confirm) run = confirmStep(p, run, sim);
     else if (st.choices) run = choose(p, run, sim, st.choices.findIndex((c) => c.correct));
     else {
-      if (p.id === 'drill-towers' && i === 3) {
-        if (eng) (eng.apply({ a: 'restore', id: 'CH-01' }), eng.apply({ a: 'restore', id: 'CH-02' }));
-        else (sim.restore('CH-01'), sim.restore('CH-02'));
-      }
+      // Restore the way the UI does (straight on the plant, not through EngineV2.apply).
+      if (p.id === 'drill-towers' && i === 3) (sim.restore('CH-01'), sim.restore('CH-02'));
       for (let k = 0; k < 8 && run.step === i; k++) (pass(300), (run = evaluate(p, run, sim)));
     }
   }
@@ -94,6 +92,35 @@ describe('hydronic parity: every drill scores the same with v2 owning chilled wa
       expect(eng!.hyd.state.chwSource).toBe('v2');
       expect(v1.done).toBe(true);
       expect(result).toEqual(v1);
+    });
+  }
+});
+
+/** The browser path: the procedure prepares a v1 plant (weather, settle, setup), then v2 wraps it. */
+function playWrapped(p: P) {
+  const sim = procedureSim(p);
+  const eng = EngineV2.wrap(sim);
+  let run: ProcRun = startRun(p, sim);
+  for (let guard = 0; !run.done && guard < 60; guard++) {
+    const i = run.step;
+    const st = p.steps[i]!;
+    eng.run(45);
+    run = evaluate(p, run, sim);
+    if (run.step !== i) continue;
+    if (st.confirm) run = confirmStep(p, run, sim);
+    else if (st.choices) run = choose(p, run, sim, st.choices.findIndex((c) => c.correct));
+    else {
+      if (p.id === 'drill-towers' && i === 3) (sim.restore('CH-01'), sim.restore('CH-02'));
+      for (let k = 0; k < 8 && run.step === i; k++) (eng.run(300), (run = evaluate(p, run, sim)));
+    }
+  }
+  return { done: run.done, score: run.score, down: sim.itDownRacks().length };
+}
+
+describe('engine v2 parity on the browser path (prepared plant, then EngineV2.wrap)', () => {
+  for (const p of DRILLS) {
+    it(`${p.id}`, { timeout: 120_000 }, () => {
+      expect(playWrapped(p)).toEqual(play(p, 'v1').result);
     });
   }
 });

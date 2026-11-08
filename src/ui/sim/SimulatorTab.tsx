@@ -4,7 +4,7 @@ import { BATTERY_AGES, describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, 
 import { fmtTemp } from '../format';
 import { Icon, type IconName } from '../icons';
 import { PageHead } from '../common';
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Hall3D, Plant3DView } from '../three/Scene3D';
 import { plantModel } from '../three/plantModel';
 import { use3d } from '../view3d';
@@ -18,6 +18,8 @@ import { EventLog } from './EventLog';
 import { MechPlant } from './MechPlant';
 import { OneLine } from './OneLine';
 import { plantIssues, StatusBanner } from './StatusBanner';
+
+const EfficiencyPanel = lazy(() => import('./EfficiencyPanel'));
 
 export type SimView = 'electrical' | 'mechanical';
 
@@ -214,8 +216,17 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         <Kpi icon="reset" label="Generators" value={gensRunning ? `${gensRunning} running` : 'standby'} tone={tone(false, gensRunning > 0)} />
         <Kpi icon="target" label="Rack inlet" value={fmtTemp(th.hallInletC, units, 1)} tone={tone(th.hallInletC > PHYSICS.ashraeRecommendedC[1])} />
         <Kpi icon="change" label="CHW supply" value={fmtTemp(th.chwSupplyC, units, 1)} tone={tone(false, th.chwSupplyC > PHYSICS.chwSupplyC + 1)} />
-        <Kpi icon="scale" label="PUE" value={isFinite(pue) ? pue.toFixed(2) : '—'} tone="ok" />
+        {h.engine ? (
+          <Kpi icon="scale" label="PUE (live)" value={Number.isFinite(h.engine.efficiency.pue) ? h.engine.efficiency.pue.toFixed(2) : '—'} tone="ok" />
+        ) : (
+          <Kpi icon="scale" label="PUE" value={isFinite(pue) ? pue.toFixed(2) : '—'} tone="ok" />
+        )}
       </div>
+      {h.engine && (
+        <Suspense fallback={null}>
+          <EfficiencyPanel engine={h.engine} units={units} />
+        </Suspense>
+      )}
       <span className="visually-hidden" aria-live="polite">
         {issues[0] && issues[0].level !== 'info' ? `Plant status: ${issues[0].text}` : ''}
       </span>

@@ -1063,3 +1063,106 @@ export function tesDeliverable(soc: number, h: typeof HYD = HYD): number {
   const s = Number.isFinite(soc) ? Math.max(0, soc) : 0;
   return s >= h.thermoclineFrac ? 1 : s / h.thermoclineFrac;
 }
+
+// ---------------------------------------------------------------------------
+// Thermal v2, efficiency (engine v2, Phase 4c part 3): economizer modes, psychrometrics, live PUE.
+// Simplified teaching values (see REVIEW-QUEUE). Psychrometric values are marked Verify in the app.
+// ---------------------------------------------------------------------------
+
+export const EFF = {
+  /** Sea-level atmospheric pressure (kPa). */
+  atmKpa: 101.325,
+  /**
+   * Water-side economizer (towers + plate HX) changes mode on wet bulb with a deadband and a minimum
+   * time in a mode, so it doesn't cycle on a day that hovers at a threshold.
+   *   full when the tower + HX can make CHW setpoint: wb ≤ 18 − 4 − 1.5 = 12.5 °C;
+   *   partial while they can still pre-cool the return: wb ≤ 26 − 4 − 1.5 = 20.5 °C.
+   */
+  econFullWbC: 12.5,
+  econPartialWbC: 20.5,
+  econDeadbandK: 1,
+  econMinDwellS: 900,
+  /** Condenser water pump at design (kPa head; flow is HYD.cwPumpKgS) and tower fan at full speed (kW). */
+  cwPumpHeadKpa: 200,
+  towerFanKw: 15,
+  /** Transformer losses: no-load (core) and full-load (winding) as a share of the rating. */
+  txNoLoadFrac: 0.003,
+  txLoadLossFrac: 0.01,
+} as const;
+
+/**
+ * Saturation vapor pressure over water, kPa (Magnus form): 0.61094 × e^(17.625·T / (T + 243.04)).
+ * Example: 20 °C → 0.61094 × e^1.34009 = 2.333 kPa (steam tables: 2.339). Verify: approximation, within ~0.4% from 0 to 50 °C.
+ */
+export function saturationKpa(tC: number): number {
+  return 0.61094 * Math.exp((17.625 * tC) / (tC + 243.04));
+}
+
+/**
+ * Humidity ratio (kg water per kg dry air) from dry bulb and RH: W = 0.622 × pv / (P − pv), pv = RH × psat.
+ * Example: 24 °C, 50% → psat 2.978, pv 1.489 kPa → W = 0.622 × 1.489 / 99.836 = 0.00928. Verify.
+ */
+export function humidityRatio(dryBulbC: number, rhPct: number, pKpa: number = EFF.atmKpa): number {
+  const pv = (Math.min(100, Math.max(0, rhPct)) / 100) * saturationKpa(dryBulbC);
+  return (0.622 * pv) / (pKpa - pv);
+}
+
+/**
+ * Moist-air enthalpy, kJ per kg dry air: h = 1.006·T + W × (2501 + 1.86·T).
+ * Example: 24 °C, W 0.00928 → 24.14 + 0.00928 × 2545.6 = 47.76 kJ/kg. Verify.
+ */
+export function enthalpyKjKg(dryBulbC: number, w: number): number {
+  return AIR.cpKj * dryBulbC + w * (2501 + 1.86 * dryBulbC);
+}
+
+export type EconMode = 'off' | 'partial' | 'full';
+
+/**
+ * Next economizer mode from wet bulb, with deadband and minimum dwell.
+ * Moves one step at a time (off ↔ partial ↔ full), only after `sinceS` ≥ the dwell:
+ *   into a cooler mode when wb is the deadband below its threshold, back out when wb is the deadband above.
+ * Example: in 'partial', wb 11.4 °C (< 12.5 − 1), 20 min in mode → 'full'; wb 12.0 → stays 'partial'.
+ */
+export function econModeNext(prev: EconMode, wbC: number, sinceS: number, e: typeof EFF = EFF): EconMode {
+  if (sinceS < e.econMinDwellS || !Number.isFinite(wbC)) return prev;
+  const d = e.econDeadbandK;
+  if (prev === 'off') return wbC < e.econPartialWbC - d ? 'partial' : 'off';
+  if (prev === 'partial') {
+    if (wbC < e.econFullWbC - d) return 'full';
+    if (wbC > e.econPartialWbC + d) return 'off';
+    return 'partial';
+  }
+  return wbC > e.econFullWbC + d ? 'partial' : 'full';
+}
+
+/** Mode with no history (start-up): straight from the thresholds, no deadband. */
+export function econModeFor(wbC: number, e: typeof EFF = EFF): EconMode {
+  return wbC <= e.econFullWbC ? 'full' : wbC <= e.econPartialWbC ? 'partial' : 'off';
+}
+
+/**
+ * Share of the load the economizer carries in a mode: full → 1; off → 0; partial → how far the tower +
+ * HX water is below CHW return: (return − achievable) / ΔT, using economizerFraction, clamped 0–1.
+ */
+export function econShare(mode: EconMode, wbC: number): number {
+  if (mode === 'off') return 0;
+  if (mode === 'full') return 1;
+  return Math.min(1, Math.max(0, economizerFraction(wbC)));
+}
+
+/**
+ * UPS losses: input − output = output × (1/η − 1). Example: 1,000 kW at 96% → 41.7 kW.
+ */
+export function upsLossKw(outputKw: number, efficiency: number): number {
+  return efficiency > 0 && outputKw > 0 ? outputKw * (1 / efficiency - 1) : 0;
+}
+
+/**
+ * Transformer losses: no-load + load loss × loading². Example: 3,500 kVA at 60% →
+ * 3,500 × (0.003 + 0.01 × 0.36) = 23.1 kW. A de-energized transformer loses nothing.
+ */
+export function transformerLossKw(ratingKva: number, loading: number, energized = true, e: typeof EFF = EFF): number {
+  if (!energized || !(ratingKva > 0)) return 0;
+  const l = Math.max(0, Number.isFinite(loading) ? loading : 0);
+  return ratingKva * (e.txNoLoadFrac + e.txLoadLossFrac * l * l);
+}

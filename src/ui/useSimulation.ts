@@ -29,6 +29,7 @@ export function useSimulation(initial: Topology = '2N') {
       wrapRef.current = (sim) => m.EngineV2.wrap(sim);
       engineRef.current = m.EngineV2.wrap(simRef.current);
       document.documentElement.dataset.engine = 'v2'; // lets tests confirm v2 is driving the clock
+      bump();
     });
   }, []);
   const adopt = (sim: Simulation) => {
@@ -87,6 +88,8 @@ export function useSimulation(initial: Topology = '2N') {
 
   return {
     sim: simRef.current,
+    /** Engine v2 wrapper when ?engine=v2 is on (null on v1 or while v2 loads). */
+    engine: engineRef.current,
     version,
     topology,
     running,

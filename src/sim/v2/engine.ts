@@ -22,6 +22,7 @@ import { buildPlant, type Topology } from '../plant/builder';
 import type { WeatherId } from '../thermal';
 import type { ActionResult } from '../types';
 import { AirsideModel, type AirState } from './airside';
+import { readEfficiency, type EfficiencyReading } from './efficiency';
 import { ElectricalModel, type ElecState } from './electrical';
 import { HydronicModel, type HydState } from './hydronic';
 import { SourcesModel, type SourcesState } from './sources';
@@ -120,6 +121,11 @@ export class EngineV2 {
 
   get topology(): Topology {
     return this.sim.meta.topology;
+  }
+
+  /** Live PUE, its breakdown, economizer mode and psychrometrics (Phase 4c part 3). Read-only. */
+  get efficiency(): EfficiencyReading {
+    return readEfficiency(this.sim, this.air, this.hyd, this.elec, this.sources);
   }
 
   /** Everything done so far, in order (read-only copy). */

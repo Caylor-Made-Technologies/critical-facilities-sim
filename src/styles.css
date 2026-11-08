@@ -6027,3 +6027,10 @@ body.has-follow .toast-region { bottom: 84px; }
     animation: toastIn 0.4s var(--ease);
   }
 }
+
+/* Engine v2 live efficiency panel */
+.eff-panel { margin-top: 0.5rem; }
+.eff-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0.5rem 0; }
+.eff-table th { text-align: left; font-weight: 500; padding: 0.2rem 0.5rem 0.2rem 0; }
+.eff-table td { text-align: right; font-variant-numeric: tabular-nums; padding: 0.2rem 0; }
+.eff-table .eff-total th, .eff-table .eff-total td { font-weight: 700; border-top: 1px solid var(--border); }

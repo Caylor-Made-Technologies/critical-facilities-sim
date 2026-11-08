@@ -20,7 +20,11 @@ import {
   airCooledDerate,
   chillerCop,
   chillerLiftFactor,
-  economizerFraction,
+  EFF,
+  econModeFor,
+  econModeNext,
+  econShare,
+  type EconMode,
   heatFlowKw,
   HYD,
   massFlowForKw,
@@ -62,11 +66,18 @@ export interface HydState {
   chillers: Record<string, HydChiller>;
   /** Where the air side gets its chilled water from. */
   chwSource: 'v1' | 'v2';
+  /** Economizer mode and when it entered it (Phase 4c part 3: hysteresis + minimum dwell). */
+  econMode: EconMode;
+  econSince: number;
 }
 
 export interface HydReading {
   loadKwt: number;
   econKwt: number;
+  econMode: EconMode;
+  wetBulbC: number;
+  cwPumpKw: number;
+  towerFanKw: number;
   chillerKwt: number;
   chillerCapKwt: number;
   tesKwt: number;
@@ -107,6 +118,8 @@ export class HydronicModel {
     tesKj: TES_FULL_KJ,
     chillers: Object.fromEntries(ORDER.map((id) => [id, newChiller()])),
     chwSource: 'v2',
+    econMode: 'off',
+    econSince: 0,
   };
   reading!: HydReading;
   lastMaxDtOverTau = 0;
@@ -174,7 +187,15 @@ export class HydronicModel {
     // Economizer (same wet-bulb rule as v1 until 4c part 3 adds hysteresis).
     const towers = this.okList(sim, 'cooling-tower');
     const cwps = this.okList(sim, 'pump-cw');
-    const econFrac = towers.length && cwps.length ? economizerFraction(wb) : 0;
+    if (!(towers.length && cwps.length)) {
+      if (st.econMode !== 'off') Object.assign(st, { econMode: 'off', econSince: t });
+    } else if (settle) {
+      Object.assign(st, { econMode: econModeFor(wb), econSince: t });
+    } else {
+      const next = econModeNext(st.econMode, wb, t - st.econSince);
+      if (next !== st.econMode) Object.assign(st, { econMode: next, econSince: t });
+    }
+    const econFrac = econShare(st.econMode, wb);
     const coilDuty = load * flowFrac;
     const econ = econFrac * coilDuty;
     const need = Math.max(0, coilDuty - econ);
@@ -188,6 +209,14 @@ export class HydronicModel {
     const canRun = (id: string) => this.avail(sim, id) && chwps.length > 0 && (!isWc(id) || (towers.length > 0 && cwps.length > 0));
     const C = st.chillers;
     for (const id of ORDER) if (!C[id]) C[id] = newChiller();
+    // When v2 owns chilled water its trips mark the chiller failed in the plant, so the operator's Restore
+    // (from any screen, not only EngineV2.apply) is the manual reset.
+    if (st.chwSource === 'v2') {
+      for (const id of ORDER) {
+        const c = C[id]!;
+        if (c.mode === 'tripped' && g.nodes.has(id) && g.get(id).status !== 'failed') Object.assign(c, { mode: 'off', restart: true, tripWhy: undefined });
+      }
+    }
 
     // Stops: lost power, failed, no flow path (rapid restart allowed later).
     for (const id of ORDER) {
@@ -198,26 +227,28 @@ export class HydronicModel {
     const onIds = () => ORDER.filter((id) => C[id]!.mode === 'starting' || C[id]!.mode === 'running');
     const onCap = () => onIds().reduce((s, id) => s + capOf(id), 0);
 
+    // Start-up settle keeps the chillers exactly as the plant has them (no staging, no protection):
+    // it only brings temperatures to steady state.
     // Stage on (lead/lag), honoring anti-short-cycle for normal starts.
-    for (const id of ORDER) {
+    for (const id of settle ? [] : ORDER) {
       if (onCap() >= need * 1.05 || need <= 0) break;
       const c = C[id];
       if (!c || !g.nodes.has(id) || c.mode !== 'off' || !canRun(id)) continue;
-      if (!settle && !c.restart && c.lastStart !== null && t - c.lastStart < HYD.startToStartS) continue;
+      if (!c.restart && c.lastStart !== null && t - c.lastStart < HYD.startToStartS) continue;
       Object.assign(c, {
-        mode: settle ? 'running' : 'starting',
+        mode: 'starting',
         timer: c.restart ? PHYSICS.chillerRestartS : PHYSICS.chillerStartS,
         lastStart: t,
-        runningSince: settle ? t : null,
+        runningSince: null,
         restart: false,
       });
     }
     // Stage off the last one if the rest carry 125% of the need and it has run its minimum time.
     const on = onIds();
     const last = on[on.length - 1];
-    if (last && C[last]!.mode === 'running' && onCap() - capOf(last) >= need * 1.25) {
+    if (!settle && last && C[last]!.mode === 'running' && onCap() - capOf(last) >= need * 1.25) {
       const ran = C[last]!.runningSince === null ? 0 : t - C[last]!.runningSince!;
-      if (settle || ran >= HYD.minRunS) Object.assign(C[last]!, { mode: 'off', timer: 0, runningSince: null });
+      if (ran >= HYD.minRunS) Object.assign(C[last]!, { mode: 'off', timer: 0, runningSince: null });
     }
     for (const id of ORDER) {
       const c = C[id]!;
@@ -234,12 +265,12 @@ export class HydronicModel {
     const pumpMax = chwps.length ? pumpOperatingPoint(1e6, chwps.length).flowKgS : 0;
     const evapFlow = Math.min(pumpMax, Math.max(flow, running.length * HYD.minFlowFrac * HYD.pumpDesignKgS * 1.1));
     const evapPer = running.length ? evapFlow / running.length : 0;
-    for (const id of running) {
+    for (const id of settle ? [] : running) {
       const c = C[id]!;
       c.lowFlowS = evapPer < HYD.minFlowFrac * HYD.pumpDesignKgS ? c.lowFlowS + dt : 0;
-      if (c.lowFlowS > HYD.minFlowDelayS) this.trip(id, 'low evaporator flow');
-      else if (isWc(id) && condLeaving > PHYSICS.chillerHighHeadTripC) this.trip(id, 'high head pressure');
-      else if (!isWc(id) && acCond > PHYSICS.airCooledHighHeadTripC) this.trip(id, 'high head pressure');
+      if (c.lowFlowS > HYD.minFlowDelayS) this.trip(sim, id, 'low evaporator flow');
+      else if (isWc(id) && condLeaving > PHYSICS.chillerHighHeadTripC) this.trip(sim, id, `high head pressure (condenser water ${Math.round((condLeaving * 9) / 5 + 32)} °F)`);
+      else if (!isWc(id) && acCond > PHYSICS.airCooledHighHeadTripC) this.trip(sim, id, `high head pressure (condensing ${Math.round((acCond * 9) / 5 + 32)} °F)`);
     }
     running = ORDER.filter((id) => C[id]!.mode === 'running');
     const cap = running.reduce((s, id) => s + capOf(id), 0);
@@ -260,7 +291,10 @@ export class HydronicModel {
     // Condenser water: heat of rejection from water-cooled chillers + economizer HX.
     const wcOut = cap > 0 ? running.filter(isWc).reduce((s, id) => s + (chillerOut * capOf(id)) / cap, 0) : 0;
     const rejected = wcOut * HYD.heatOfCompression + econ;
-    const cwFlow = Math.min(cwps.length, Math.max(wcOut > 0 || econ > 0 ? 1 : 0, running.filter(isWc).length + (econ > 0 ? 1 : 0))) * HYD.cwPumpKgS;
+    // A CW pump runs for each water-cooled chiller starting or running (it starts with the chiller's start
+    // sequence, so the tower pulls the water down before the compressor loads), plus one for the economizer HX.
+    const wcOn = ORDER.filter((id) => g.nodes.has(id) && isWc(id) && (C[id]!.mode === 'starting' || C[id]!.mode === 'running')).length;
+    const cwFlow = Math.min(cwps.length, wcOn + (econ > 0 ? 1 : 0)) * HYD.cwPumpKgS;
     const towerLoad = towers.length ? rejected / (towers.length * TOWER_KWT) : 0;
     const cwSs = towers.length && cwFlow > 0 ? Math.max(HYD.towerMinLeavingC, towerLeavingLoadedC(wb, towerLoad)) : st.cwC + (cwFlow > 0 ? rejected / heatFlowKw(cwFlow, cp, 1) : 0);
 
@@ -304,6 +338,14 @@ export class HydronicModel {
     this.reading = {
       loadKwt: load,
       econKwt: econ,
+      econMode: st.econMode,
+      wetBulbC: wb,
+      cwPumpKw: (cwFlow / HYD.cwPumpKgS) * pumpKw(HYD.cwPumpKgS, EFF.cwPumpHeadKpa),
+      towerFanKw: (() => {
+        if (!towers.length || cwFlow <= 0 || rejected <= 0) return 0;
+        const n = Math.min(towers.length, Math.ceil(rejected / TOWER_KWT));
+        return n * EFF.towerFanKw * Math.min(1, rejected / (n * TOWER_KWT)) ** 3;
+      })(),
       chillerKwt: chillerOut,
       chillerCapKwt: cap,
       tesKwt: tes,
@@ -313,7 +355,7 @@ export class HydronicModel {
       chwsC: st.chwsC,
       chwrC: st.chwrC,
       cwC: st.cwC,
-      condLeavingC: condLeaving,
+      condLeavingC: wcOut > 0 ? condLeaving : st.cwC,
       flowReqKgS: flowReq,
       flowKgS: flow,
       flowFrac,
@@ -325,8 +367,13 @@ export class HydronicModel {
     };
   }
 
-  private trip(id: string, why: string): void {
+  private trip(sim: Simulation, id: string, why: string): void {
     Object.assign(this.state.chillers[id]!, { mode: 'tripped', timer: 0, runningSince: null, lowFlowS: 0, tripWhy: why });
+    if (this.state.chwSource !== 'v2' || !sim.graph.nodes.has(id)) return;
+    const n = sim.graph.get(id);
+    if (n.status === 'failed') return;
+    n.status = 'failed';
+    sim.log('critical', n.tag, `${n.tag} TRIPPED: ${why}. Needs investigation and a manual reset (Restore).`);
   }
 
   /** Manual reset after a trip (the operator's Restore of that chiller also resets it). */

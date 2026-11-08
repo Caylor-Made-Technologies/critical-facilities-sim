@@ -248,7 +248,14 @@ heat loss to the building; the valve controller is ideal (no PI tuning, no hunti
    the outlet and the deliverable rate falls linearly to 0 (supply warms before the tank reads empty).
    Recharges at up to 300 kW from spare chiller capacity (v1 rule).
 6. Condenser water: heat of rejection = water-cooled chiller output × 1.17 + economizer; tower leaving from
-   v1's loaded-approach formula, held ≥ 5 °C (fans cycle / bypass in winter).
+   v1's loaded-approach formula, held ≥ 5 °C (fans cycle / bypass in winter). A CW pump runs for each
+   water-cooled chiller starting or running (it starts with the chiller's start sequence, so the tower pulls
+   the water down before the compressor loads) plus one for the economizer HX.
+
+**Start-up / wrap:** `init` copies the plant's chiller modes and only settles temperatures (no staging,
+no protection), so wrapping a prepared plant (MOP/drill setups, the browser path) changes nothing.
+Trips when v2 owns chilled water mark the chiller failed in the plant (same alarm text as v1), so the
+operator's Restore from any screen is the reset.
 
 **What it shows:** mild day 18.0 / 26.0 °C, 2 pumps at 86% (192 kPa, 17 kW), partial economizer 921 kW,
 one chiller at 0.32 kW/ton. 105 °F: two chillers at 0.46 kW/ton. Winter: full economizer, condenser 5 °C.
@@ -261,9 +268,39 @@ state, so screens, CDUs/DOAS (still v1) and procedure checks read v2; the air si
 **Parity (`hydparity.test.ts`):** in shadow, chiller modes and TES discharge agree on > 99% of ticks
 and TES charge within 5% through 7 of 8 drills. Recorded difference, drill-towers (31% of ticks): v1's
 condenser jumps instantly and trips at once, v2's condenser lags; and v2 keeps a chiller on for its
-minimum run where v1 stages it straight off. All 8 drills score identically with v2 owning chilled water.
+minimum run where v1 stages it straight off. All 8 drills score identically with v2 owning chilled water, both when v2 builds the plant and on the
+browser path (prepared plant, then `EngineV2.wrap`).
 
 **Invariants:** steady heat in = economizer + chillers ±1% (3 weathers); snapshot/replay identical; tick < 4 ms.
 
 Limits: one CHW loop (no primary/secondary split or decoupler), no per-chiller evaporator valves, no
 pump curves per model, tower fan staging not modeled (approach formula), CDU and DOAS loads still v1.
+
+## Engine v2 efficiency (Phase 4c part 3, 2026-11-08)
+
+`src/sim/v2/efficiency.ts` (`readEfficiency`, `engine.efficiency`), economizer modes in `hydronic.ts`,
+formulas in `physics.ts` (`EFF`, `saturationKpa`, `humidityRatio`, `enthalpyKjKg`, `econModeNext`,
+`econModeFor`, `econShare`, `upsLossKw`, `transformerLossKw`).
+
+**Economizer modes** (water-side: towers + plate HX; this plant has no dry coolers, so wet bulb decides):
+full at wet bulb ≤ 12.5 °C (18 − 4 tower approach − 1.5 HX approach), partial ≤ 20.5 °C (26 − 5.5), off
+above. Changes move one step at a time, need 1 K past the threshold (deadband) and 15 min in the current
+mode (dwell). Losing towers or CW pumps forces off at once. Partial share = (CHW return − (wb + 5.5)) / 8.
+
+**Psychrometrics (Verify in the app):** Magnus saturation pressure (2.333 kPa at 20 °C vs 2.339 in steam
+tables, ~0.4% from 0–50 °C), humidity ratio `W = 0.622·pv/(P − pv)` at sea level, enthalpy
+`h = 1.006·T + W(2501 + 1.86·T)`. Shown for outdoors (weather preset) and the hall (DOAS dew point model).
+
+**Live PUE** = total facility kW ÷ IT kW, total = IT + CRAH fans (air side) + CHW pumps + chillers + CW
+pumps (`V̇·ΔP/η` at 200 kPa) + tower fans (15 kW × load³ per tower running) + CDU/DOAS/CRAC (v1 unit
+power) + UPS losses (`out × (1/η − 1)`, η from the UPS mode) + transformer losses (0.3% no-load + 1% ×
+loading²). Read-only, computed on demand. Values on the 2N plant: winter 1.17, mild 1.24, 105 °F 1.32.
+UPS eco mode lowers it (tested).
+
+**UI (behind `?engine=v2`):** the PUE tile reads "PUE (live)"; a lazy-loaded "how it adds up" panel under
+the tiles lists every part, the total, the economizer mode with wet bulb, and outdoor/hall dew point, RH
+and enthalpy with a Verify chip and a "simplified model, not an energy audit" note. e2e: rows add up to
+the total, total ÷ IT = the tile, axe clean (`tests/e2e/efficiency.spec.ts`, part of `e2e:v2`).
+
+Limits: no lighting, office or generator block-heater loads; no humidifier or reheat energy; a fixed
+condenser pump head; transformer and UPS loss curves are single examples; no altitude correction.
