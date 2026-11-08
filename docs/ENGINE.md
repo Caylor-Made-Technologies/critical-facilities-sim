@@ -200,9 +200,11 @@ return temperature within a minute, inlet trip in ~4 min.
 **New typed actions** (logged, replayable, off by default): `containment` (full / door-open / none),
 `blanking` (share missing 0–1), `tiles` (open-area ratio 0.2–3).
 
-**Shadow and switch.** Default `tripSource: 'v1'`: v1 thermal trips racks; the air model only records
-`tripAt` / `clearAt`. `setTripSource(sim, 'v2')` sets `ThermalPlant.hallTripExternal`, so v1 skips its
-hall trip/clear and the air model trips and clears racks with the same messages and thresholds.
+**Who trips racks.** Since 2026-11-08 the default is `tripSource: 'v2'` (owner's OK after the parity
+results below): `ThermalPlant.hallTripExternal` is set, v1 skips its hall trip/clear, and the air model trips
+and clears racks with the same messages and thresholds. It also writes its rack inlet into the v1 readout
+(`hallInletC`), so every screen shows the temperature that decides the trip. `setTripSource(sim, 'v1')`
+puts v1 back (v2 then only records `tripAt` / `clearAt`, used by the canonical parity cases).
 
 **Parity (2026-11-07), `airparity.test.ts`:**
 - Scoring: all 8 drills score the same (score, done, racks down) with v2 owning the trip. The 7 MOPs, the IST
@@ -213,8 +215,7 @@ hall trip/clear and the air model trips and clears racks with the same messages 
 - **Differences (kept on v1):** (1) on total cooling loss v2 trips sooner, ~45% of v1's time (CHW pumps: 251 s vs
   567 s), because supply air jumps to return temperature at once while v1 rises linearly from 24 °C;
   (2) with 3–4 of 8 CRAHs down v2 settles at a higher inlet (coil capacity rises with return air), v1 runs
-  away to a trip (fixed coil capacity, B-020). Both are v2 being closer to a real floor. Trips stay on v1
-  until the owner OKs the switch (one call: `engine.air.setTripSource(sim, 'v2')`, then flip the default).
+  away to a trip (fixed coil capacity, B-020). Both are v2 being closer to a real floor. Switched to v2 on 2026-11-08 (owner's OK).
 
 Limits: one lumped hall (no per-row or per-rack hot spots, so missing blanking shows up as more coil
 and fan work, not a hot rack); no stratification; no humidity or latent load on the CRAH coil; no

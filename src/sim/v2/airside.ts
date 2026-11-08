@@ -14,9 +14,9 @@
  * node relaxes toward its mixed steady state with the exact step T += (Tss − T)(1 − e^(−dt/τ)),
  * τ = C / (ṁ·cp). If any dt/τ > 1 the tick is split into sub-steps so dt/τ ≤ 1 always holds.
  *
- * Shadow mode (default): reads the v1 plant (rack heat, CRAHs running, chilled water supply and
- * flow) and predicts rack-inlet trips next to v1 without changing anything. With `tripSource`
- * set to 'v2' it owns the rack-inlet trip instead of v1 (switched only after the parity test).
+ * Reads the v1 plant (rack heat, CRAHs running, chilled water supply and
+ * flow). Since 2026-11-08 (`tripSource: 'v2'`, owner's OK after the parity test) it owns the rack-inlet
+ * trip and the hall inlet every screen reads; `setTripSource(sim, 'v1')` puts v1 back (shadow).
  * Every formula is in physics.ts.
  */
 import type { Simulation } from '../engine';
@@ -114,7 +114,7 @@ export class AirsideModel {
     tripped: false,
     tripAt: null,
     clearAt: null,
-    tripSource: 'v1',
+    tripSource: 'v2',
     coolSpeed: 0,
   };
   reading!: AirReading;
@@ -123,6 +123,7 @@ export class AirsideModel {
   lastMaxDtOverTau = 0;
 
   init(sim: Simulation): void {
+    sim.thermal.hallTripExternal = this.state.tripSource === 'v2';
     this.state.itDesignKgS = massFlowForKw(this.itHeatKw(sim), AIR.cpKj, AIR.itDeltaTK);
     this.settle(sim);
   }
@@ -279,6 +280,7 @@ export class AirsideModel {
     }
     this.reading = this.read(sim, f);
     this.trips(sim);
+    if (this.state.tripSource === 'v2') this.publish(sim);
   }
 
   private read(sim: Simulation, f: Flows): AirReading {
@@ -354,10 +356,18 @@ export class AirsideModel {
     return { ok: true };
   }
 
+  /** When v2 owns trips, the hall inlet every screen reads (v1 readout) is the v2 rack inlet. */
+  private publish(sim: Simulation): void {
+    const inlet = this.state.temps.rackIn;
+    sim.thermal.state.hallInletC = inlet;
+    if (sim.thermal.readout) sim.thermal.readout.hallInletC = inlet;
+  }
+
   /** Who trips racks on high inlet. 'v2' only after the parity test passes (see ENGINE.md). */
   setTripSource(sim: Simulation, src: 'v1' | 'v2'): void {
     this.state.tripSource = src;
     sim.thermal.hallTripExternal = src === 'v2';
+    if (src === 'v2') this.publish(sim);
   }
 
   snapshot(): AirState {

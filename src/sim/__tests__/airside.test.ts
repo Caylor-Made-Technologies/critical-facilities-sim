@@ -184,9 +184,14 @@ describe('air-side model (engine v2)', () => {
     expect(after).toBeLessThan(600);
   });
 
-  it('shadow mode changes nothing on the plant (tripSource v1 is the default)', () => {
+  it('v2 owns rack-inlet trips by default; v1 can be put back (shadow), and the screens read the v2 inlet', () => {
     const a = steady();
-    expect(a.air.state.tripSource).toBe('v1');
+    expect(a.air.state.tripSource).toBe('v2');
+    expect(a.sim.thermal.hallTripExternal).toBe(true);
+    a.apply({ a: 'containment', mode: 'none' });
+    a.run(1800);
+    expect(a.sim.thermal.readout.hallInletC).toBeCloseTo(a.air.state.temps.rackIn, 6);
+    a.air.setTripSource(a.sim, 'v1');
     expect(a.sim.thermal.hallTripExternal).toBe(false);
   });
 

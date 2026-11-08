@@ -23,6 +23,8 @@ describe('engine v2 core', () => {
     v1.restore('UTIL-A');
     v1.advance(620);
     const v2 = new EngineV2('2N');
+    // Clock/queue check against pure v1 physics: v1 keeps the hall inlet (v2 air side in shadow).
+    v2.air.setTripSource(v2.sim, 'v1');
     v2.schedule(30, { a: 'fail', id: 'UTIL-A' });
     v2.schedule(400, { a: 'restore', id: 'UTIL-A' });
     v2.run(1020);

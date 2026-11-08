@@ -58,6 +58,7 @@ describe('air-side parity: every drill scores the same with v2 rack-inlet trips'
 /** Steady 2N plant with a failure applied; returns v1's first inlet trip time and v2's predicted one. */
 function canonical(ids: string[], seconds: number) {
   const e = new EngineV2('2N');
+  e.air.setTripSource(e.sim, 'v1'); // shadow: compare v1's own trip with v2's prediction
   e.run(300);
   const t0 = e.t;
   for (const id of ids) e.apply({ a: 'fail', id });
@@ -66,7 +67,7 @@ function canonical(ids: string[], seconds: number) {
   return { v1: v1 ? v1.t - t0 : null, v2: e.air.state.tripAt === null ? null : e.air.state.tripAt - t0, e };
 }
 
-describe('air-side parity: canonical trip cases (v2 in shadow)', () => {
+describe('air-side parity: canonical trip cases (v1 owns trips, v2 predicts)', () => {
   it('N+2: two of eight CRAHs lost → neither trips', () => {
     const r = canonical(['CRAH-101', 'CRAH-102'], 3600);
     expect(r).toMatchObject({ v1: null, v2: null });
@@ -97,7 +98,7 @@ describe('air-side parity: canonical trip cases (v2 in shadow)', () => {
     expect(inlet).toBeGreaterThan(24.5);
     expect(inlet).toBeLessThan(32);
   });
-  it('v1 still owns trips by default (switch waits for the owner, see ENGINE.md)', () => {
-    expect(new EngineV2('2N').air.state.tripSource).toBe('v1');
+  it('v2 owns trips by default (switched 2026-11-08 with the owner\'s OK, see ENGINE.md)', () => {
+    expect(new EngineV2('2N').air.state.tripSource).toBe('v2');
   });
 });
