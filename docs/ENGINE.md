@@ -1,4 +1,4 @@
-# Simulation engine (v1, plus the v2 core from Phase 4a)
+# Simulation engine (v2 is the default since Phase 4e; v1 kept behind ?engine=v1)
 
 How the current engine works, written in the Phase 3 audit as the starting point for engine v2
 (Phase 4). Everything here lives in `src/sim/`, which has no UI, DOM or three.js imports.
@@ -343,3 +343,31 @@ first-out alarm, acknowledge, fault help, axe clean, shelve (in `e2e:v2`).
 
 Limits: alarms are evaluated once per tick (1 s); no alarm rationalization records, no audible
 annunciation, no operator-specific alarm rates; one operator console.
+
+## Phase 4e: golden scenarios, property tests, v2 by default (2026-11-08)
+
+**Golden scenarios** (`golden.test.ts`, 13): utility loss → generator start → transfer (≈ 2 + 10 + 1 s)
+→ utility back → retransfer after 300 s; generators that won't start (BESS carries, overcrank alarms);
+UPS on battery to end of discharge (runtime within 5% of the estimate at the start, low-battery alarm
+first, 2N keeps IT up); chiller trip with the tank bridging (tank drops Q·t / 2,679,040 kJ); every chiller
+lost (supply holds for 90–100% of tank kJ ÷ shortfall, then warms); CHW pump failover; all CHW pumps lost
+(trip in 2–10 min); containment door left open (fans up, return colder, PUE up, door alarm after 2 min);
+economizer winter → 105 °F (partial at once, off after the 15 min dwell); N+2 CRAHs lose two; towers lost
+on a 105 °F day; UPS eco mode (loss drop = load × (1/0.96 − 1/0.99)); EPO. Hand checks where the math is
+simple; the rest pinned by approved snapshots of rounded readings (alarms as priority:id:state).
+A changed snapshot is a behavior change: review it before `npx vitest -u`.
+
+**Property tests** (`property.test.ts`): 6 seeds × 40 random actions (fail/restore across 20 devices,
+breakers, weather, containment, UPS modes, eco, ack) over ~2 h. Checked every 5 s: no NaN, every value in
+range (temperatures, SOCs, speeds, fractions, kW, PUE 1–5), IT powered ≤ demand, nothing energized
+without a live source, no Kirk key in two locks, alarm list in priority order. Then the plant is put
+back and settles: air and chilled water energy balance ±1%; replay from the log gives the same state.
+
+**Switch.** The app runs engine v2 by default (`useSimulation`: `ENGINE_V2` unless `?engine=v1`).
+`npm run e2e` now runs every browser test on v2; `npm run e2e:v1` plays every MOP, drill, rounds sheet
+and the IST on v1 for comparison. The Simulator tab shows a "simplified training model" note.
+
+**Not done yet (needs the owner's OK):** deleting v1 (`thermal.ts` hall/plant logic duplicated by v2,
+`?engine=v1`, the shadow code paths). v2 still wraps the v1 `Simulation` for the power solver,
+interlocks, generators/ATS timing, CDU/DOAS/UPS-room models and procedure checks, so "deleting v1" means
+removing the duplicated thermal paths and the switch, not the whole file.

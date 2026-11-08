@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "e2e": "npm run build && playwright test --grep-invert @perf && playwright test --grep @perf --workers=1",
-    "e2e:v2": "npm run build && E2E_ENGINE=v2 playwright test playall lifecycle efficiency --grep \"100|IST|rounds|PUE|alarm\" --project=laptop-light --project=phone-dark"
+    "e2e:v2": "npm run build && E2E_ENGINE=v2 playwright test playall lifecycle efficiency --grep \"100|IST|rounds|PUE|alarm\" --project=laptop-light --project=phone-dark",
+    "e2e:v1": "npm run build && E2E_ENGINE=v1 playwright test playall lifecycle --grep \"100|IST|rounds\" --project=laptop-light --project=phone-dark"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

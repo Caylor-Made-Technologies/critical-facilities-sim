@@ -234,6 +234,10 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
           <AlarmPanel engine={h.engine} apply={h.apply} />
         </Suspense>
       )}
+      <p className="dock-note sim-model-note">
+        Simplified training model: realistic example values from a made-up plant, not a design or operations tool. Your site&apos;s procedures and
+        the manufacturer&apos;s data come first.
+      </p>
       <span className="visually-hidden" aria-live="polite">
         {issues[0] && issues[0].level !== 'info' ? `Plant status: ${issues[0].text}` : ''}
       </span>

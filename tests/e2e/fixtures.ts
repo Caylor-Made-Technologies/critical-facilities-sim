@@ -56,8 +56,8 @@ export const test = base.extend<{ problems: string[]; open: (hash: string, opts?
         } as typeof orig;
         window.__glLive = () => made.filter((c) => !c.isContextLost()).length;
       }, [three, quality] as const);
-      // E2E_ENGINE=v2 runs any test on engine v2 (Phase 4 strangler switch).
-      const engine = process.env.E2E_ENGINE === 'v2' ? '&engine=v2' : '';
+      // v2 is the default engine (Phase 4e); E2E_ENGINE=v1 runs any test on the old engine.
+      const engine = process.env.E2E_ENGINE === 'v1' ? '&engine=v1' : '';
       await page.goto(`./?debug3d${opts.still ? '&still' : ''}${engine}${hash}`);
     });
   },

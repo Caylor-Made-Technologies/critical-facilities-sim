@@ -8,10 +8,10 @@ import { applyToSim, type Action } from '../sim/actions';
 import type { EngineV2 } from '../sim/v2/engine';
 
 /**
- * Internal switch for engine v2 (Phase 4, strangler pattern): add ?engine=v2 to the URL.
- * v2 advances the same plant in fixed 1 s ticks, so results no longer depend on frame timing.
+ * Engine v2 is the default since Phase 4e (fixed 1 s ticks, v2 electrical/thermal/hydronic models, alarms).
+ * ?engine=v1 runs the old engine (kept for comparison until it is retired).
  */
-export const ENGINE_V2 = typeof location !== 'undefined' && /[?&]engine=v2\b/.test(location.search);
+export const ENGINE_V2 = !(typeof location !== 'undefined' && /[?&]engine=v1\b/.test(location.search));
 
 /** Target time between screen updates (ms). The engine advances by real elapsed time, so the clock never drifts. */
 const FRAME_MS = 120;
