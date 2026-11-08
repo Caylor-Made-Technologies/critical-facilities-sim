@@ -74,12 +74,14 @@ function checkInvariants(e: EngineV2): void {
 
 describe('property tests: random switching (seeded)', () => {
   for (const seed of [1, 7, 42, 1234, 99999, 2026]) {
-    it(`seed ${seed}: 40 random actions over 2 h, invariants hold (checked every 5 s); plant put back → balance settles ±1%`, { timeout: 120_000 }, () => {
+    it(`seed ${seed}: 40 random actions over 2 h, invariants hold (checked every 5 s); plant put back → balance settles ±1%`, { timeout: 180_000 }, async () => {
       const r = new Rng(seed);
       const e = new EngineV2('2N', seed);
       e.run(300);
       for (let i = 0; i < 40; i++) {
         e.apply(randomAction(r));
+        // Yield to the test runner between actions (long synchronous runs starve its progress messages).
+        await new Promise((res) => setTimeout(res, 0));
         const wait = 30 + Math.floor(r.next() * 150);
         for (let k = 0; k < wait; k++) {
           e.tick();
