@@ -1,0 +1,228 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden scenarios (engine v2) > 1. utility loss → generators start → transfer → utility back → retransfer after 5 min 1`] = `
+{
+  "alarms": [
+    "high:UTIL-A.LOSS:rtn-unack*",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "running",
+    "CH-02": "off",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 31,
+  "econ": "partial",
+  "inletC": 24,
+  "pue": 1.237,
+  "racksDown": 0,
+  "returnAirC": 34.5,
+  "supplyAirC": 23.2,
+  "t": 2730,
+  "tesSoc": 1,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 2. utility loss with generators that will not start: overcrank alarms, the BESS carries side A, IT stays up 1`] = `
+{
+  "alarms": [
+    "critical:GEN-A1.FAIL:unack",
+    "critical:GEN-A2.FAIL:unack",
+    "critical:GEN-A3.FAIL:unack",
+    "high:UTIL-A.LOSS:unack*",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "running",
+    "CH-02": "off",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 31,
+  "econ": "partial",
+  "inletC": 24,
+  "pue": 1.229,
+  "racksDown": 0,
+  "returnAirC": 34.5,
+  "supplyAirC": 23.2,
+  "t": 1920,
+  "tesSoc": 1,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 4. chiller trip, tank bridges the restart: tank drops by Q·t / 2,679,040 kJ while the next chiller loads 1`] = `
+{
+  "alarms": [
+    "high:CH-01.TRIP:unack*",
+    "low:TES.DISCH:rtn-unack",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "off",
+    "CH-02": "running",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 31,
+  "econ": "partial",
+  "inletC": 24,
+  "pue": 1.252,
+  "racksDown": 0,
+  "returnAirC": 34.5,
+  "supplyAirC": 23.2,
+  "t": 1980,
+  "tesSoc": 0.95,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 5. every chiller lost: supply holds until the warm layer reaches the outlet, ≈ 90–100% of 2,679,040 kJ ÷ shortfall 1`] = `
+{
+  "alarms": [
+    "high:ACH-04.TRIP:unack",
+    "high:CH-01.TRIP:unack*",
+    "high:CH-02.TRIP:unack",
+    "high:CH-03.TRIP:unack",
+    "high:TES.LOW:unack",
+    "high:CHW.SUPPLY-HI:unack",
+    "high:GPU-1.THROTTLE:unack",
+    "high:GPU-2.THROTTLE:unack",
+    "high:GPU-3.THROTTLE:unack",
+    "medium:HALL.INLET-HI:unack*",
+    "low:TES.DISCH:rtn-unack",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "off",
+    "CH-02": "off",
+    "CH-03": "off",
+  },
+  "chwrC": 33.1,
+  "chwsC": 27.5,
+  "crahFanKw": 63,
+  "econ": "partial",
+  "inletC": 30.9,
+  "pue": 1.18,
+  "racksDown": 0,
+  "returnAirC": 37.5,
+  "supplyAirC": 30,
+  "t": 5106,
+  "tesSoc": 0,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 7. all chilled water pumps lost: coils stop, supply air reaches return temperature, racks trip within minutes 1`] = `
+{
+  "alarms": [
+    "critical:CHW.FLOW-LO:unack",
+    "critical:HALL.IT-DOWN:unack",
+    "high:GPU-1.THROTTLE:unack*",
+    "high:GPU-2.THROTTLE:unack",
+    "high:GPU-3.THROTTLE:unack",
+    "high:HALL.INLET-HIHI:unack",
+    "medium:CHWP-01.FAIL:unack*",
+    "medium:CHWP-02.FAIL:unack",
+    "medium:CHWP-03.FAIL:unack",
+    "medium:HALL.INLET-HI:unack",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "off",
+    "CH-02": "off",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 64,
+  "econ": "partial",
+  "inletC": 47.1,
+  "pue": NaN,
+  "racksDown": 36,
+  "returnAirC": 47.2,
+  "supplyAirC": 47.2,
+  "t": 2700,
+  "tesSoc": 1,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 8. containment door left open: fans work harder, return air colder, PUE up, low-priority door alarm after 2 min 1`] = `
+{
+  "alarms": [
+    "low:HALL.DOOR:unack*",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "running",
+    "CH-02": "off",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 43,
+  "econ": "partial",
+  "inletC": 24,
+  "pue": 1.243,
+  "racksDown": 0,
+  "returnAirC": 31.6,
+  "supplyAirC": 21.4,
+  "t": 3710,
+  "tesSoc": 1,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 9. economizer switchover: winter → 105 °F goes full → partial at once, off after the 15-minute dwell 1`] = `
+{
+  "alarms": [
+    "low:TES.DISCH:rtn-unack*",
+  ],
+  "chillers": {
+    "ACH-04": "off",
+    "CH-01": "running",
+    "CH-02": "running",
+    "CH-03": "off",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 31,
+  "econ": "off",
+  "inletC": 24,
+  "pue": 1.32,
+  "racksDown": 0,
+  "returnAirC": 34.5,
+  "supplyAirC": 23.2,
+  "t": 4501,
+  "tesSoc": 1,
+}
+`;
+
+exports[`golden scenarios (engine v2) > 11. towers lost on a 105 °F day: water-cooled chillers trip on head pressure, CH-03 + air-cooled carry, IT stays up 1`] = `
+{
+  "alarms": [
+    "high:CH-01.TRIP:unack*",
+    "high:CH-02.TRIP:unack",
+    "medium:CT-01.FAIL:unack",
+    "medium:CT-02.FAIL:unack",
+    "low:TES.DISCH:unack",
+  ],
+  "chillers": {
+    "ACH-04": "running",
+    "CH-01": "off",
+    "CH-02": "off",
+    "CH-03": "running",
+  },
+  "chwrC": 26,
+  "chwsC": 18,
+  "crahFanKw": 31,
+  "econ": "off",
+  "inletC": 24,
+  "pue": 1.366,
+  "racksDown": 0,
+  "returnAirC": 34.5,
+  "supplyAirC": 23.2,
+  "t": 3000,
+  "tesSoc": 0.877,
+}
+`;
