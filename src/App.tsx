@@ -171,7 +171,15 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [guideId, setGuideId] = useState<string | null>(null);
   const [lesson, setLesson] = useState<LessonState | null>(null);
-  const [proc, setProc] = useState<{ p: Procedure; run: ProcRun; started: number; secs?: number } | null>(null);
+  type ProcState = { p: Procedure; run: ProcRun; started: number; secs?: number } | null;
+  const [proc, setProcState] = useState<ProcState>(null);
+  // The latest run, updated synchronously (B-023): a click and the scoring effect can land in the same frame,
+  // and the effect must build on the click's result, not on the run from the render before it.
+  const procRef = useRef<ProcState>(null);
+  const setProc = useCallback((v: ProcState) => {
+    procRef.current = v;
+    setProcState(v);
+  }, []);
   const [procFb, setProcFb] = useState<ProcFeedback | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Life of a Data Center stage to open in Learn (from search).
@@ -260,10 +268,35 @@ export function App() {
       const root = document.documentElement;
       const from = TAB_IDS.indexOf(tabRef.current);
       root.dataset.vt = TAB_IDS.indexOf(t) >= from ? 'fwd' : 'back';
-      const vt = doc.startViewTransition(() => flushSync(swap)) as { finished: Promise<void>; ready?: Promise<void> };
+      const vt = doc.startViewTransition(() => flushSync(swap)) as { finished: Promise<void>; ready?: Promise<void>; skipTransition?: () => void };
       // A transition can be skipped (e.g. a second tap mid-slide); that's fine, the page still swaps.
       vt.ready?.catch(() => {});
-      vt.finished.catch(() => {}).finally(() => delete root.dataset.vt);
+      // B-023: while a slide runs, the browser sends taps to the page root, so a quick tap on the new page was
+      // lost. A tap ends the slide at once, and its click (which also lands on the root) is replayed on the
+      // control under the finger.
+      const onDown = (e: PointerEvent) => {
+        if (e.target !== root) return;
+        vt.skipTransition?.();
+        const replay = (c: MouseEvent) => {
+          document.removeEventListener('click', replay, true);
+          if (c.target !== root) return;
+          const el = document.elementFromPoint(c.clientX, c.clientY)?.closest<HTMLElement>('button, a[href], summary, label, [role="button"], [role="tab"]');
+          if (el) {
+            c.stopPropagation();
+            el.click();
+          }
+        };
+        document.addEventListener('click', replay, true);
+        setTimeout(() => document.removeEventListener('click', replay, true), 1000);
+      };
+      document.addEventListener('pointerdown', onDown, true);
+      vt.finished
+        .catch(() => {})
+        .finally(() => {
+          delete root.dataset.vt;
+          // Leave the listener a moment longer: the tap that skipped the slide may still be finishing.
+          setTimeout(() => document.removeEventListener('pointerdown', onDown, true), 0);
+        });
     } else swap();
     document.getElementById('main')?.focus({ preventScroll: true });
   }, []);
@@ -324,6 +357,7 @@ export function App() {
   };
   // Score and auto-advance on every engine change.
   useEffect(() => {
+    const proc = procRef.current;
     if (!proc || proc.run.done) return;
     const next = evaluate(proc.p, proc.run, h.sim);
     if (next.score === proc.run.score && next.step === proc.run.step && next.eventIdx === proc.run.eventIdx && next.racksDown === proc.run.racksDown) return;
@@ -339,6 +373,7 @@ export function App() {
   }, [h.version]);
   // Save the best score when a run finishes.
   useEffect(() => {
+    const proc = procRef.current;
     if (proc?.run.done) {
       const secs = (Date.now() - proc.started) / 1000;
       setProc({ ...proc, secs });
@@ -348,6 +383,7 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proc?.run.done]);
   const procAct = (fn: (r: ProcRun) => ProcRun, fb?: (before: ProcRun, after: ProcRun) => ProcFeedback | null) => {
+    const proc = procRef.current;
     if (!proc) return;
     const before = proc.run;
     const after = h.act(() => fn(before));

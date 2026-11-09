@@ -46,9 +46,9 @@ interface Props {
 const SPEEDS = [1, 10, 60];
 
 /** One reading in the KPI strip. The value re-mounts when it changes, which plays a short flash. */
-function Kpi({ icon, label, value, tone }: { icon: IconName; label: string; value: string; tone: 'ok' | 'warn' | 'bad' | 'live' }) {
-  return (
-    <div className={`kpi tone-${tone}`} role="listitem">
+function Kpi({ icon, label, value, tone, onClick, hint }: { icon: IconName; label: string; value: string; tone: 'ok' | 'warn' | 'bad' | 'live'; onClick?: () => void; hint?: string }) {
+  const body = (
+    <>
       <span className="kpi-icon">
         <Icon name={icon} />
       </span>
@@ -58,6 +58,17 @@ function Kpi({ icon, label, value, tone }: { icon: IconName; label: string; valu
           {value}
         </div>
       </div>
+    </>
+  );
+  return onClick ? (
+    <div role="listitem" className="kpi-item">
+      <button type="button" className={`kpi kpi-btn tone-${tone}`} onClick={onClick} aria-label={`${label}: ${value}. ${hint ?? ''}`}>
+        {body}
+      </button>
+    </div>
+  ) : (
+    <div className={`kpi tone-${tone}`} role="listitem">
+      {body}
     </div>
   );
 }
@@ -87,7 +98,9 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
 
   // Graphics v2: equipment in alarm (engine v2 alarm list) drives rings and badges on every diagram.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const alarms = useMemo(() => alarmsByEquipment(h.engine?.alarmSummary, (id) => sim.graph.nodes.has(id)), [h.engine, sim, version]);
+  const almSum = useMemo(() => h.engine?.alarmSummary ?? null, [h.engine, sim, version]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const alarms = useMemo(() => alarmsByEquipment(almSum, (id) => sim.graph.nodes.has(id)), [almSum, sim]);
 
   const issues = plantIssues(sim, units);
   const tone = (bad: boolean, warn = false) => (bad ? 'bad' : warn ? 'warn' : 'ok');
@@ -223,6 +236,20 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
 
       <div className="kpis" role="list" aria-label="Plant readings (scrolls sideways on small screens)" tabIndex={0}>
         <Kpi icon="pulse" label="Sim time" value={formatT(sim.t)} tone={h.running ? 'live' : 'ok'} />
+        {almSum && (
+          <Kpi
+            icon="warning"
+            label="Alarms"
+            value={almSum.list.length ? `${almSum.list.length}${almSum.unacked ? ` · ${almSum.unacked} new` : ''}` : 'none'}
+            tone={almSum.list.some((a) => a.priority === 'critical' || a.priority === 'high') ? 'bad' : almSum.list.length ? 'warn' : 'ok'}
+            hint="Go to the alarm list."
+            onClick={() => {
+              const el = document.querySelector<HTMLElement>('.alarm-panel');
+              el?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+              el?.querySelector<HTMLElement>('h3')?.focus();
+            }}
+          />
+        )}
         <Kpi icon="bolt" label="IT powered" value={`${itPct.toFixed(itPct < 100 ? 1 : 0)}%`} tone={tone(itPct < 100)} />
         <Kpi icon="warning" label="Racks down" value={String(racksDown)} tone={tone(racksDown > 0)} />
         <Kpi icon="info" label="UPS battery / bypass" value={`${onBattery} / ${onBypass}`} tone={tone(onBattery > 0, onBypass > 0)} />
@@ -235,12 +262,15 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
           <Kpi icon="scale" label="PUE" value={isFinite(pue) ? pue.toFixed(2) : '—'} tone="ok" />
         )}
       </div>
-      {h.engine && (
-        <Suspense fallback={null}>
+      {/* v2 panels load a moment after the page: hold their space so nothing below jumps (Phase 6b). */}
+      {h.engine ? (
+        <Suspense fallback={<div className="v2-slot v2-slot-top" aria-hidden="true" />}>
           <EfficiencyPanel engine={h.engine} units={units} />
           <TrendPanel engine={h.engine} units={units} />
           <AlarmPanel engine={h.engine} apply={h.apply} />
         </Suspense>
+      ) : (
+        <div className="v2-slot v2-slot-top" aria-hidden="true" />
       )}
       <p className="dock-note sim-model-note">
         Simplified training model: realistic example values from a made-up plant, not a design or operations tool. Your site&apos;s procedures and
@@ -279,10 +309,12 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             <span>Moving dashes = power flowing (faster = more load)</span>
           </div>
           )}
-          {h.engine && (
-            <Suspense fallback={null}>
+          {h.engine ? (
+            <Suspense fallback={<div className="v2-slot v2-slot-air" aria-hidden="true" />}>
               <AirPath engine={h.engine} apply={h.apply} units={units} />
             </Suspense>
+          ) : (
+            <div className="v2-slot v2-slot-air" aria-hidden="true" />
           )}
           <Hall3DCard sim={sim} version={version} selected={selected} onPick={activate} />
           <DataHall sim={sim} selected={selected} onActivate={activate} units={units} />

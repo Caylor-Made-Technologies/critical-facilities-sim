@@ -21,7 +21,7 @@ export default function AlarmPanel({ engine, apply }: { engine: EngineV2; apply:
   return (
     <section className="alarm-panel" aria-labelledby="alarm-h">
       <div className="alarm-head">
-        <h3 id="alarm-h">
+        <h3 id="alarm-h" tabIndex={-1}>
           Alarms <span className="muted">({s.list.length} showing, {s.unacked} new)</span>
         </h3>
         <button className="btn" type="button" disabled={s.unacked === 0} onClick={() => apply({ a: 'ackAll' })}>

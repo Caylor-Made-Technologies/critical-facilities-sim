@@ -2765,11 +2765,11 @@ fieldset.field legend {
 }
 
 .kpis {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
 }
 @media (max-width: 1599px) {
   .kpis {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {
@@ -5302,7 +5302,8 @@ body.has-follow .toast-region { bottom: 84px; }
   /* Chips and cards respond to touch. */
   .chip-btn:active, .tip-chip:active, .quick-tile:active { transform: scale(0.96); }
 }
-@keyframes cascadeIn { from { transform: translateY(14px); opacity: 0; } }
+/* Fade only (B-019): a sliding entrance moved buttons 14 px under a quick tap. */
+@keyframes cascadeIn { from { opacity: 0; } }
 @keyframes hop { 40% { transform: translateY(-4px) scale(1.12); } }
 @keyframes dotPulse { 50% { transform: scale(1.35); } }
 
@@ -6176,3 +6177,26 @@ body.has-follow .toast-region { bottom: 84px; }
   .air-flow.flow { animation: none; }
 }
 .never-title { display: flex; align-items: center; gap: 8px; }
+
+/* Phase 6b: space held for the v2 panels while their code loads (no layout jump), and the Alarms KPI tile. */
+.sim-layout > div { container-type: inline-size; }
+.v2-slot-top { height: 198px; }
+/* Air card = its SVG (720 × 300, scales with the column, at least 600 px wide) + header, controls and note. */
+.v2-slot-air { margin-top: 10px; height: calc(307px + max(600px, 100cqw - 34px) * 0.4167); }
+@media (min-width: 1600px) {
+  .v2-slot-air { height: calc(286px + max(600px, 100cqw - 34px) * 0.4167); }
+}
+@media (max-width: 1199px) {
+  .v2-slot-top { height: 220px; }
+}
+@media (max-width: 600px) {
+  .v2-slot-top { height: 317px; }
+  .v2-slot-air { height: calc(465px + max(600px, 100cqw - 34px) * 0.4167); }
+}
+.kpi-item { display: flex; min-width: 0; }
+.kpi-item > .kpi-btn { flex: 1 1 auto; min-width: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+@media (max-width: 700px) {
+  .kpi-item { flex: 0 0 46%; scroll-snap-align: start; }
+  .kpi-item > .kpi-btn { flex: 1 1 auto; }
+}
+.kpi-btn:focus-visible { outline: 3px solid var(--blue-glow); outline-offset: 2px; }
