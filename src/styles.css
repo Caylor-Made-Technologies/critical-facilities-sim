@@ -6200,3 +6200,6 @@ body.has-follow .toast-region { bottom: 84px; }
   .kpi-item > .kpi-btn { flex: 1 1 auto; }
 }
 .kpi-btn:focus-visible { outline: 3px solid var(--blue-glow); outline-offset: 2px; }
+
+/* Phase 6b nav: one line under each group in the phone More sheet. */
+.sheet-group-desc { margin: -2px 0 6px; font-size: 0.8rem; color: var(--text-muted); }

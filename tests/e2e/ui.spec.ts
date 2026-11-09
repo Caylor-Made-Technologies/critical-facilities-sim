@@ -78,3 +78,40 @@ test('ui v2: nothing below jumps when the v2 panels load', async ({ page, open }
   expect(Math.abs((await top('.sim-layout')) - a0)).toBeLessThan(8);
   expect(Math.abs((await top('.hall')) - b0)).toBeLessThan(12);
 });
+
+// Phase 6b (navigation): every tab within two taps on a phone; old #/ links keep working.
+test('ui v2 nav: every tab is at most two taps from Home on a phone, grouped in the More sheet', async ({ page, open }, info) => {
+  test.skip(!info.project.name.startsWith('phone'), 'phone layout');
+  test.setTimeout(300_000); // visits all 20 tabs
+  const { NAV, BOTTOM, GROUPS } = await import('../../src/ui/nav');
+  await open('#/home', { three: false });
+  const bar = page.locator('.bottombar');
+  for (const n of NAV) {
+    await page.evaluate(() => (location.hash = '#/home'));
+    await expect(page.locator('main')).toHaveAttribute('data-tab', 'home');
+    if (BOTTOM.includes(n.id)) {
+      await bar.locator(`a[href="#/${n.id}"]`).click(); // tap 1
+    } else {
+      await bar.getByRole('button', { name: 'More' }).click(); // tap 1
+      const sheet = page.locator('#more-sheet');
+      await sheet.locator(`a[href="#/${n.id}"]`).click(); // tap 2
+    }
+    await expect(page.locator('main')).toHaveAttribute('data-tab', n.id);
+  }
+  await bar.getByRole('button', { name: 'More' }).click();
+  const labels = await page.locator('#more-sheet .side-group-label').allInnerTexts();
+  expect(labels.map((l) => l.trim().toLowerCase())).toEqual(GROUPS.filter((g) => NAV.some((n) => n.group === g && !BOTTOM.includes(n.id))).map((g) => g.toLowerCase()));
+});
+
+test('ui v2 nav: old #/ links open their tab, unknown ones open Home', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light', 'one project is enough');
+  test.setTimeout(240_000);
+  const { TAB_IDS } = await import('../../src/ui/nav');
+  await open('#/home', { three: false });
+  for (const id of TAB_IDS) {
+    await page.goto(`./#/${id}`);
+    await expect(page.locator('main')).toHaveAttribute('data-tab', id);
+  }
+  await page.goto('./#/no-such-tab');
+  await expect(page.locator('main')).toHaveAttribute('data-tab', 'home');
+});

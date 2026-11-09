@@ -11,7 +11,7 @@ import { LESSONS, simForStep, type Lesson } from './content/lessons';
 import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
-import { BOTTOM, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
+import { BOTTOM, GROUP_DESC, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
 import { TEXT_SIZES, usePrefs } from './ui/prefs';
 import { levelOf, useProgress } from './ui/progress';
 import { SimulatorTab, type SimView } from './ui/sim/SimulatorTab';
@@ -799,6 +799,7 @@ export function App() {
             {GROUPS.filter((g) => NAV.some((n) => n.group === g && !BOTTOM.includes(n.id))).map((g) => (
               <div key={g} className="sheet-group">
                 <div className="side-group-label">{g}</div>
+                <p className="sheet-group-desc">{GROUP_DESC[g]}</p>
                 <div className="sheet-grid">
                   {NAV.filter((n) => n.group === g && !BOTTOM.includes(n.id)).map((n) => (
                     <a
