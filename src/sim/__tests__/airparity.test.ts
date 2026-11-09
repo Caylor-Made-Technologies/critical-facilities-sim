@@ -8,6 +8,8 @@
  */
 import { DRILLS } from '../../content/procedures';
 import { choose, confirmStep, evaluate, procedureSim, startRun, type ProcRun } from '../procedure';
+import { Simulation } from '../engine';
+import { buildPlant } from '../plant/builder';
 import { EngineV2 } from '../v2/engine';
 
 type P = (typeof DRILLS)[number];
@@ -16,7 +18,6 @@ const INLET_TRIP = 'thermal shutdown (inlet';
 /** Same harness as v2engine.test.ts: answer right, 45 s per step while reading, up to 8 × 300 s for a check. */
 function score(p: P, mode: 'v1' | 'v2trips') {
   const eng = mode === 'v1' ? null : new EngineV2(p.topology);
-  if (eng) eng.air.setTripSource(eng.sim, 'v2');
   const sim = eng ? eng.sim : procedureSim(p);
   if (eng) {
     if (p.weather) {
@@ -55,19 +56,22 @@ describe('air-side parity: every drill scores the same with v2 rack-inlet trips'
   }
 });
 
-/** Steady 2N plant with a failure applied; returns v1's first inlet trip time and v2's predicted one. */
+/** The same failure on the bare v1 plant and on engine v2: first inlet trip time on each. */
 function canonical(ids: string[], seconds: number) {
+  const v1 = new Simulation(buildPlant('2N'));
+  v1.advance(300);
+  for (const id of ids) v1.fail(id);
+  v1.advance(seconds);
+  const v1Trip = v1.events.find((x) => x.message.includes(INLET_TRIP));
   const e = new EngineV2('2N');
-  e.air.setTripSource(e.sim, 'v1'); // shadow: compare v1's own trip with v2's prediction
   e.run(300);
   const t0 = e.t;
   for (const id of ids) e.apply({ a: 'fail', id });
   e.run(seconds);
-  const v1 = e.sim.events.find((x) => x.message.includes(INLET_TRIP));
-  return { v1: v1 ? v1.t - t0 : null, v2: e.air.state.tripAt === null ? null : e.air.state.tripAt - t0, e };
+  return { v1: v1Trip ? v1Trip.t - 300 : null, v2: e.air.state.tripAt === null ? null : e.air.state.tripAt - t0, e };
 }
 
-describe('air-side parity: canonical trip cases (v1 owns trips, v2 predicts)', () => {
+describe('air-side parity: canonical trip cases (bare v1 plant vs engine v2)', () => {
   it('N+2: two of eight CRAHs lost → neither trips', () => {
     const r = canonical(['CRAH-101', 'CRAH-102'], 3600);
     expect(r).toMatchObject({ v1: null, v2: null });
@@ -98,7 +102,7 @@ describe('air-side parity: canonical trip cases (v1 owns trips, v2 predicts)', (
     expect(inlet).toBeGreaterThan(24.5);
     expect(inlet).toBeLessThan(32);
   });
-  it('v2 owns trips by default (switched 2026-11-08 with the owner\'s OK, see ENGINE.md)', () => {
-    expect(new EngineV2('2N').air.state.tripSource).toBe('v2');
+  it('engine v2 owns hall trips (switched 2026-11-08; v1 shadow mode retired 2026-11-09)', () => {
+    expect(new EngineV2('2N').sim.thermal.hallTripExternal).toBe(true);
   });
 });

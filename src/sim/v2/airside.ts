@@ -15,8 +15,8 @@
  * τ = C / (ṁ·cp). If any dt/τ > 1 the tick is split into sub-steps so dt/τ ≤ 1 always holds.
  *
  * Reads the v1 plant (rack heat, CRAHs running, chilled water supply and
- * flow). Since 2026-11-08 (`tripSource: 'v2'`, owner's OK after the parity test) it owns the rack-inlet
- * trip and the hall inlet every screen reads; `setTripSource(sim, 'v1')` puts v1 back (shadow).
+ * flow). It owns the rack-inlet trip and the hall inlet every screen reads (switched 2026-11-08 after the
+ * parity test; the v1 shadow mode was retired 2026-11-09).
  * Every formula is in physics.ts.
  */
 import type { Simulation } from '../engine';
@@ -51,13 +51,11 @@ export interface AirState {
   cls: AshraeClass;
   /** Design IT airflow (kg/s), fixed at start: what the tiles were laid out for. */
   itDesignKgS: number;
-  /** Predicted (shadow) or applied (v2) hall trip latch. */
+  /** Hall trip latch (rack inlet above the server shutdown temperature). */
   tripped: boolean;
-  /** Sim time of the last predicted trip / clear (shadow record for the parity test). */
+  /** Sim time of the last trip / clear. */
   tripAt: number | null;
   clearAt: number | null;
-  /** Who trips racks on high inlet: v1 thermal (default) or this model. */
-  tripSource: 'v1' | 'v2';
   /** Fan speed the cooling call asks for (valve wide open → fans ramp up); follows with a lag. */
   coolSpeed: number;
 }
@@ -114,7 +112,6 @@ export class AirsideModel {
     tripped: false,
     tripAt: null,
     clearAt: null,
-    tripSource: 'v2',
     coolSpeed: 0,
   };
   reading!: AirReading;
@@ -123,7 +120,7 @@ export class AirsideModel {
   lastMaxDtOverTau = 0;
 
   init(sim: Simulation): void {
-    sim.thermal.hallTripExternal = this.state.tripSource === 'v2';
+    sim.thermal.hallTripExternal = true;
     this.state.itDesignKgS = massFlowForKw(this.itHeatKw(sim), AIR.cpKj, AIR.itDeltaTK);
     this.settle(sim);
   }
@@ -271,7 +268,7 @@ export class AirsideModel {
   }
 
   step(sim: Simulation, dt: number): void {
-    sim.thermal.hallTripExternal = this.state.tripSource === 'v2';
+    sim.thermal.hallTripExternal = true;
     if (!(dt > 0)) return;
     this.state.coolSpeed = relaxExact(this.state.coolSpeed, this.coolingSpeed(sim), dt, AIR.fanRampTauS);
     const f = this.flows(sim);
@@ -287,7 +284,7 @@ export class AirsideModel {
     }
     this.reading = this.read(sim, f);
     this.trips(sim);
-    if (this.state.tripSource === 'v2') this.publish(sim);
+    this.publish(sim);
   }
 
   private read(sim: Simulation, f: Flows): AirReading {
@@ -316,30 +313,25 @@ export class AirsideModel {
   private trips(sim: Simulation): void {
     const st = this.state;
     const inlet = st.temps.rackIn;
-    const own = st.tripSource === 'v2';
     if (!st.tripped && inlet > PHYSICS.serverShutdownC) {
       st.tripped = true;
       st.tripAt = sim.t;
-      if (own) {
-        sim.thermal.state.hallTripped = true;
-        for (const r of sim.graph.byKind('rack')) {
-          if (!r.state.thermalTrip && sim.solution.energized.has(r.id)) {
-            r.state.thermalTrip = true;
-            sim.log('critical', r.tag, `${r.tag} thermal shutdown (inlet ${Math.round((inlet * 9) / 5 + 32)} °F).`);
-          }
+      sim.thermal.state.hallTripped = true;
+      for (const r of sim.graph.byKind('rack')) {
+        if (!r.state.thermalTrip && sim.solution.energized.has(r.id)) {
+          r.state.thermalTrip = true;
+          sim.log('critical', r.tag, `${r.tag} thermal shutdown (inlet ${Math.round((inlet * 9) / 5 + 32)} °F).`);
         }
       }
     } else if (st.tripped && inlet < PHYSICS.ashraeRecommendedC[1]) {
       st.tripped = false;
       st.clearAt = sim.t;
-      if (own) {
-        sim.thermal.state.hallTripped = false;
-        const gpuTripped = (rackNum: number) => sim.thermal.state.gpu[Math.ceil(rackNum / 4)]?.tripped;
-        for (const r of sim.graph.byKind('rack')) {
-          if (r.state.thermalTrip && !(r.highDensity && gpuTripped(Number(r.id.slice(2))))) r.state.thermalTrip = false;
-        }
-        sim.log('info', 'BMS', 'Hall inlet temperatures back in range. Air-cooled IT can be restarted.');
+      sim.thermal.state.hallTripped = false;
+      const gpuTripped = (rackNum: number) => sim.thermal.state.gpu[Math.ceil(rackNum / 4)]?.tripped;
+      for (const r of sim.graph.byKind('rack')) {
+        if (r.state.thermalTrip && !(r.highDensity && gpuTripped(Number(r.id.slice(2))))) r.state.thermalTrip = false;
       }
+      sim.log('info', 'BMS', 'Hall inlet temperatures back in range. Air-cooled IT can be restarted.');
     }
   }
 
@@ -368,13 +360,6 @@ export class AirsideModel {
     const inlet = this.state.temps.rackIn;
     sim.thermal.state.hallInletC = inlet;
     if (sim.thermal.readout) sim.thermal.readout.hallInletC = inlet;
-  }
-
-  /** Who trips racks on high inlet. 'v2' only after the parity test passes (see ENGINE.md). */
-  setTripSource(sim: Simulation, src: 'v1' | 'v2'): void {
-    this.state.tripSource = src;
-    sim.thermal.hallTripExternal = src === 'v2';
-    if (src === 'v2') this.publish(sim);
   }
 
   snapshot(): AirState {

@@ -1,11 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures';
 
-declare const process: { env: Record<string, string | undefined> };
-
 // Engine v2 only (Phase 4c part 3): live PUE tile and the "how it adds up" panel.
 test('engine v2: live PUE tile and breakdown add up, with Verify and simplified-model notes', async ({ page, open }) => {
-  test.skip(process.env.E2E_ENGINE === 'v1', 'the live PUE readout is engine v2 only');
   await open('#/sim', { three: false });
   await expect(page.locator('html')).toHaveAttribute('data-engine', 'v2');
   const tile = page.locator('.kpi', { hasText: 'PUE (live)' });
@@ -30,7 +27,6 @@ test('engine v2: live PUE tile and breakdown add up, with Verify and simplified-
 
 // Engine v2 only (Phase 4d): alarm list, first-out, acknowledge, time-limited shelving, fault help.
 test('engine v2: a failure raises a first-out alarm that can be acknowledged and shelved', async ({ page, open }) => {
-  test.skip(process.env.E2E_ENGINE === 'v1', 'the alarm list is engine v2 only');
   await open('#/sim', { three: false });
   await expect(page.locator('html')).toHaveAttribute('data-engine', 'v2');
   const panel = page.locator('.alarm-panel');

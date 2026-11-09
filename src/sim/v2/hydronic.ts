@@ -11,8 +11,8 @@
  * high head trip) with capacity from lift → TES discharge or recharge → node temperatures.
  *
  * Reads the v1 plant for what's available (status + power), the weather, and the liquid/DOAS share
- * of the load; reads the v2 air side's coil duty. It runs in shadow: chiller modes and TES in v1 still
- * drive scoring, and the air side reads CHW from here only when `chwSource` is 'v2' (parity switch).
+ * of the load; reads the v2 air side's coil duty. It owns chilled water (since the 2026-11-08 parity
+ * switch) and publishes its loop, tank and chiller modes into the v1 readout that screens and checks read.
  * Every formula is in physics.ts.
  */
 import type { Simulation } from '../engine';
@@ -64,8 +64,6 @@ export interface HydState {
   /** Stored cooling (kJ) and the full-tank value. */
   tesKj: number;
   chillers: Record<string, HydChiller>;
-  /** Where the air side gets its chilled water from. */
-  chwSource: 'v1' | 'v2';
   /** Economizer mode and when it entered it (Phase 4c part 3: hysteresis + minimum dwell). */
   econMode: EconMode;
   econSince: number;
@@ -117,7 +115,6 @@ export class HydronicModel {
     cwC: 25,
     tesKj: TES_FULL_KJ,
     chillers: Object.fromEntries(ORDER.map((id) => [id, newChiller()])),
-    chwSource: 'v2',
     econMode: 'off',
     econSince: 0,
   };
@@ -211,7 +208,7 @@ export class HydronicModel {
     for (const id of ORDER) if (!C[id]) C[id] = newChiller();
     // When v2 owns chilled water its trips mark the chiller failed in the plant, so the operator's Restore
     // (from any screen, not only EngineV2.apply) is the manual reset.
-    if (st.chwSource === 'v2') {
+    {
       for (const id of ORDER) {
         const c = C[id]!;
         if (c.mode === 'tripped' && g.nodes.has(id) && g.get(id).status !== 'failed') Object.assign(c, { mode: 'off', restart: true, tripWhy: undefined });
@@ -369,7 +366,7 @@ export class HydronicModel {
 
   private trip(sim: Simulation, id: string, why: string): void {
     Object.assign(this.state.chillers[id]!, { mode: 'tripped', timer: 0, runningSince: null, lowFlowS: 0, tripWhy: why });
-    if (this.state.chwSource !== 'v2' || !sim.graph.nodes.has(id)) return;
+    if (!sim.graph.nodes.has(id)) return;
     const n = sim.graph.get(id);
     if (n.status === 'failed') return;
     n.status = 'failed';
@@ -384,17 +381,13 @@ export class HydronicModel {
     return { ok: true };
   }
 
-  setChwSource(src: 'v1' | 'v2'): void {
-    this.state.chwSource = src;
-  }
-
   /**
    * When v2 owns chilled water: write its loop temperatures, flow, TES and chiller modes into the v1
    * state and readout, so every screen, the CDUs/DOAS (which still run on v1) and procedure checks
    * read the v2 plant.
    */
   publish(sim: Simulation): void {
-    if (this.state.chwSource !== 'v2' || !this.reading) return;
+    if (!this.reading) return;
     const r = this.reading;
     const v1 = sim.thermal.state;
     v1.chwSupplyC = r.chwsC;

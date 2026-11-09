@@ -172,7 +172,7 @@ export class EngineV2 {
   /** Air side reads chilled water from v2 hydronics once that output is switched in. */
   private feedChw(): void {
     const r = this.hyd.reading;
-    this.air.chw = this.hyd.state.chwSource === 'v2' && r ? { supplyC: r.chwsC, flowFrac: r.flowFrac } : null;
+    this.air.chw = r ? { supplyC: r.chwsC, flowFrac: r.flowFrac } : null;
   }
 
   /** Run whole ticks for `seconds` of sim time (rounded down to whole ticks). */
@@ -226,7 +226,6 @@ export class EngineV2 {
     if (s.sources) e.sources.restore(s.sources);
     if (s.air) {
       e.air.restore(s.air);
-      e.air.setTripSource(e.sim, s.air.tripSource);
     }
     if (s.hyd) {
       e.hyd.restore(s.hyd);

@@ -45,17 +45,27 @@ export interface Consequence {
   seconds: number;
 }
 
-export function previewConsequence(sim: Simulation, c: ProcChoice): Consequence | null {
+/** A copy of the plant to try a wrong answer on: the bare plant, or an engine v2 copy (what the app runs). */
+export interface PlantCopy {
+  sim: Simulation;
+  advance(seconds: number): void;
+}
+
+export function previewConsequence(sim: Simulation, c: ProcChoice, makeCopy?: () => PlantCopy): Consequence | null {
   if (!c.consequence) return null;
   // Count from the live plant: making the copy can itself settle a pending trip.
   const from = sim.events.length;
   const racksBefore = sim.itDownRacks().length;
-  const copy = sim.clone();
+  const plant: PlantCopy = makeCopy ? makeCopy() : (() => {
+    const bare = sim.clone();
+    return { sim: bare, advance: (s: number) => bare.advance(s) };
+  })();
+  const copy = plant.sim;
   const r = c.consequence(copy);
   const seconds = c.consequenceS ?? 90;
   let maxInletC = copy.thermal.readout.hallInletC;
   for (let t = 0; t < seconds; t += 10) {
-    copy.advance(Math.min(10, seconds - t));
+    plant.advance(Math.min(10, seconds - t));
     maxInletC = Math.max(maxInletC, copy.thermal.readout.hallInletC);
   }
   const rank = { critical: 0, alarm: 1, warning: 2, info: 3 } as const;

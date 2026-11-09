@@ -4,14 +4,13 @@
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { buildPlant, Simulation, type ActionResult, type Topology } from '../sim';
-import { applyToSim, type Action } from '../sim/actions';
+import type { Action } from '../sim/actions';
 import type { EngineV2 } from '../sim/v2/engine';
 
 /**
- * Engine v2 is the default since Phase 4e (fixed 1 s ticks, v2 electrical/thermal/hydronic models, alarms).
- * ?engine=v1 runs the old engine (kept for comparison until it is retired).
+ * The app runs engine v2 (fixed 1 s ticks, v2 electrical/thermal/hydronic models, alarms). Its code is a
+ * lazy chunk, so the clock waits the moment it takes to load; the v1 engine option was retired 2026-11-09.
  */
-export const ENGINE_V2 = !(typeof location !== 'undefined' && /[?&]engine=v1\b/.test(location.search));
 
 /** Target time between screen updates (ms). The engine advances by real elapsed time, so the clock never drifts. */
 const FRAME_MS = 120;
@@ -25,7 +24,6 @@ export function useSimulation(initial: Topology = '2N') {
   const engineRef = useRef<EngineV2 | null>(null);
   const wrapRef = useRef<((sim: Simulation) => EngineV2) | null>(null);
   useEffect(() => {
-    if (!ENGINE_V2) return;
     void import('../sim/v2/engine').then((m) => {
       wrapRef.current = (sim) => m.EngineV2.wrap(sim);
       engineRef.current = m.EngineV2.wrap(simRef.current);
@@ -53,8 +51,8 @@ export function useSimulation(initial: Topology = '2N') {
       last = now;
       acc += gap;
       if (acc >= FRAME_MS) {
-        if (engineRef.current) engineRef.current.advanceReal(acc / 1000, speed);
-        else simRef.current.advance((acc / 1000) * speed);
+        // Until the engine chunk has loaded (a moment after start) the clock simply waits.
+        engineRef.current?.advanceReal(acc / 1000, speed);
         acc = 0;
         bump();
       }
@@ -92,11 +90,11 @@ export function useSimulation(initial: Topology = '2N') {
 
   /**
    * Every operator action goes through here as plain data (Phase 4d): on engine v2 it is applied, logged
-   * and replayable through EngineV2.apply; on v1 it is done straight on the plant.
+   * and replayable through EngineV2.apply.
    */
   const apply = useCallback((action: Action): ActionResult => {
     const e = engineRef.current;
-    const r = e ? e.apply(action) : (applyToSim(simRef.current, action) ?? { ok: false as const, reason: 'Needs engine v2.' });
+    const r: ActionResult = e ? e.apply(action) : { ok: false, reason: 'The simulator is still starting. Try again in a moment.' };
     bump();
     return r;
   }, []);
@@ -104,8 +102,7 @@ export function useSimulation(initial: Topology = '2N') {
   /** Advance exactly one second (one engine v2 tick) while paused. */
   const step = useCallback(() => {
     const e = engineRef.current;
-    if (e) e.tick();
-    else simRef.current.advance(1);
+    e?.tick();
     bump();
   }, []);
 

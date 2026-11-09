@@ -1,6 +1,8 @@
 /**
- * Phase 4c part 2 parity: v2 hydronics vs. v1 thermal on the scoring-relevant outputs
- * (chiller modes, TES discharge), then scoring with v2 owning chilled water.
+ * Phase 4c part 2 parity: every drill scores the same on the bare v1 plant and on engine v2 (which owns
+ * chilled water), both when v2 builds the plant and on the browser path. The tick-by-tick shadow
+ * comparison that gated the switch (modes/TES agreed > 99% on 7 of 8 drills) was retired with the v1
+ * shadow mode on 2026-11-09; its results are in docs/ENGINE.md.
  */
 import { DRILLS } from '../../content/procedures';
 import { choose, confirmStep, evaluate, procedureSim, startRun, type ProcRun } from '../procedure';
@@ -8,17 +10,9 @@ import { EngineV2 } from '../v2/engine';
 
 type P = (typeof DRILLS)[number];
 
-interface Agreement {
-  ticks: number;
-  modeMiss: number;
-  dischargeMiss: number;
-  maxSocDiff: number;
-}
-
 /** Drill harness (same as v2engine/airparity); `watch` runs after every tick when given. */
-function play(p: P, mode: 'v1' | 'v2', watch?: (e: EngineV2) => void, chw: 'v1' | 'v2' = 'v2') {
+function play(p: P, mode: 'v1' | 'v2', watch?: (e: EngineV2) => void) {
   const eng = mode === 'v1' ? null : new EngineV2(p.topology);
-  eng?.hyd.setChwSource(chw);
   const sim = eng ? eng.sim : procedureSim(p);
   if (eng) {
     if (p.weather) {
@@ -52,44 +46,11 @@ function play(p: P, mode: 'v1' | 'v2', watch?: (e: EngineV2) => void, chw: 'v1' 
   return { eng, result: { done: run.done, score: run.score, down: sim.itDownRacks().length } };
 }
 
-/** Shadow run: v1 owns chilled water; count ticks where v2 disagrees. */
-function shadow(p: P): Agreement {
-  const a: Agreement = { ticks: 0, modeMiss: 0, dischargeMiss: 0, maxSocDiff: 0 };
-  play(p, 'v2', (e) => {
-    const v1 = e.sim.thermal.readout;
-    const h = e.hyd.reading;
-    a.ticks++;
-    const mismatch = Object.entries(h.chillers).some(([id, c]) => (c.mode === 'tripped' ? 'off' : c.mode) !== v1.chillers[id]);
-    if (mismatch) a.modeMiss++;
-    if (v1.tesDischargeKwt > 1 !== h.tesKwt > 1) a.dischargeMiss++;
-    a.maxSocDiff = Math.max(a.maxSocDiff, Math.abs(v1.tesSoc - h.tesSoc));
-  }, 'v1');
-  return a;
-}
-
-const TOLERANCE: Record<string, { mode: number; discharge: number }> = { 'drill-towers': { mode: 0.4, discharge: 0.1 } };
-
-describe('hydronic parity (shadow): chiller modes and TES discharge match v1 through every drill', () => {
-  for (const p of DRILLS) {
-    it(`${p.id}`, { timeout: 120_000 }, () => {
-      const a = shadow(p);
-      // Allowed: a few ticks around a change. drill-towers is a recorded difference (ENGINE.md): v1's
-      // condenser jumps to its new temperature and trips at once, v2's condenser loop lags; and v2 keeps a
-      // chiller on for its 10-minute minimum run time where v1 stages it straight off. Scoring is identical.
-      const tol = TOLERANCE[p.id] ?? { mode: 0.01, discharge: 0.01 };
-      expect(a.modeMiss / a.ticks, JSON.stringify(a)).toBeLessThan(tol.mode);
-      expect(a.dischargeMiss / a.ticks, JSON.stringify(a)).toBeLessThan(tol.discharge);
-      expect(a.maxSocDiff, JSON.stringify(a)).toBeLessThan(0.05);
-    });
-  }
-});
-
 describe('hydronic parity: every drill scores the same with v2 owning chilled water (default)', () => {
   for (const p of DRILLS) {
     it(`${p.id}`, { timeout: 120_000 }, () => {
       const v1 = play(p, 'v1').result;
       const { eng, result } = play(p, 'v2');
-      expect(eng!.hyd.state.chwSource).toBe('v2');
       expect(v1.done).toBe(true);
       expect(result).toEqual(v1);
     });

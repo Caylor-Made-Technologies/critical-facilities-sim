@@ -168,9 +168,8 @@ describe('hydronic model (engine v2)', () => {
     expect(C[tripped[0]![0]]!.mode).toBe('off');
   });
 
-  it('v2 owns chilled water by default: v1 readout and the air side see the v2 loop', () => {
+  it('v2 owns chilled water: v1 readout and the air side see the v2 loop', () => {
     const e = steady();
-    expect(e.hyd.state.chwSource).toBe('v2');
     for (const id of ['CH-01', 'CH-02', 'CH-03', 'ACH-04']) e.apply({ a: 'fail', id });
     e.run(2700);
     expect(e.sim.thermal.readout.chwSupplyC).toBeCloseTo(e.hyd.reading.chwsC, 6);

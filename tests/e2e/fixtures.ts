@@ -1,6 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
 
-declare const process: { env: Record<string, string | undefined> };
 
 /** Chromium's software GL prints driver notes as console warnings; they are not app messages. */
 const IGNORE = [/GL Driver Message/, /GPU stall due to ReadPixels/, /Automatic fallback to software WebGL/];
@@ -56,9 +55,7 @@ export const test = base.extend<{ problems: string[]; open: (hash: string, opts?
         } as typeof orig;
         window.__glLive = () => made.filter((c) => !c.isContextLost()).length;
       }, [three, quality] as const);
-      // v2 is the default engine (Phase 4e); E2E_ENGINE=v1 runs any test on the old engine.
-      const engine = process.env.E2E_ENGINE === 'v1' ? '&engine=v1' : '';
-      await page.goto(`./?debug3d${opts.still ? '&still' : ''}${engine}${hash}`);
+      await page.goto(`./?debug3d${opts.still ? '&still' : ''}${hash}`);
     });
   },
 });

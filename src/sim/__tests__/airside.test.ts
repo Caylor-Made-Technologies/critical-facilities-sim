@@ -184,20 +184,16 @@ describe('air-side model (engine v2)', () => {
     expect(after).toBeLessThan(600);
   });
 
-  it('v2 owns rack-inlet trips by default; v1 can be put back (shadow), and the screens read the v2 inlet', () => {
+  it('v2 owns rack-inlet trips, and the screens read the v2 inlet', () => {
     const a = steady();
-    expect(a.air.state.tripSource).toBe('v2');
     expect(a.sim.thermal.hallTripExternal).toBe(true);
     a.apply({ a: 'containment', mode: 'none' });
     a.run(1800);
     expect(a.sim.thermal.readout.hallInletC).toBeCloseTo(a.air.state.temps.rackIn, 6);
-    a.air.setTripSource(a.sim, 'v1');
-    expect(a.sim.thermal.hallTripExternal).toBe(false);
   });
 
-  it('tripSource v2: the air model trips and clears racks, v1 hall trip stays out of it', () => {
+  it('the air model trips and clears racks; the v1 hall trip stays out of it', () => {
     const e = steady();
-    e.air.setTripSource(e.sim, 'v2');
     for (const id of ['CHWP-01', 'CHWP-02', 'CHWP-03']) e.apply({ a: 'fail', id });
     e.run(900);
     expect(e.air.state.tripped).toBe(true);

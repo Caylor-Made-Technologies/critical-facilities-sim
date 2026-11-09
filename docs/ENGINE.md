@@ -1,4 +1,4 @@
-# Simulation engine (v2 is the default since Phase 4e; v1 kept behind ?engine=v1)
+# Simulation engine (engine v2 runs the app; the v1 `Simulation` is its base plant)
 
 How the current engine works, written in the Phase 3 audit as the starting point for engine v2
 (Phase 4). Everything here lives in `src/sim/`, which has no UI, DOM or three.js imports.
@@ -363,11 +363,18 @@ range (temperatures, SOCs, speeds, fractions, kW, PUE 1–5), IT powered ≤ dem
 without a live source, no Kirk key in two locks, alarm list in priority order. Then the plant is put
 back and settles: air and chilled water energy balance ±1%; replay from the log gives the same state.
 
-**Switch.** The app runs engine v2 by default (`useSimulation`: `ENGINE_V2` unless `?engine=v1`).
-`npm run e2e` now runs every browser test on v2; `npm run e2e:v1` plays every MOP, drill, rounds sheet
-and the IST on v1 for comparison. The Simulator tab shows a "simplified training model" note.
+**Switch.** The app runs engine v2 (`useSimulation` always wraps the plant in `EngineV2`).
+`npm run e2e` runs every browser test on v2. The Simulator tab shows a "simplified training model" note.
 
-**Not done yet (needs the owner's OK):** deleting v1 (`thermal.ts` hall/plant logic duplicated by v2,
-`?engine=v1`, the shadow code paths). v2 still wraps the v1 `Simulation` for the power solver,
-interlocks, generators/ATS timing, CDU/DOAS/UPS-room models and procedure checks, so "deleting v1" means
-removing the duplicated thermal paths and the switch, not the whole file.
+**v1 retired (2026-11-09, owner's OK).** Removed: the `?engine=v1` switch and the v1 UI clock/action
+path (the clock waits the moment the v2 chunk takes to load; actions before that are refused with "still
+starting"), `npm run e2e:v1`, the v2 shadow modes (`tripSource`, `chwSource`, `setTripSource`,
+`setChwSource`) and the tick-by-tick shadow parity tests that gated the switches (their results stay above).
+Wrong-answer previews now run on an engine v2 copy (`previewConsequence(sim, choice, makeCopy)`), so they
+show what the plant would really do.
+
+**What the v1 `Simulation` still is:** the base plant v2 wraps: graph, power solver, interlocks, generator/ATS
+timing, battery state, CDU/DOAS/UPS-room models, event log and procedure checks. Its own thermal plant still
+runs underneath (v2 overwrites the hall inlet, chilled water, tank and chiller modes every tick) because the
+Designs tab compares 7 designs on bare plants, lesson set-ups prepare bare plants, and many unit tests use it.
+Moving those onto v2 and dissolving `thermal.ts`'s duplicated cooling logic is a later refactor (Phase 8, sim depth).

@@ -23,13 +23,17 @@ describe('engine v2 core', () => {
     v1.restore('UTIL-A');
     v1.advance(620);
     const v2 = new EngineV2('2N');
-    // Clock/queue check against pure v1 physics: v1 keeps the hall inlet (v2 air side in shadow).
-    v2.air.setTripSource(v2.sim, 'v1');
     v2.schedule(30, { a: 'fail', id: 'UTIL-A' });
     v2.schedule(400, { a: 'restore', id: 'UTIL-A' });
     v2.run(1020);
     expect(v2.t).toBe(1020);
-    expect(plain(v2.snapshot())).toEqual(JSON.parse(JSON.stringify(v1.snapshot())));
+    // Electrical side is still the v1 solver and controls: it must match exactly. (Thermal differs by design:
+    // v2 owns the hall and chilled water.)
+    const elec = (snap: { nodes: { id: string; status: string; state: Record<string, unknown> }[] }) =>
+      snap.nodes
+        .filter((n) => !/^(CH-|ACH-|CHWP|CWP|CT-|CRAH|CDU|DOAS|CRAC|TES|R-)/.test(n.id))
+        .map((n) => ({ id: n.id, status: n.status, closed: n.state.closed, selected: n.state.selected, genState: n.state.genState }));
+    expect(elec(plain(v2.snapshot()))).toEqual(elec(JSON.parse(JSON.stringify(v1.snapshot()))));
     // The story actually happened: generators carried A, then ATS went back to normal.
     expect(v2.sim.events.some((e) => /transferred to generator/.test(e.message))).toBe(true);
     expect(v2.sim.graph.get('ATS-A').state.selected).toBe('normal');

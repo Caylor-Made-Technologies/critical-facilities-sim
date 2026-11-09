@@ -363,7 +363,14 @@ export function App() {
       secs={proc.secs}
       bestSecs={p.progress.times[proc.p.id]}
       feedback={procFb}
-      preview={(c) => previewConsequence(h.sim, c)}
+      preview={(c) => {
+        // Try the wrong answer on a copy of what the app runs (engine v2), so the preview matches the plant.
+        const e = h.engine;
+        return previewConsequence(h.sim, c, e ? () => {
+          const cp = e.copy();
+          return { sim: cp.sim, advance: (s: number) => cp.apply({ a: 'skip', s }) };
+        } : undefined);
+      }}
       onConfirm={() => procAct((r) => confirmStep(proc.p, r, h.sim), (b) => ({ ok: true, text: `Confirmed: ${proc.p.steps[b.step]!.confirm}.` }))}
       onChoose={(i) =>
         procAct(
