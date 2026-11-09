@@ -246,7 +246,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         </details>
       </section>
 
-      {dockAway && !coach && (
+      {dockAway && !focused && (
         <div className="v2-thumb" role="toolbar" aria-label="Quick simulator controls">
           <button className={`btn btn-primary${h.running ? ' is-running' : ''}`} type="button" onClick={() => h.setRunning(!h.running)}>
             <Icon name={h.running ? 'pause' : 'play'} /> {h.running ? 'Pause' : 'Run'}
