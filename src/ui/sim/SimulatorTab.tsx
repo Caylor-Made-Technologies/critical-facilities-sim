@@ -259,7 +259,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
           ) : (
             <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} alarms={alarms} />
           )}
-{view === 'electrical' && (
+          {view === 'electrical' && !is3d && (
           <div className="legend" aria-hidden="true">
             <span>
               <i style={{ background: 'var(--side-a)' }} /> A side

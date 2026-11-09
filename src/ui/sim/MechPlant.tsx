@@ -210,7 +210,7 @@ export function MechPlant({ sim, version, selected, failureMode, units, onActiva
             plate HX · {hyd ? hyd.econMode : r.economizer}
           </text>
           {hyd && econ && (
-            <text className="mp-glyph small" y={40} textAnchor="middle">
+            <text className="mp-sub" y={40} textAnchor="middle">
               {Math.round(hyd.econKwt).toLocaleString('en-US')} kW · wet bulb {fmtTemp(hyd.wetBulbC, units)}
             </text>
           )}

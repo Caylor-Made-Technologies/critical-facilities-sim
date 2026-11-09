@@ -170,7 +170,7 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
           <section>
             <div className="never-box">
               <h3 className="never-title">
-                <span aria-hidden="true">!!</span> NEVER do this <span aria-hidden="true">!!</span>
+                <Icon name="warning" /> NEVER do this
               </h3>
               <NeverList rules={guide.neverDo} compact />
             </div>

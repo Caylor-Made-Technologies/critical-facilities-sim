@@ -2265,6 +2265,10 @@ fieldset.field legend {
   align-items: flex-start;
   font-size: 0.92rem;
   cursor: pointer;
+  /* 44 px tap row (B-011): the whole label row is the target, not just the 20 px box. */
+  min-height: 44px;
+  padding-block: 8px;
+  box-sizing: border-box;
 }
 .check input {
   width: 20px;
@@ -3778,11 +3782,15 @@ ul.checklist li::after {
 }
 /* Off-screen panels skip rendering until scrolled near (big win on phones while the sim runs). */
 .hall,
-.side-panel > .card:last-child,
 .tab-panel > .sim-layout ~ *,
 .app-footer {
   content-visibility: auto;
   contain-intrinsic-size: auto 600px;
+}
+/* Event log: skip painting off screen, but hold a small placeholder so an empty log isn't a 634 px card (B-009). */
+.side-panel > .card:last-child {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
 }
 /* Solid bars instead of live blur: blur re-renders whenever the content under it changes. */
 .app-header,
@@ -6167,3 +6175,4 @@ body.has-follow .toast-region { bottom: 84px; }
 @media (prefers-reduced-motion: reduce) {
   .air-flow.flow { animation: none; }
 }
+.never-title { display: flex; align-items: center; gap: 8px; }
