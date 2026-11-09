@@ -4,7 +4,7 @@ import { BATTERY_AGES, describeCapacity, formatT, PHYSICS, TOPOLOGIES, WEATHER, 
 import { fmtTemp } from '../format';
 import { Icon, type IconName } from '../icons';
 import { PageHead } from '../common';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Hall3D, Plant3DView } from '../three/Scene3D';
 import { plantModel } from '../three/plantModel';
 import { use3d } from '../view3d';
@@ -102,6 +102,18 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const alarms = useMemo(() => alarmsByEquipment(almSum, (id) => sim.graph.nodes.has(id)), [almSum, sim]);
 
+  // 6c: on a phone, once the control dock scrolls away, a thumb bar keeps Run/Pause, speed, step and
+  // Acknowledge all within reach (hidden during a procedure, which has its own follow bar).
+  const dockRef = useRef<HTMLElement>(null);
+  const [dockAway, setDockAway] = useState(false);
+  useEffect(() => {
+    const el = dockRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setDockAway(!e?.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const issues = plantIssues(sim, units);
   const tone = (bad: boolean, warn = false) => (bad ? 'bad' : warn ? 'warn' : 'ok');
 
@@ -116,7 +128,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
 
       <StatusBanner sim={sim} units={units} />
 
-      <section className="card control-dock" aria-label="Simulator controls">
+      <section ref={dockRef} className="card control-dock" aria-label="Simulator controls">
         <div className="dock-row">
           <div className="seg seg-icons" role="group" aria-label="Diagram view">
             <button type="button" aria-pressed={view === 'electrical'} onClick={() => setView('electrical')}>
@@ -234,6 +246,40 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
         </details>
       </section>
 
+      {dockAway && !coach && (
+        <div className="v2-thumb" role="toolbar" aria-label="Quick simulator controls">
+          <button className={`btn btn-primary${h.running ? ' is-running' : ''}`} type="button" onClick={() => h.setRunning(!h.running)}>
+            <Icon name={h.running ? 'pause' : 'play'} /> {h.running ? 'Pause' : 'Run'}
+          </button>
+          <button
+            className="btn"
+            type="button"
+            aria-label={`Speed ${h.speed} times. Change speed`}
+            onClick={() => h.setSpeed(SPEEDS[(SPEEDS.indexOf(h.speed) + 1) % SPEEDS.length]!)}
+          >
+            {h.speed}×
+          </button>
+          {h.engine && !h.running && (
+            <button className="btn" type="button" onClick={h.step} aria-label="Step one second (quick bar)">
+              +1s
+            </button>
+          )}
+          <span className="v2-thumb-t" aria-hidden="true">
+            {formatT(sim.t)}
+          </span>
+          {almSum && (
+            <button
+              className={`btn v2-thumb-ack${almSum.unacked ? ' has-new' : ''}`}
+              type="button"
+              disabled={almSum.unacked === 0}
+              onClick={() => h.apply({ a: 'ackAll' })}
+              aria-label={almSum.unacked ? `Acknowledge all ${almSum.unacked} new alarms` : 'No new alarms'}
+            >
+              <Icon name="warning" /> {almSum.unacked ? `Ack ${almSum.unacked}` : '0'}
+            </button>
+          )}
+        </div>
+      )}
       <div className="kpis" role="list" aria-label="Plant readings (scrolls sideways on small screens)" tabIndex={0}>
         <Kpi icon="pulse" label="Sim time" value={formatT(sim.t)} tone={h.running ? 'live' : 'ok'} />
         {almSum && (
