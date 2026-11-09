@@ -53,7 +53,7 @@ export interface PlantApi {
   visibleTags: () => { id: string; rect: [number, number, number, number] }[];
   pick: (clientX: number, clientY: number) => string | null;
   project: (id: string) => { x: number; y: number } | null;
-  nodeState: (id: string) => { state: string; light: string } | null;
+  nodeState: (id: string) => { state: string; light: string; alarm: string | null } | null;
   liveLinks: () => number;
   frames: () => number;
   /** GPU memory counters and where the camera is looking (for automated checks). */
@@ -525,7 +525,9 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     // Nodes
     for (const o of nodes.values()) {
       const n = o.n;
-      const key = n.state === 'failed' ? 'alarm' : n.state === 'maint' ? 'warn' : n.state === 'ok' ? 'ok' : 'muted';
+      // Graphics v2: an annunciated alarm takes over the status beacon (priority color; blinks until acknowledged).
+      const almKey = n.alarm ? (n.alarm.priority === 'critical' || n.alarm.priority === 'high' ? 'alarm' : n.alarm.priority === 'medium' ? 'warn' : 'blue') : null;
+      const key = n.state === 'failed' ? 'alarm' : almKey ?? (n.state === 'maint' ? 'warn' : n.state === 'ok' ? 'ok' : 'muted');
       o.light.material = lightMat(key, th[key]);
       o.light.userData.key = key;
       const base = n.state === 'failed' ? M.failed : null;
@@ -730,7 +732,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     }
     const blink = Math.sin(t * 6) > 0;
     for (const o of nodes.values()) {
-      if (o.n.state === 'failed') o.light.visible = blink;
+      if (o.n.state === 'failed' || o.n.alarm?.unacked) o.light.visible = blink;
       else o.light.visible = true;
       if (o.spinner && o.n.live && o.n.state !== 'failed') o.spinner.rotation[o.n.kind.startsWith('pump') ? 'x' : 'y'] += dt * 9;
     }
@@ -870,7 +872,7 @@ export function mountPlant(canvas: HTMLCanvasElement, opts: { onActivate: (id: s
     },
     nodeState(id) {
       const o = nodes.get(id);
-      return o ? { state: o.n.state, light: String(o.light.userData.key ?? '') } : null;
+      return o ? { state: o.n.state, light: String(o.light.userData.key ?? ''), alarm: o.n.alarm?.priority ?? null } : null;
     },
     liveLinks: () => pulseTracks.length,
     frames: stage.frames,

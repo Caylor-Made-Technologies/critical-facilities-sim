@@ -2,6 +2,7 @@
  * Live efficiency readout for engine v2 (Phase 4c part 3): PUE with its breakdown, economizer mode and
  * outdoor/hall psychrometrics. Loaded only when ?engine=v2 is on, so the default bundle doesn't grow.
  */
+import { shareOfTotal } from '../../sim/physics';
 import type { EngineV2 } from '../../sim/v2/engine';
 import { fmtTemp } from '../format';
 import type { Units } from '../prefs';
@@ -22,6 +23,8 @@ export default function EfficiencyPanel({ engine, units }: { engine: EngineV2; u
     ['UPS losses', p.upsLoss],
     ['Transformer losses', p.txLoss],
   ];
+  // Graphics v2 (Phase 5): the same rows as one stacked bar, IT first, so the overhead is visible at a glance.
+  const shares = shareOfTotal(rows.map(([, v]) => v));
   const econ = { off: 'Off (chillers only)', partial: 'Partial (towers pre-cool)', full: 'Full (chillers can rest)' }[r.econMode];
   const pueText = Number.isFinite(r.pue) ? r.pue.toFixed(2) : '—';
   return (
@@ -29,6 +32,18 @@ export default function EfficiencyPanel({ engine, units }: { engine: EngineV2; u
       <summary>
         <span>Live PUE {pueText} · how it adds up</span>
       </summary>
+      <div className="eff-bar" aria-hidden="true">
+        {rows.map(([label], i) =>
+          shares[i]! > 0 ? <span key={label} className={`eff-seg eff-seg-${i}`} style={{ width: `${(shares[i]! * 100).toFixed(2)}%` }} title={label} data-share={shares[i]!.toFixed(4)} /> : null,
+        )}
+      </div>
+      <ul className="eff-key" aria-hidden="true">
+        {rows.map(([label], i) => (
+          <li key={label}>
+            <i className={`eff-seg-${i}`} /> {label} {Math.round(shares[i]! * 1000) / 10}%
+          </li>
+        ))}
+      </ul>
       <table className="eff-table">
         <caption className="visually-hidden">Facility power by part</caption>
         <tbody>

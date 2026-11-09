@@ -18,9 +18,12 @@ import { EventLog } from './EventLog';
 import { MechPlant } from './MechPlant';
 import { OneLine } from './OneLine';
 import { plantIssues, StatusBanner } from './StatusBanner';
+import { alarmsByEquipment, type AlarmMap } from './v2view';
 
 const EfficiencyPanel = lazy(() => import('./EfficiencyPanel'));
 const AlarmPanel = lazy(() => import('./AlarmPanel'));
+const TrendPanel = lazy(() => import('./TrendPanel'));
+const AirPath = lazy(() => import('./AirPath'));
 
 export type SimView = 'electrical' | 'mechanical';
 
@@ -81,6 +84,10 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
     }
     setSelected(id);
   };
+
+  // Graphics v2: equipment in alarm (engine v2 alarm list) drives rings and badges on every diagram.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const alarms = useMemo(() => alarmsByEquipment(h.engine?.alarmSummary, (id) => sim.graph.nodes.has(id)), [h.engine, sim, version]);
 
   const issues = plantIssues(sim, units);
   const tone = (bad: boolean, warn = false) => (bad ? 'bad' : warn ? 'warn' : 'ok');
@@ -231,6 +238,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
       {h.engine && (
         <Suspense fallback={null}>
           <EfficiencyPanel engine={h.engine} units={units} />
+          <TrendPanel engine={h.engine} units={units} />
           <AlarmPanel engine={h.engine} apply={h.apply} />
         </Suspense>
       )}
@@ -245,11 +253,11 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
       <div className="sim-layout">
         <div>
           {is3d ? (
-            <Plant3DCard sim={sim} version={version} view={view} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
+            <Plant3DCard sim={sim} version={version} view={view} selected={selected} failureMode={mode === 'failure'} onActivate={activate} alarms={alarms} />
           ) : view === 'mechanical' ? (
-            <MechPlant sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} units={units} onActivate={activate} />
+            <MechPlant sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} units={units} onActivate={activate} engine={h.engine} alarms={alarms} />
           ) : (
-            <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} />
+            <OneLine sim={sim} version={version} selected={selected} failureMode={mode === 'failure'} onActivate={activate} alarms={alarms} />
           )}
 {view === 'electrical' && (
           <div className="legend" aria-hidden="true">
@@ -270,6 +278,11 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
             </span>
             <span>Moving dashes = power flowing (faster = more load)</span>
           </div>
+          )}
+          {h.engine && (
+            <Suspense fallback={null}>
+              <AirPath engine={h.engine} apply={h.apply} units={units} />
+            </Suspense>
           )}
           <Hall3DCard sim={sim} version={version} selected={selected} onPick={activate} />
           <DataHall sim={sim} selected={selected} onActivate={activate} units={units} />
@@ -335,13 +348,14 @@ function Hall3DCard({ sim, version, selected, onPick }: { sim: SimHandle['sim'];
   );
 }
 
-function Plant3DCard({ sim, version, view, selected, failureMode, onActivate }: { sim: SimHandle['sim']; version: number; view: SimView; selected: string | null; failureMode: boolean; onActivate: (id: string) => void }) {
+function Plant3DCard({ sim, version, view, selected, failureMode, onActivate, alarms }: { sim: SimHandle['sim']; version: number; view: SimView; selected: string | null; failureMode: boolean; onActivate: (id: string) => void; alarms: AlarmMap }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const model = useMemo(() => plantModel(sim, view), [sim, version, view]);
+  const model = useMemo(() => plantModel(sim, view, alarms), [sim, version, view, alarms]);
+  const inAlarm = model.nodes.filter((n) => n.alarm).length;
   const failed = model.nodes.filter((n) => n.state === 'failed').length;
   const locked = model.nodes.filter((n) => n.state === 'maint').length;
   const live = model.links.filter((l) => l.live).length;
-  const summary = `${view === 'electrical' ? 'Electrical' : 'Mechanical'} plant in 3D: ${model.nodes.length} components, ${failed} failed, ${locked} locked out, ${live} of ${model.links.length} ${view === 'electrical' ? 'feeds carrying power' : 'pipes flowing'}.`;
+  const summary = `${view === 'electrical' ? 'Electrical' : 'Mechanical'} plant in 3D: ${model.nodes.length} components, ${failed} failed, ${locked} locked out, ${live} of ${model.links.length} ${view === 'electrical' ? 'feeds carrying power' : 'pipes flowing'}.${inAlarm ? ` ${inAlarm} in alarm.` : ''}`;
   return (
     <section className={`card plant3d-card${failureMode ? ' failure' : ''}`} aria-label={`3D ${view} plant`}>
       <div className="plant3d-top">
@@ -398,6 +412,7 @@ function Plant3DCard({ sim, version, view, selected, failureMode, onActivate }: 
         <span>
           <i style={{ background: 'var(--warn)' }} /> locked out 🔒
         </span>
+        <span>Beacon on top = alarm (red high/critical, amber medium, blue low; blinks until acknowledged)</span>
       </div>
     </section>
   );

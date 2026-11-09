@@ -1190,3 +1190,68 @@ export const ALARM = {
   /** Shelving is always time-limited (s). */
   maxShelveS: 8 * 3600,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Trends and graphics (engine v2, Phase 5): how often the BMS-style trend samples, and the display math
+// the live diagrams use. Example values for a training screen, not a BMS specification.
+// ---------------------------------------------------------------------------
+
+export const TREND = {
+  /** Sim seconds between trend samples (a common BMS trend interval is 1–15 min; 10 s keeps drills visible). */
+  sampleS: 10,
+  /** Samples kept: 360 × 10 s = 1 h window. */
+  keep: 360,
+} as const;
+
+/**
+ * Seconds for one dash cycle of an animated pipe or cable, from the flow (or load) fraction:
+ * full flow = 0.6 s, slower as flow drops, 3 s floor so a trickle still visibly moves; 0 = no animation.
+ * Example: 50% flow → 0.6 / 0.5 = 1.2 s; 10% → 6 s, held at 3 s.
+ */
+export function flowDashS(fraction: number): number {
+  if (!(fraction > 0.001) || !Number.isFinite(fraction)) return 0;
+  return Math.min(3, 0.6 / Math.min(1, fraction));
+}
+
+/**
+ * Split a total into bar segments (fractions of the total, in input order). Negative or NaN parts count as 0.
+ * Example: IT 2,000 + chillers 300 + fans 100 = 2,400 → 0.833, 0.125, 0.042 (sums to 1).
+ */
+export function shareOfTotal(parts: readonly number[]): number[] {
+  const clean = parts.map((x) => (Number.isFinite(x) && x > 0 ? x : 0));
+  const sum = clean.reduce((a, b) => a + b, 0);
+  return sum > 0 ? clean.map((x) => x / sum) : clean.map(() => 0);
+}
+
+/**
+ * Sparkline path ("M x,y L …") for values on a w × h box; y grows downward. The range [lo, hi] is
+ * widened to at least `minSpan` around the data so a flat line sits mid-box instead of jittering.
+ * NaN values break the line (a new "M"). Example: [20, 22, 24] on 100 × 20, minSpan 1 →
+ * "M0,20 L50,10 L100,0".
+ */
+export function sparkPath(values: readonly number[], w: number, h: number, minSpan = 1): { d: string; lo: number; hi: number } {
+  const ok = values.filter((v) => Number.isFinite(v));
+  if (ok.length === 0 || values.length === 0) return { d: '', lo: 0, hi: 0 };
+  let lo = Math.min(...ok);
+  let hi = Math.max(...ok);
+  if (hi - lo < minSpan) {
+    const mid = (hi + lo) / 2;
+    lo = mid - minSpan / 2;
+    hi = mid + minSpan / 2;
+  }
+  const n = values.length;
+  const dx = n > 1 ? w / (n - 1) : 0;
+  let d = '';
+  let pen = false;
+  values.forEach((v, i) => {
+    if (!Number.isFinite(v)) {
+      pen = false;
+      return;
+    }
+    const x = +(i * dx).toFixed(1);
+    const y = +(h - ((v - lo) / (hi - lo)) * h).toFixed(1);
+    d += `${d ? ' ' : ''}${pen ? 'L' : 'M'}${x},${y}`;
+    pen = true;
+  });
+  return { d, lo, hi };
+}

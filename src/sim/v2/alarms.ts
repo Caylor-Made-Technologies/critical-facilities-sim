@@ -88,6 +88,8 @@ export interface AnnunciatedAlarm {
   chattering: boolean;
   value?: string;
   fault?: string;
+  /** Plant component the alarm belongs to (for graphics overlays), when it has one. */
+  equipment?: string;
 }
 
 export interface AlarmSummary {
@@ -367,6 +369,7 @@ export class AlarmSystem {
         chattering: r.hits.filter((x) => t - x < ALARM.chatterWindowS).length >= ALARM.chatterCount,
         value: v !== undefined && Number.isFinite(v) ? `${v.toFixed(1)} ${d.analog!.unit}` : undefined,
         fault: d.fault,
+        equipment: d.equipment,
       });
     }
     list.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || a.since - b.since || a.id.localeCompare(b.id));

@@ -9,6 +9,7 @@ import { Icon } from '../icons';
 import { usePauseWhenOffscreen } from '../common';
 import { computeLayout, type NodeBox } from './layout';
 import { subLine } from './subline';
+import { AlarmBadge, alarmClass, alarmWords, type AlarmMap } from './v2view';
 
 interface Props {
   sim: Simulation;
@@ -16,6 +17,8 @@ interface Props {
   selected: string | null;
   failureMode: boolean;
   onActivate: (id: string) => void;
+  /** Equipment with annunciated engine v2 alarms (graphics v2). */
+  alarms?: AlarmMap;
 }
 
 interface View {
@@ -52,7 +55,7 @@ const GLYPH: Partial<Record<Component['kind'], string>> = {
 /** One short status line under each node. */
 
 
-export function OneLine({ sim, version, selected, failureMode, onActivate }: Props) {
+export function OneLine({ sim, version, selected, failureMode, onActivate, alarms }: Props) {
   const layout = useMemo(() => computeLayout(sim.graph), [sim.graph]);
   const wrapRef = useRef<HTMLDivElement>(null);
   usePauseWhenOffscreen(wrapRef);
@@ -251,15 +254,17 @@ export function OneLine({ sim, version, selected, failureMode, onActivate }: Pro
             const color = energized ? sideColor(n) : 'var(--dead)';
             const over = n.ratedKw > 0 && loadFraction(g, sol, n.id) > 1;
             const upsAlarm = n.kind === 'ups' && sol.upsMode.get(n.id) !== 'normal' && n.status !== 'maintenance';
+            const alm = alarms?.get(n.id);
             const cls = [
               'ol-node',
+              alarmClass(alm),
               n.status === 'failed' ? 'failed' : '',
               n.status === 'maintenance' ? 'maint' : '',
               over || upsAlarm ? 'alarm' : '',
               selected === n.id ? 'selected' : '',
             ].join(' ');
             const sub = subLine(sim, n);
-            const label = `${n.tag}, ${n.name}. ${sub}. ${failureMode ? 'Press to fail or restore.' : 'Press for details.'}`;
+            const label = `${n.tag}, ${n.name}. ${sub}.${alarmWords(alm)} ${failureMode ? 'Press to fail or restore.' : 'Press for details.'}`;
             return (
               <g
                 key={n.id}
@@ -281,6 +286,7 @@ export function OneLine({ sim, version, selected, failureMode, onActivate }: Pro
               >
                 <rect x={-Math.max(box.w, 48) / 2 - 6} y={-Math.max(box.h, 44) / 2 - 4} width={Math.max(box.w, 48) + 12} height={Math.max(box.h, 44) + 26} fill="transparent" />
                 <Shape box={box} n={n} color={color} />
+                <AlarmBadge a={alm} x={box.w / 2} y={-box.h / 2} />
                 <rect className="focus-ring" x={-box.w / 2 - 6} y={-box.h / 2 - 6} width={box.w + 12} height={box.h + 12} rx={10} />
                 <text className="label" y={box.h / 2 + 13} textAnchor="middle">
                   {n.tag}

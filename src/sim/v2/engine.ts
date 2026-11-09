@@ -28,6 +28,7 @@ import { HydronicModel, type HydState } from './hydronic';
 import { SourcesModel, type SourcesState } from './sources';
 import { EventQueue, type Scheduled } from './queue';
 import { Rng } from './rng';
+import { TrendRecorder, type TrendSample } from './trends';
 
 /** Sim seconds per tick. */
 export const TICK_S = 1;
@@ -82,6 +83,8 @@ export class EngineV2 {
   readonly hyd = new HydronicModel();
   /** Alarm system: priorities, delays, deadbands, ack/shelve, first-out, flood (Phase 4d). */
   readonly alarms = new AlarmSystem();
+  /** BMS-style trend log of key readings, one sample per 10 s, 1 h kept (Phase 5). Not in snapshots. */
+  readonly trends = new TrendRecorder();
 
   constructor(topology: Topology = '2N', seed = 1, sim?: Simulation) {
     this.seed = Rng.normalize(seed);
@@ -93,6 +96,7 @@ export class EngineV2 {
     this.hyd.init(this.sim, this.air.reading.coilKw);
     this.feedChw();
     this.alarms.init(this.sim);
+    this.recordTrend();
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */
@@ -158,6 +162,18 @@ export class EngineV2 {
     this.feedChw();
     this.air.step(this.sim, dt);
     this.alarms.step(this.alarmCtx);
+    this.recordTrend();
+  }
+
+  private recordTrend(): void {
+    this.trends.maybeRecord(this.sim.t, () => this.trendReading());
+  }
+
+  /** The trended readings right now (the trend screen adds this as its live end point). */
+  trendReading(): Omit<TrendSample, 't'> {
+    const e = this.efficiency;
+    const h = this.hyd.reading;
+    return { inletC: this.air.reading.temps.rackIn, chwsC: h.chwsC, cwC: h.cwC, pue: e.pue, tesSoc: h.tesSoc, fanSpeed: this.air.reading.fanSpeed, itKw: e.itKw };
   }
 
   private get alarmCtx() {

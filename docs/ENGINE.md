@@ -378,3 +378,31 @@ timing, battery state, CDU/DOAS/UPS-room models, event log and procedure checks.
 runs underneath (v2 overwrites the hall inlet, chilled water, tank and chiller modes every tick) because the
 Designs tab compares 7 designs on bare plants, lesson set-ups prepare bare plants, and many unit tests use it.
 Moving those onto v2 and dissolving `thermal.ts`'s duplicated cooling logic is a later refactor (Phase 8, sim depth).
+
+## Phase 5: graphics v2 (2026-11-09)
+
+The diagrams now read engine v2 directly. Engine additions are small and read-only:
+
+- **Trend log** (`src/sim/v2/trends.ts`, `engine.trends`, constants `TREND` in `physics.ts`): one sample every
+  10 s of sim time (rack inlet, CHW supply, condenser water, PUE, TES charge, CRAH fan speed, IT kW), 360 kept
+  (1 h). Sampled on ticks, so it is deterministic (same actions → same trend, tested). Not in snapshots: a copy
+  or restore starts a fresh trend. `engine.trendReading()` gives the same readings now (the screen's live end point).
+- **Alarm → equipment**: `AnnunciatedAlarm.equipment` carries the component id (the view layer also maps an
+  alarm whose source is a component id, e.g. TES-01).
+- **Display math** in `physics.ts` with hand-worked tests (`graphics.test.ts`): `flowDashS` (pipe dash speed
+  from flow fraction: 0.6 s full, 3 s floor), `shareOfTotal` (PUE bar), `sparkPath` (trend lines).
+
+**UI** (`src/ui/sim/`): `v2view.tsx` groups the alarm list by equipment (highest priority, unacked roll-up) and
+draws the badge; `OneLine` and `MechPlant` add a priority ring + badge (pulsing until acknowledged, still with
+reduced motion) and put the alarm in each symbol's accessible name; `MechPlant` colors pipes from the v2 CHW
+supply/return, tower-leaving and condenser-leaving nodes, scales CHW flow animation to flow fraction, and labels
+pumps (speed + head, psi with °F / kPa with °C), chillers (kW + kW/ton), towers (leaving temp), CRAHs (fan %),
+the economizer (kW + wet bulb) and the hall band (supply/return). The 3D plant's status beacon takes the alarm
+priority color and blinks until acknowledged (`Node3D.alarm`). Lazy panels: `AirPath` (five air nodes,
+recirculation and bypass arrows sized to their share, containment drawing, CRAH fans/coil, ASHRAE band chip, and
+the containment / blanking / tiles what-ifs as `apply` actions), `TrendPanel` (six sparklines with low/high and
+the recommended inlet band), and a stacked PUE bar in `EfficiencyPanel`. e2e: `tests/e2e/graphics.spec.ts`
+(in `e2e:v2`).
+
+Limits: trends cover the last hour only and are cleared on Reset or when a walkthrough loads a plant; the air path
+is the lumped hall (one rack column stands for 36 racks); 3D shows alarms on the plant only, not in the hall.

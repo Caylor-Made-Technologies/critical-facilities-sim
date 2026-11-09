@@ -29,3 +29,9 @@ export function tempColor(c: number): string {
   }
   return `rgb(${stops[stops.length - 1]![1].join(',')})`;
 }
+
+/** Pressure for a floor tech: psi with °F (US plants), kPa with °C. 1 kPa = 0.1450377 psi. */
+export function fmtPress(kpa: number, units: Units): string {
+  if (!isFinite(kpa)) return '—';
+  return units === 'F' ? `${(kpa * 0.1450377).toFixed(1)} psi` : `${Math.round(kpa)} kPa`;
+}

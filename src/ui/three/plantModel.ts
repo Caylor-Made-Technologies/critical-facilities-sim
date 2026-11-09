@@ -27,6 +27,8 @@ export interface Node3D {
   sub: string;
   /** 0..1.2 load (for glow/speed). */
   load: number;
+  /** Graphics v2: highest priority of the equipment's annunciated alarms, and whether any is unacknowledged. */
+  alarm?: { priority: 'critical' | 'high' | 'medium' | 'low'; unacked: boolean };
 }
 
 export interface Link3D {
@@ -212,6 +214,14 @@ export function mechanicalModel(sim: Simulation): Plant3D {
   };
 }
 
-export function plantModel(sim: Simulation, domain: 'electrical' | 'mechanical'): Plant3D {
-  return domain === 'electrical' ? electricalModel(sim) : mechanicalModel(sim);
+/** Alarm overlay input: equipment id → priority + unacknowledged (from the engine v2 alarm list). */
+export type AlarmLookup = ReadonlyMap<string, { priority: 'critical' | 'high' | 'medium' | 'low'; unacked: boolean }>;
+
+export function plantModel(sim: Simulation, domain: 'electrical' | 'mechanical', alarms?: AlarmLookup): Plant3D {
+  const m = domain === 'electrical' ? electricalModel(sim) : mechanicalModel(sim);
+  if (alarms?.size) for (const n of m.nodes) {
+    const a = alarms.get(n.id);
+    if (a) n.alarm = { priority: a.priority, unacked: a.unacked };
+  }
+  return m;
 }
