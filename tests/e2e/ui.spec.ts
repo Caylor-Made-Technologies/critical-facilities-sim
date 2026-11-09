@@ -115,3 +115,29 @@ test('ui v2 nav: old #/ links open their tab, unknown ones open Home', async ({ 
   await page.goto('./#/no-such-tab');
   await expect(page.locator('main')).toHaveAttribute('data-tab', 'home');
 });
+
+// 6c: one-thumb controls on a phone once the control dock scrolls away.
+test('ui v2 sim: phone thumb bar steps time and acknowledges alarms after the dock scrolls away', async ({ page, open }, info) => {
+  test.skip(!info.project.name.startsWith('phone'), 'phone layout');
+  await open('#/sim', { three: false });
+  await expect(page.locator('html')).toHaveAttribute('data-engine', 'v2');
+  await expect(page.locator('.v2-thumb')).toHaveCount(0);
+  await page.getByRole('button', { name: /Mechanical/ }).first().click();
+  await page.getByRole('button', { name: /^CRAH-101, / }).first().click();
+  await page.locator('section.comp-card').getByRole('button', { name: 'Fail it' }).click();
+  await page.locator('.air-card').scrollIntoViewIfNeeded();
+  const bar = page.getByRole('toolbar', { name: 'Quick simulator controls' });
+  await expect(bar).toBeVisible();
+  await bar.getByRole('button', { name: 'Step one second (quick bar)' }).click();
+  await expect(bar.getByRole('button', { name: 'Acknowledge all 1 new alarms' })).toBeEnabled();
+  await bar.getByRole('button', { name: 'Acknowledge all 1 new alarms' }).click();
+  await expect(bar.getByRole('button', { name: 'No new alarms' })).toBeDisabled();
+  await bar.getByRole('button', { name: /^Speed 1 times/ }).click();
+  await expect(bar.getByRole('button', { name: /^Speed 10 times/ })).toBeVisible();
+  // Bar sits above the bottom navigation and inside the screen.
+  const b = (await bar.boundingBox())!;
+  const nav = (await page.locator('.bottombar').boundingBox())!;
+  expect(b.y + b.height).toBeLessThanOrEqual(nav.y + 1);
+  expect(b.x).toBeGreaterThanOrEqual(0);
+  expect(b.x + b.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+});

@@ -6203,3 +6203,28 @@ body.has-follow .toast-region { bottom: 84px; }
 
 /* Phase 6b nav: one line under each group in the phone More sheet. */
 .sheet-group-desc { margin: -2px 0 6px; font-size: 0.8rem; color: var(--text-muted); }
+
+/* 6c: phone thumb bar for the Simulator (shows once the control dock scrolls away). */
+.v2-thumb { display: none; }
+@media (max-width: 1023px) {
+  .v2-thumb {
+    position: fixed;
+    z-index: 44;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(var(--nav-h) + 10px + env(safe-area-inset-bottom));
+    width: min(480px, calc(100% - 16px));
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 16px;
+    border: 1px solid var(--border-strong);
+    background: color-mix(in srgb, var(--surface-raised) 97%, transparent);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  }
+  .v2-thumb .btn { min-height: 44px; padding-inline: 12px; }
+  .v2-thumb-t { flex: 1; text-align: center; font: 700 0.85rem var(--font-head); font-variant-numeric: tabular-nums; color: var(--text-muted); }
+  .v2-thumb-ack.has-new { border-color: var(--alarm); color: var(--alarm); }
+  .tab-panel:has(.v2-thumb) { padding-bottom: 72px; }
+}
