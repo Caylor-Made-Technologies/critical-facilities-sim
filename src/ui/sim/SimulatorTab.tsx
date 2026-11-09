@@ -254,13 +254,13 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
           <button
             className="btn"
             type="button"
-            aria-label={`Speed ${h.speed} times. Change speed`}
+            aria-label={`Change speed (now ${h.speed} times)`}
             onClick={() => h.setSpeed(SPEEDS[(SPEEDS.indexOf(h.speed) + 1) % SPEEDS.length]!)}
           >
             {h.speed}×
           </button>
           {h.engine && !h.running && (
-            <button className="btn" type="button" onClick={h.step} aria-label="Step one second (quick bar)">
+            <button className="btn" type="button" onClick={h.step} aria-label="Advance one second">
               +1s
             </button>
           )}
@@ -273,7 +273,7 @@ export function SimulatorTab({ h, mode, setMode, selected, setSelected, onOpenGu
               type="button"
               disabled={almSum.unacked === 0}
               onClick={() => h.apply({ a: 'ackAll' })}
-              aria-label={almSum.unacked ? `Acknowledge all ${almSum.unacked} new alarms` : 'No new alarms'}
+              aria-label={almSum.unacked ? `Quick acknowledge: ${almSum.unacked} new alarms` : 'No new alarms'}
             >
               <Icon name="warning" /> {almSum.unacked ? `Ack ${almSum.unacked}` : '0'}
             </button>

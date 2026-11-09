@@ -128,12 +128,12 @@ test('ui v2 sim: phone thumb bar steps time and acknowledges alarms after the do
   await page.locator('.air-card').scrollIntoViewIfNeeded();
   const bar = page.getByRole('toolbar', { name: 'Quick simulator controls' });
   await expect(bar).toBeVisible();
-  await bar.getByRole('button', { name: 'Step one second (quick bar)' }).click();
-  await expect(bar.getByRole('button', { name: 'Acknowledge all 1 new alarms' })).toBeEnabled();
-  await bar.getByRole('button', { name: 'Acknowledge all 1 new alarms' }).click();
+  await bar.getByRole('button', { name: 'Advance one second' }).click();
+  await expect(bar.getByRole('button', { name: 'Quick acknowledge: 1 new alarms' })).toBeEnabled();
+  await bar.getByRole('button', { name: 'Quick acknowledge: 1 new alarms' }).click();
   await expect(bar.getByRole('button', { name: 'No new alarms' })).toBeDisabled();
-  await bar.getByRole('button', { name: /^Speed 1 times/ }).click();
-  await expect(bar.getByRole('button', { name: /^Speed 10 times/ })).toBeVisible();
+  await bar.getByRole('button', { name: /now 1 times/ }).click();
+  await expect(bar.getByRole('button', { name: /now 10 times/ })).toBeVisible();
   // Bar sits above the bottom navigation and inside the screen.
   const b = (await bar.boundingBox())!;
   const nav = (await page.locator('.bottombar').boundingBox())!;
