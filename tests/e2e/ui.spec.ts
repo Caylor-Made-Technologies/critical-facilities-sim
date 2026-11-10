@@ -141,3 +141,18 @@ test('ui v2 sim: phone thumb bar steps time and acknowledges alarms after the do
   expect(b.x).toBeGreaterThanOrEqual(0);
   expect(b.x + b.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
+
+// 6e: consistency sweep findings.
+test('ui v2 sweep: on a 1366 × 768 laptop the whole sidebar fits, and Never Do rules end calmly', async ({ page, open }, info) => {
+  test.skip(!info.project.name.startsWith('laptop'), 'laptop layout');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await open('#/about', { three: false });
+  const fit = await page.locator('.sidebar').evaluate((s) => ({ sh: s.scrollHeight, ch: s.clientHeight }));
+  expect(fit.sh).toBeLessThanOrEqual(fit.ch + 1);
+  const minH = await page.locator('.sidebar .side-link').evaluateAll((ls) => Math.min(...ls.map((l) => l.getBoundingClientRect().height)));
+  expect(minH).toBeGreaterThanOrEqual(24); // WCAG 2.2 target size minimum
+  await page.goto('./#/never');
+  const rules = await page.locator('.never-rule').allInnerTexts();
+  expect(rules.length).toBeGreaterThan(5);
+  for (const r of rules) expect(r).not.toMatch(/!!/);
+});

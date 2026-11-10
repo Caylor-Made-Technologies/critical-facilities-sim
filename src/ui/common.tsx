@@ -158,8 +158,7 @@ export function NeverList({ rules, compact }: { rules: (NeverRule | string)[]; c
             <div>
               <span className="never-rule">
                 <span className="visually-hidden">Never do this: </span>
-                {rule.replace(/^Never\b/, 'NEVER').replace(/[.!]+$/, '')}
-                <span aria-hidden="true">!!</span>
+                {rule.replace(/^Never\b/, 'NEVER').replace(/[.!]+$/, '')}.
               </span>
               {why && <span className="never-why">Why: {why}</span>}
             </div>

@@ -71,7 +71,7 @@ export default function TrendPanel({ engine, units }: { engine: EngineV2; units:
   return (
     <details className="dock-more trend-panel">
       <summary>
-        <span>Trends · last {span > 0 ? ago(span) : '—'}</span>
+        <span>Trends · {span > 0 ? `last ${ago(span)}` : 'starts when the plant runs'}</span>
       </summary>
       <ul className="trend-grid">
         {LINES.map((l) => (

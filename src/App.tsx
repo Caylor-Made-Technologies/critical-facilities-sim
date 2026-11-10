@@ -147,6 +147,9 @@ export function App() {
     const place = () => {
       const a = sideRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
       setSideInk(a ? { x: a.offsetLeft, y: a.offsetTop, w: a.offsetWidth, h: a.offsetHeight } : null);
+      // 6e: keep the current tab visible in the sidebar on short screens (it scrolls on its own).
+      const side = sideRef.current;
+      if (a && side && (a.offsetTop < side.scrollTop || a.offsetTop + a.offsetHeight > side.scrollTop + side.clientHeight)) side.scrollTop = a.offsetTop - side.clientHeight / 2;
       const b = bottomRef.current?.querySelector<HTMLElement>('[aria-current="page"], button.active');
       setBottomInk(b ? { x: b.offsetLeft, w: b.offsetWidth } : null);
     };

@@ -6228,3 +6228,12 @@ body.has-follow .toast-region { bottom: 84px; }
   .v2-thumb-ack.has-new { border-color: var(--alarm); color: var(--alarm); }
   .tab-panel:has(.v2-thumb) { padding-bottom: 72px; }
 }
+
+/* 6e: on laptop-height screens (≤1000 px) the whole sidebar fits without scrolling (26 px rows, above the WCAG 2.2 24 px minimum). */
+@media (min-width: 1024px) and (max-height: 1000px) {
+  .sidebar { padding: 8px 10px 12px; }
+  .side-group + .side-group { margin-top: 2px; }
+  .side-group-label { padding: 5px 12px 2px; font-size: 0.62rem; }
+  .side-link { padding: 3px 12px; min-height: 26px; font-size: 0.86rem; }
+  .side-link svg { width: 15px; height: 15px; }
+}
