@@ -12,6 +12,19 @@ export interface CutawayPart {
   what: string;
 }
 export const CUTAWAYS: Partial<Record<ModelKey, CutawayPart[]>> = {
+  tower: [
+    { id: 'nozzles', name: 'Distribution nozzles', what: 'Spread the hot condenser water evenly over the fill. Clogged nozzles leave dry spots and lose capacity.' },
+    { id: 'fill', name: 'Fill', what: 'Thin sheets that spread the water into a film so air can evaporate a little of it. Evaporation is what cools the rest.' },
+    { id: 'fan', name: 'Fan', what: 'Pulls air up through the fill. On a VFD it follows the leaving-water setpoint; a vibration switch trips it on imbalance.' },
+    { id: 'drift', name: 'Drift eliminators', what: 'Catch water droplets before they leave with the air. Damaged eliminators waste water and spread mist.' },
+    { id: 'basin', name: 'Cold-water basin', what: 'Collects the cooled water for the condenser pumps. Make-up valve, strainers, blowdown and winter basin heaters live here.' },
+  ],
+  pump: [
+    { id: 'impeller', name: 'Impeller and volute', what: 'The spinning impeller throws water outward; the volute casing turns that speed into pressure. Cavitation pits the impeller.' },
+    { id: 'seal', name: 'Mechanical seal', what: 'Keeps water in where the shaft leaves the casing. A mechanical seal should not drip; a steady drip means it is failing.' },
+    { id: 'coupling', name: 'Coupling', what: 'Joins pump and motor shafts. Misalignment shows up as vibration and early bearing and seal wear.' },
+    { id: 'motor', name: 'Motor', what: 'Usually on a VFD. Power follows speed cubed, so a small speed cut saves a lot of energy. Check rotation after any electrical work.' },
+  ],
   transformer: [
     { id: 'core', name: 'Core', what: 'Stacked steel laminations that carry the magnetic field from one winding to the other. Hums at twice line frequency; a change in the hum is worth noting.' },
     { id: 'windings', name: 'Windings (HV outside, LV inside)', what: 'Copper or aluminum coils on each core leg. Turns ratio sets the voltage change, e.g. 12.47 kV to 480 V. Heat from load ages their insulation.' },

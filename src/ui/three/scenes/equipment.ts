@@ -33,7 +33,7 @@ export interface EquipmentApi {
   /** Frame-time stats and tier, for automated checks (?debug3d). */
   stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   show: (key: ModelKey) => void;
-  /** See inside (UPS, chiller, CRAH, transformer, generator, switchboard): shell turns to glass, inner parts appear. Returns false if this model has none. */
+  /** See inside (UPS, chiller, CRAH, transformer, generator, switchboard, tower, pump): shell turns to glass, inner parts appear. Returns false if this model has none. */
   cutaway: (on: boolean) => boolean;
   /** The inner parts a model's cutaway shows, in flow order (none if it has no cutaway). */
   cutawayParts: (key: ModelKey) => CutawayPart[] | undefined;
@@ -317,6 +317,46 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     return m;
   };
   const inside: Record<string, (g: Group, P: (id: string, m: Object3D) => Object3D) => void> = {
+    tower: (g, P) => {
+      const noz = new Group();
+      for (let k = 0; k < 3; k++) cyl(noz, 0.04, 1.9, M.cyanPipe, -0.6 + k * 0.6, 1.55, 0, [Math.PI / 2, 0, 0], 8);
+      for (let k = 0; k < 9; k++) cyl(noz, 0.05, 0.08, pm('nozzles', 0xf2b705), -0.6 + (k % 3) * 0.6, 1.49, -0.6 + Math.floor(k / 3) * 0.6, undefined, 8);
+      g.add(P('nozzles', noz));
+      const fill = new Group();
+      for (let k = 0; k < 10; k++) box(fill, 0.02, 0.8, 2.0, pm('fill', 0x94a3b8), -0.9 + k * 0.2, 0.9, 0);
+      g.add(P('fill', fill));
+      const fanP = new Group();
+      cyl(fanP, 0.78, 0.04, pm('fan', 0x52688a), 0, 2.2, 0, undefined, 28);
+      g.add(P('fan', fanP));
+      const drift = new Group();
+      box(drift, 2.0, 0.08, 2.0, pm('drift', 0x3f8a64), 0, 1.72, 0);
+      g.add(P('drift', drift));
+      const basin = new Group();
+      box(basin, 2.1, 0.25, 2.1, pm('basin', 0x38bdf8), 0, 0.15, 0);
+      g.add(P('basin', basin));
+    },
+    pump: (g, P) => {
+      const imp = new Group();
+      cyl(imp, 0.22, 0.08, pm('impeller', 0xb87333), 0, 0, 0, [0, 0, Math.PI / 2], 16);
+      for (let k = 0; k < 6; k++) {
+        const v = box(imp, 0.06, 0.2, 0.03, pm('impeller', 0xb87333), 0, 0, 0);
+        v.rotation.x = (k * Math.PI) / 3;
+      }
+      imp.position.set(-0.35, 0.45, 0);
+      g.add(P('impeller', imp));
+      const seal = new Group();
+      cyl(seal, 0.09, 0.06, pm('seal', 0xf2b705), 0, 0, 0, [0, 0, Math.PI / 2], 14);
+      seal.position.set(-0.17, 0.45, 0);
+      g.add(P('seal', seal));
+      const cp = new Group();
+      cyl(cp, 0.08, 0.1, pm('coupling', 0xc62828), 0, 0, 0, [0, 0, Math.PI / 2], 14);
+      cp.position.set(0.0, 0.45, 0);
+      g.add(P('coupling', cp));
+      const mot = new Group();
+      cyl(mot, 0.18, 0.55, pm('motor', 0xb87333), 0, 0, 0, [0, 0, Math.PI / 2], 18);
+      mot.position.set(0.37, 0.45, 0);
+      g.add(P('motor', mot));
+    },
     transformer: (g, P) => {
       const core = new Group();
       box(core, 1.2, 0.12, 0.3, pm('core', 0x64748b), 0, 0.2, 0);

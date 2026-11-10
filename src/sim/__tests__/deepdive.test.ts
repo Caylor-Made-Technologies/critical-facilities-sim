@@ -9,7 +9,7 @@ import { QUIZ } from '../../content/quiz';
 import { LIFE_STAGES } from '../../content/lifecycle';
 import { migrate, sanitize, xpOf, XP } from '../../ui/progress';
 
-const DONE_GROUPS = ['Electrical'] as const;
+const DONE_GROUPS = ['Electrical', 'Mechanical'] as const;
 
 describe('deep dives', () => {
   it('every guide in a finished group has a deep dive', () => {
