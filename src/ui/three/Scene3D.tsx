@@ -13,7 +13,7 @@ import type { CampusApi } from './scenes/campus';
 import type { Anchor, SceneState } from '../../content/lifecycleTypes';
 import type { Plant3D } from './plantModel';
 import type { HallVis } from './hallState';
-import { CUTAWAYS, MODEL_CAPTION, type ModelKey } from './models';
+import { MODEL_CAPTION, type ModelKey } from './models';
 import { useQuality } from './quality';
 
 type Status = 'loading' | 'ready' | 'fallback' | 'lost';
@@ -151,7 +151,7 @@ function Hall3DInner({ vis, selected = null, onPick, mode, label, fallback }: { 
 
 function Equipment3DInner({ model, title }: { model: ModelKey; title: string }) {
   const { ref, api, status } = useScene<EquipmentApi>(async (c) => (await import('./scenes/equipment')).mountEquipment(c), 'equipment');
-  const parts = CUTAWAYS[model];
+  const parts = api?.cutawayParts(model);
   const [inside, setInside] = useState(false);
   const [lit, setLit] = useState<string | null>(null);
   useEffect(() => {

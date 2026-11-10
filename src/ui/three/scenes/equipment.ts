@@ -26,14 +26,17 @@ import {
   type Object3D,
 } from 'three';
 import { addEdges, createStage, disposeTree, edgeMaterial, rand } from '../core';
-import { CUTAWAYS, type ModelKey } from '../models';
+import type { ModelKey } from '../models';
+import { CUTAWAYS, type CutawayPart } from '../cutaways';
 
 export interface EquipmentApi {
   /** Frame-time stats and tier, for automated checks (?debug3d). */
   stats: () => import('../core').FrameStats & { tier: import('../quality').Tier; shadows: boolean };
   show: (key: ModelKey) => void;
-  /** See inside (UPS, chiller, CRAH): shell turns to glass, inner parts appear. Returns false if this model has none. */
+  /** See inside (UPS, chiller, CRAH, transformer, generator, switchboard): shell turns to glass, inner parts appear. Returns false if this model has none. */
   cutaway: (on: boolean) => boolean;
+  /** The inner parts a model's cutaway shows, in flow order (none if it has no cutaway). */
+  cutawayParts: (key: ModelKey) => CutawayPart[] | undefined;
   /** Light up one inner part (or none). */
   highlight: (id: string | null) => void;
   /** Inner parts currently shown (for automated checks). */
@@ -314,6 +317,83 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     return m;
   };
   const inside: Record<string, (g: Group, P: (id: string, m: Object3D) => Object3D) => void> = {
+    transformer: (g, P) => {
+      const core = new Group();
+      box(core, 1.2, 0.12, 0.3, pm('core', 0x64748b), 0, 0.2, 0);
+      box(core, 1.2, 0.12, 0.3, pm('core', 0x64748b), 0, 1.1, 0);
+      for (let k = 0; k < 3; k++) box(core, 0.12, 0.8, 0.3, pm('core', 0x64748b), -0.45 + k * 0.45, 0.65, 0);
+      g.add(P('core', core));
+      const w = new Group();
+      for (let k = 0; k < 3; k++) {
+        cyl(w, 0.19, 0.7, pm('windings', 0xb87333), -0.45 + k * 0.45, 0.65, 0, undefined, 18);
+        cyl(w, 0.13, 0.72, M.copper, -0.45 + k * 0.45, 0.65, 0, undefined, 14);
+      }
+      g.add(P('windings', w));
+      const oil = new Group();
+      box(oil, 1.5, 0.08, 1.1, pm('oil', 0x38bdf8), 0, 1.28, 0);
+      g.add(P('oil', oil));
+      const tap = new Group();
+      box(tap, 0.18, 0.18, 0.12, pm('taps', 0xf2b705), 0, 0, 0);
+      cyl(tap, 0.025, 0.2, M.steel, 0, 0, 0.12, [Math.PI / 2, 0, 0], 8);
+      tap.position.set(-0.62, 1.0, -0.66);
+      g.add(P('taps', tap));
+      const gauge = new Group();
+      cyl(gauge, 0.11, 0.05, pm('gauge', 0xe5e7eb), 0, 0, 0, [Math.PI / 2, 0, 0], 20);
+      box(gauge, 0.015, 0.09, 0.01, M.red, 0.02, 0.03, 0.03);
+      gauge.position.set(0.55, 1.05, -0.64);
+      g.add(P('gauge', gauge));
+    },
+    generator: (g, P) => {
+      const rad = new Group();
+      box(rad, 0.12, 1.05, 0.95, pm('radiator', 0x52688a), 0, 0, 0);
+      rad.position.set(-1.35, 0.8, 0);
+      g.add(P('radiator', rad));
+      const eng = new Group();
+      box(eng, 1.2, 0.7, 0.6, pm('engine', 0x94a3b8), 0, 0, 0);
+      for (let k = 0; k < 6; k++) cyl(eng, 0.06, 0.2, M.dark, -0.5 + k * 0.2, 0.42, 0, undefined, 10);
+      eng.position.set(-0.45, 0.7, 0);
+      g.add(P('engine', eng));
+      const heat = new Group();
+      cyl(heat, 0.07, 0.35, pm('heater', 0xc2410c), 0, 0, 0, [0, 0, Math.PI / 2], 12);
+      heat.position.set(-0.6, 0.3, 0.38);
+      g.add(P('heater', heat));
+      const alt = new Group();
+      cyl(alt, 0.36, 0.75, pm('alternator', 0x2d5fae), 0, 0, 0, [0, 0, Math.PI / 2], 24);
+      alt.position.set(0.55, 0.7, 0);
+      g.add(P('alternator', alt));
+      const ctl = new Group();
+      box(ctl, 0.35, 0.45, 0.2, pm('controls', 0x3f8a64), 0, 0, 0);
+      ctl.position.set(1.2, 1.05, 0.35);
+      g.add(P('controls', ctl));
+      const bat = new Group();
+      for (let k = 0; k < 2; k++) box(bat, 0.22, 0.2, 0.3, pm('batteries', 0x1f2836), k * 0.26, 0, 0);
+      bat.position.set(1.05, 0.2, -0.3);
+      g.add(P('batteries', bat));
+    },
+    switchboard: (g, P) => {
+      const bus = new Group();
+      for (let k = 0; k < 3; k++) box(bus, 3.4, 0.06, 0.02, pm('bus', 0xb87333), 0, 1.75 + k * 0.1, -0.3);
+      g.add(P('bus', bus));
+      const cradle = new Group();
+      box(cradle, 0.04, 0.55, 0.7, pm('cradle', 0x475569), -0.28, 0, 0);
+      box(cradle, 0.04, 0.55, 0.7, pm('cradle', 0x475569), 0.28, 0, 0);
+      box(cradle, 0.5, 0.5, 0.03, pm('cradle', 0x475569), 0, 0, -0.33);
+      cradle.position.set(0, 1.05, 0);
+      g.add(P('cradle', cradle));
+      const br = new Group();
+      box(br, 0.48, 0.48, 0.55, pm('breaker', 0x1f2836), 0, 0, 0);
+      for (let k = 0; k < 3; k++) cyl(br, 0.03, 0.18, M.copper, -0.15 + k * 0.15, 0, -0.35, [Math.PI / 2, 0, 0], 8);
+      br.position.set(0, 1.05, 0.05);
+      g.add(P('breaker', br));
+      const trip = new Group();
+      box(trip, 0.16, 0.12, 0.03, pm('trip', 0x22d3ee), 0, 0, 0);
+      trip.position.set(0.08, 1.15, 0.34);
+      g.add(P('trip', trip));
+      const kk = new Group();
+      box(kk, 0.1, 0.24, 0.1, pm('kirk', 0xf2b705), 0, 0, 0);
+      kk.position.set(0, 1.55, 0.5);
+      g.add(P('kirk', kk));
+    },
     ups: (g, P) => {
       const r = new Group();
       box(r, 0.42, 0.42, 0.5, pm('rectifier', 0x8a6d3b), 0, 0, 0);
@@ -587,6 +667,7 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
     },
     current: () => key,
     cutaway: applyCut,
+    cutawayParts: (k: ModelKey) => CUTAWAYS[k],
     highlight,
     parts: () => (cut ? [...partObjs.keys()].filter((k) => k !== '__group') : []),
     meshCount: () => {

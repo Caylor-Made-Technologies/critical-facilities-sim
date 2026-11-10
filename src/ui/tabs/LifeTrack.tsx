@@ -10,6 +10,7 @@ import { Confetti, SectionTabs } from '../common';
 import { Icon } from '../icons';
 import { LIFE_PASS, lifeStageDone, type ProgressHandle } from '../progress';
 import { Campus3D } from '../three/Scene3D';
+import { QuizBlock } from '../QuizBlock';
 
 type Part = 'lesson' | 'tour' | 'task' | 'details' | 'mistakes' | 'quiz';
 const PARTS: { id: Part; label: string }[] = [
@@ -105,7 +106,7 @@ function StageView({ stage, p, onRunIst, onClose, onGo }: { stage: LifeStage; p:
         {part === 'task' && <Task stage={stage} done={taskDone} onDone={() => p.finishLifeTask(stage.id)} onRunIst={onRunIst} />}
         {part === 'details' && <Details stage={stage} />}
         {part === 'mistakes' && <Mistakes stage={stage} />}
-        {part === 'quiz' && <Quiz stage={stage} best={life?.quiz ?? 0} onFinish={(pct, answers) => p.finishLifeQuiz(stage.id, pct, answers)} />}
+        {part === 'quiz' && <QuizBlock qs={stage.quiz} best={life?.quiz ?? 0} onFinish={(pct, answers) => p.finishLifeQuiz(stage.id, pct, answers)} />}
       </div>
       <nav className="lc-pager" aria-label="Stages">
         {prev ? (
@@ -545,57 +546,3 @@ function Mistakes({ stage }: { stage: LifeStage }) {
   );
 }
 
-function Quiz({ stage, best, onFinish }: { stage: LifeStage; best: number; onFinish: (pct: number, answers: Record<string, boolean>) => void }) {
-  const [picks, setPicks] = useState<Record<string, number>>({});
-  const [done, setDone] = useState(false);
-  const qs = stage.quiz;
-  const right = qs.filter((q) => picks[q.id] === q.answer).length;
-  const pct = Math.round((right / qs.length) * 100);
-  const submit = () => {
-    setDone(true);
-    onFinish(pct, Object.fromEntries(qs.map((q) => [q.id, picks[q.id] === q.answer])));
-  };
-  return (
-    <div className="lc-quiz">
-      {best > 0 && !done && <p className="muted small">Best so far: {best}%.</p>}
-      {qs.map((q, n) => (
-        <fieldset key={q.id} className={`card lc-q${done ? (picks[q.id] === q.answer ? ' ok' : ' bad') : ''}`}>
-          <legend>
-            {n + 1}. {q.q}
-          </legend>
-          {q.choices.map((c, i) => (
-            <label key={c} className={`lc-choice${picks[q.id] === i ? ' on' : ''}${done && i === q.answer ? ' right' : ''}`}>
-              <input type="radio" name={q.id} checked={picks[q.id] === i} disabled={done} onChange={() => setPicks({ ...picks, [q.id]: i })} />
-              {c}
-            </label>
-          ))}
-          {done && <p className="lc-why">{picks[q.id] === q.answer ? 'Right. ' : `Answer: ${q.choices[q.answer]}. `}{q.why}</p>}
-        </fieldset>
-      ))}
-      <div className="step-nav">
-        {!done ? (
-          <button type="button" className="btn btn-primary" disabled={Object.keys(picks).length < qs.length} onClick={submit}>
-            Check answers
-          </button>
-        ) : (
-          <>
-            <Confetti burst={pct === 100 ? 1 : 0} />
-            <span role="status" className={pct >= LIFE_PASS ? 'lc-good' : 'lc-try'}>
-              {right} of {qs.length} right ({pct}%). {pct >= LIFE_PASS ? 'Passed.' : `${LIFE_PASS}% passes. Read the explanations and try again.`}
-            </span>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                setPicks({});
-                setDone(false);
-              }}
-            >
-              Try again
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}

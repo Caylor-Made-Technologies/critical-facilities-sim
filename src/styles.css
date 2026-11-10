@@ -6237,3 +6237,25 @@ body.has-follow .toast-region { bottom: 84px; }
   .side-link { padding: 3px 12px; min-height: 26px; font-size: 0.86rem; }
   .side-link svg { width: 15px; height: 15px; }
 }
+
+/* Equipment deep dives (Phase 7) */
+.dd-part { margin-top: 12px; }
+.dd-verify { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin: 0 0 12px; }
+.dd-verify svg { flex: none; width: 18px; height: 18px; color: var(--warn); }
+.dd-vchip { font-size: 0.7rem; vertical-align: middle; }
+.dd-topic + .dd-topic { margin-top: 14px; }
+.dd-readings th[scope='row'] { min-width: 10rem; }
+.dd-readings td { min-width: 11rem; }
+.dd-fails, .dd-tips { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.dd-fail p, .dd-tips p { margin: 6px 0 0; }
+.dd-k { font-weight: 700; color: var(--text-heading); }
+.dd-caution { color: var(--warn); }
+.dd-live { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.dd-live .btn { min-height: 44px; text-align: left; }
+@media (max-width: 640px) {
+  .dd-readings thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .dd-readings, .dd-readings tbody, .dd-readings tr, .dd-readings th, .dd-readings td { display: block; min-width: 0; }
+  .dd-readings tr { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .dd-readings th[scope='row'], .dd-readings td { min-width: 0; padding: 2px 0; border: 0; }
+  .dd-readings td::before { content: attr(data-label) ': '; font-weight: 700; color: var(--text-heading); }
+}

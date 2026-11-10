@@ -6,12 +6,19 @@ import { Figure } from '../figures';
 import { Equipment3D } from '../three/Scene3D';
 import { GUIDE_MODEL } from '../three/models';
 import { Icon } from '../icons';
+import { DeepDivePart, DEEP_PARTS, type DeepPart } from './DeepDive';
+import { deepDiveFor } from '../../content/deepdive';
+import type { Jump } from '../search';
+import type { ProgressHandle } from '../progress';
 
 interface Props {
   /** Guide to open (set when coming from a component card). */
   openId: string | null;
   onShowInSim: (kind: string) => void;
   onRead: (id: string) => void;
+  /** Open a walkthrough or MOP/drill ("See it live"). */
+  onJump: (j: Jump) => void;
+  p: ProgressHandle;
 }
 
 type Group = EquipmentGuide['group'];
@@ -21,7 +28,7 @@ const GROUPS: { id: Group; label: string }[] = [
   { id: 'Life safety', label: 'Life safety' },
 ];
 
-export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
+export function EquipmentTab({ openId, onShowInSim, onRead, onJump, p }: Props) {
   const [q, setQ] = useState('');
   const [current, setCurrent] = useState(openId ?? EQUIPMENT[0]!.id);
   const [group, setGroup] = useState<Group>(EQUIPMENT.find((g) => g.id === (openId ?? ''))?.group ?? 'Electrical');
@@ -32,18 +39,21 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
     if (g) setGroup(g.group);
   }, [openId]);
   useEffect(() => onRead(current), [current, onRead]);
+  const [part, setPart] = useState<DeepPart>('overview');
+  useEffect(() => setPart('overview'), [current]);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return EQUIPMENT;
     return EQUIPMENT.filter((g) =>
-      [g.title, g.summary, ...g.kinds, ...g.howItWorks, ...g.rounds, ...g.neverDo, ...g.troubleshooting.map((t) => t.symptom)]
+      [g.title, g.summary, ...g.kinds, ...g.howItWorks, ...g.rounds, ...g.neverDo, ...g.troubleshooting.map((t) => t.symptom), deepText(g.id)]
         .join(' ')
         .toLowerCase()
         .includes(needle),
     );
   }, [q]);
   const guide = EQUIPMENT.find((g) => g.id === current) ?? EQUIPMENT[0]!;
+  const deep = deepDiveFor(guide.id);
   const pickGroup = (g: Group) => {
     setGroup(g);
     setCurrent(EQUIPMENT.find((x) => x.group === g)!.id);
@@ -92,7 +102,11 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
               <Icon name="bolt" /> Find it in the simulator
             </button>
           </div>
-
+          {deep && <SectionTabs label={`${guide.title} sections`} sections={DEEP_PARTS} value={part} onChange={setPart} counts={p.progress.deep[guide.id] ? { quiz: `${p.progress.deep[guide.id]}%` } : undefined} />}
+          {deep && part !== 'overview' ? (
+            <DeepDivePart dive={deep} part={part} title={guide.title} best={p.progress.deep[guide.id] ?? 0} onJump={onJump} onFinish={(pct, answers) => p.finishDeepQuiz(guide.id, pct, answers)} />
+          ) : (
+          <>
           <section>
             <h3>
               <span className="dot" aria-hidden="true" />
@@ -191,8 +205,16 @@ export function EquipmentTab({ openId, onShowInSim, onRead }: Props) {
               </ul>
             </div>
           </section>
+          </>
+          )}
         </article>
       </div>
     </div>
   );
+}
+
+/** Deep-dive words the Equipment search also matches (sub-topics like LSIG, K-factor, grounding). */
+function deepText(id: string): string {
+  const d = deepDiveFor(id);
+  return d ? [...d.topics.map((t) => `${t.h} ${t.p.join(' ')}`), ...d.failures.map((f) => f.mode), ...d.readings.map((r) => r.what)].join(' ') : '';
 }

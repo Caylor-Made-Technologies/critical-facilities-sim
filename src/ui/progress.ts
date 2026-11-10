@@ -40,6 +40,8 @@ export interface Progress {
   profile: Profile | null;
   /** Life of a Data Center: per stage, best quiz %, hands-on task done, tour finished. */
   life: Record<string, LifeProgress>;
+  /** Equipment deep dives: guide id → best quiz % (0–100). */
+  deep: Record<string, number>;
 }
 
 export interface LifeProgress {
@@ -48,9 +50,9 @@ export interface LifeProgress {
   tour: boolean;
 }
 
-const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [], profile: null, life: {} };
+const EMPTY: Progress = { lessons: [], quiz: {}, guides: [], procs: {}, times: {}, safety: {}, daily: {}, cards: {}, exam: -1, favTips: [], careerRung: '', careerChecks: [], dcCerts: [], profile: null, life: {}, deep: {} };
 
-export const XP = { lifeStage: 60, lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60 } as const;
+export const XP = { lifeStage: 60, lesson: 50, quizCorrect: 10, quizTried: 3, guide: 5, procedure: 40, safety: 20, daily: 15, exam: 60, deepDive: 20 } as const;
 
 export const LEVELS = [
   { xp: 0, name: 'Rookie', blurb: 'Every pro started here. Take the guided tour.' },
@@ -84,6 +86,7 @@ export function sanitize(raw: unknown): Progress {
     dcCerts: strs(p.dcCerts).filter((x) => /^[a-z]{2,8}$/.test(x)).slice(0, 50),
     profile: sanitizeProfile(p.profile),
     life: sanitizeLife(p.life),
+    deep: Object.fromEntries(Object.entries(numMap(p.deep, score)).filter(([k]) => /^[a-z][a-z-]{1,30}$/.test(k)).slice(0, 60)),
   };
 }
 
@@ -188,7 +191,8 @@ export function xpOf(p: Progress): number {
     Object.keys(p.safety ?? {}).length * XP.safety +
     Object.keys(p.daily ?? {}).length * XP.daily +
     ((p.exam ?? -1) >= 80 ? XP.exam : 0) +
-    Object.keys(p.life ?? {}).filter((id) => lifeStageDone(p, id)).length * XP.lifeStage
+    Object.keys(p.life ?? {}).filter((id) => lifeStageDone(p, id)).length * XP.lifeStage +
+    Object.values(p.deep ?? {}).filter((v) => v >= LIFE_PASS).length * XP.deepDive
   );
 }
 
@@ -321,6 +325,15 @@ export function useProgress(onGain?: (msg: string) => void) {
       }, pct >= LIFE_PASS ? `Quiz passed: ${Math.round(pct)}%` : `Quiz saved: ${Math.round(pct)}%. ${LIFE_PASS}% passes.`),
     [commit],
   );
+  const finishDeepQuiz = useCallback(
+    (id: string, pct: number, answers: Record<string, boolean>) =>
+      commit((p) => {
+        const quiz = { ...p.quiz };
+        for (const [q, ok] of Object.entries(answers)) if (!(q in quiz)) quiz[q] = ok;
+        return { ...p, quiz, deep: { ...p.deep, [id]: Math.max(p.deep[id] ?? 0, Math.round(pct)) } };
+      }, pct >= LIFE_PASS ? `Deep dive quiz passed: ${Math.round(pct)}%` : `Quiz saved: ${Math.round(pct)}%. ${LIFE_PASS}% passes.`),
+    [commit],
+  );
   const finishLifeTask = useCallback(
     (id: string) => commit((p) => (lifeOf(p, id).task ? null : { ...p, life: { ...p.life, [id]: { ...lifeOf(p, id), task: true } } }), 'Hands-on task done.'),
     [commit],
@@ -344,7 +357,7 @@ export function useProgress(onGain?: (msg: string) => void) {
     setProgress(EMPTY);
   }, []);
 
-  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, saveProfile, togglePathDone, finishLifeQuiz, finishLifeTask, finishLifeTour, restore, reset };
+  return { progress, xp: xpOf(progress), finishLesson, answer, readGuide, finishProcedure, finishSafety, finishDaily, rateCard, finishExam, toggleTip, setCareerRung, toggleCareerCheck, toggleDcCert, saveProfile, togglePathDone, finishLifeQuiz, finishDeepQuiz, finishLifeTask, finishLifeTour, restore, reset };
 }
 
 export type ProgressHandle = ReturnType<typeof useProgress>;

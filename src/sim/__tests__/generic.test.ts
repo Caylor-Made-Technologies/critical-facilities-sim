@@ -2,7 +2,7 @@
  * Generic and public only (repo rule): no real equipment makers, operators or tech companies
  * anywhere in published content or UI text. Word-boundary match, case-insensitive.
  */
-const FILES = import.meta.glob(['../../content/*.ts', '../../ui/**/*.tsx', '../../ui/*.ts'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const FILES = import.meta.glob(['../../content/*.ts', '../../ui/**/*.tsx', '../../ui/**/*.ts'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 const BANNED = [
   // Operators and tech companies
