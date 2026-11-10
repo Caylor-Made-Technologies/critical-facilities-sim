@@ -152,6 +152,7 @@ test('ui v2 sweep: on a 1366 × 768 laptop the whole sidebar fits, and Never Do 
   const minH = await page.locator('.sidebar .side-link').evaluateAll((ls) => Math.min(...ls.map((l) => l.getBoundingClientRect().height)));
   expect(minH).toBeGreaterThanOrEqual(24); // WCAG 2.2 target size minimum
   await page.goto('./#/never');
+  await page.locator('.never-rule').first().waitFor(); // the tab loads on demand
   const rules = await page.locator('.never-rule').allInnerTexts();
   expect(rules.length).toBeGreaterThan(5);
   for (const r of rules) expect(r).not.toMatch(/!!/);
