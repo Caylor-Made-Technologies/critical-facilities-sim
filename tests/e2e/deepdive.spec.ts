@@ -31,3 +31,13 @@ test.describe('equipment deep dives (Phase 7)', () => {
     await expect(page.locator('.eq3d-parts li strong')).toHaveText(['Main bus', 'Drawout breaker', 'Trip unit (LSIG)', 'Cradle and shutters', 'Key interlock']);
   });
 });
+
+test('quick search finds a deep-dive topic and opens it on the Deep dive part', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
+  await open('#/home', { three: false });
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('LSIG');
+  await page.getByRole('option', { name: /LSIG/ }).or(page.getByRole('button', { name: /LSIG/ })).first().click();
+  await expect(page.getByRole('tab', { name: 'Deep dive' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: /LSIG: reading a trip unit/ })).toBeVisible();
+});

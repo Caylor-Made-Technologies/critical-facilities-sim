@@ -173,6 +173,8 @@ export function App() {
   const [mode, setMode] = useState<'explore' | 'failure'>('explore');
   const [selected, setSelected] = useState<string | null>(null);
   const [guideId, setGuideId] = useState<string | null>(null);
+  /** A search result asked for a guide's Deep dive part (cleared once shown). */
+  const [guideDeep, setGuideDeep] = useState(false);
   const [lesson, setLesson] = useState<LessonState | null>(null);
   type ProcState = { p: Procedure; run: ProcRun; started: number; secs?: number } | null;
   const [proc, setProcState] = useState<ProcState>(null);
@@ -465,6 +467,7 @@ export function App() {
       if (pr) startProc(pr);
     } else if (j.kind === 'guide') {
       setGuideId(j.id);
+      setGuideDeep(!!j.deep);
       setTab('equipment');
     } else if (j.kind === 'case') {
       setCaseOpen(j.id);
@@ -696,7 +699,7 @@ export function App() {
             )}
             {tab === 'designs' && <DesignsTab sim={h.sim} version={h.version} units={prefs.units} onTry={(t) => { setProc(null); setLesson(null); h.reset(t); setSelected(null); setTab('sim'); }} />}
             {tab === 'quiz' && <QuizTab p={p} />}
-            {tab === 'equipment' && <EquipmentTab openId={guideId} onShowInSim={showKindInSim} onRead={p.readGuide} onJump={jump} p={p} />}
+            {tab === 'equipment' && <EquipmentTab openId={guideId} openDeep={guideDeep} onDeepShown={() => setGuideDeep(false)} onShowInSim={showKindInSim} onRead={p.readGuide} onJump={jump} p={p} />}
             {tab === 'never' && <NeverDoTab />}
             {tab === 'glossary' && <GlossaryTab key={glossaryQ} initialQuery={glossaryQ} boxes={p.progress.cards} onRate={p.rateCard} />}
             {tab === 'safety' && <SafetyTab key={safetyArticle ?? 'safety'} scores={p.progress.safety} onScore={p.finishSafety} openArticle={safetyArticle} />}

@@ -14,6 +14,9 @@ import type { ProgressHandle } from '../progress';
 interface Props {
   /** Guide to open (set when coming from a component card). */
   openId: string | null;
+  /** Open the guide on its Deep dive part (from search); onDeepShown clears the request. */
+  openDeep?: boolean;
+  onDeepShown?: () => void;
   onShowInSim: (kind: string) => void;
   onRead: (id: string) => void;
   /** Open a walkthrough or MOP/drill ("See it live"). */
@@ -28,7 +31,7 @@ const GROUPS: { id: Group; label: string }[] = [
   { id: 'Life safety', label: 'Life safety' },
 ];
 
-export function EquipmentTab({ openId, onShowInSim, onRead, onJump, p }: Props) {
+export function EquipmentTab({ openId, openDeep = false, onDeepShown, onShowInSim, onRead, onJump, p }: Props) {
   const [q, setQ] = useState('');
   const [current, setCurrent] = useState(openId ?? EQUIPMENT[0]!.id);
   const [group, setGroup] = useState<Group>(EQUIPMENT.find((g) => g.id === (openId ?? ''))?.group ?? 'Electrical');
@@ -40,7 +43,14 @@ export function EquipmentTab({ openId, onShowInSim, onRead, onJump, p }: Props) 
   }, [openId]);
   useEffect(() => onRead(current), [current, onRead]);
   const [part, setPart] = useState<DeepPart>('overview');
+  // A new guide opens on Overview, unless search just asked for its Deep dive (that effect runs second).
   useEffect(() => setPart('overview'), [current]);
+  useEffect(() => {
+    if (!openDeep || current !== openId) return;
+    setPart('deep');
+    onDeepShown?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, openDeep, openId]);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();

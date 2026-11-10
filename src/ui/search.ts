@@ -5,6 +5,7 @@
  */
 import { CASES } from '../content/cases';
 import { EQUIPMENT } from '../content/equipment';
+import { DEEP_DIVES } from '../content/deepdive';
 import { GLOSSARY } from '../content/glossary';
 import { LESSONS } from '../content/lessons';
 import { PROCEDURES } from '../content/procedures';
@@ -17,7 +18,7 @@ export type Jump =
   | { kind: 'tab'; tab: Tab }
   | { kind: 'lesson'; id: string }
   | { kind: 'proc'; id: string }
-  | { kind: 'guide'; id: string }
+  | { kind: 'guide'; id: string; /** Open on the Deep dive part. */ deep?: boolean }
   | { kind: 'case'; id: string }
   | { kind: 'safety'; id: string }
   | { kind: 'term'; term: string }
@@ -40,6 +41,10 @@ export const SEARCH_INDEX: SearchItem[] = [
   { title: IST_L5.title, type: 'Drill', extra: `${IST_L5.summary} commissioning integrated systems test`, jump: { kind: 'life', id: 'life-cx' } as Jump },
   ...PROCEDURES.map((p) => ({ title: p.title, type: p.kind === 'mop' ? 'MOP' : 'Drill', extra: p.summary, jump: { kind: 'proc', id: p.id } as Jump })),
   ...EQUIPMENT.map((g) => ({ title: g.title, type: 'Equipment', extra: `${g.group} ${g.summary}`, jump: { kind: 'guide', id: g.id } as Jump })),
+  ...DEEP_DIVES.flatMap((d) => {
+    const g = EQUIPMENT.find((x) => x.id === d.id)!;
+    return d.topics.map((t) => ({ title: t.h, type: 'Deep dive', extra: `${g.title} ${t.p.join(' ')}`, jump: { kind: 'guide', id: d.id, deep: true } as Jump }));
+  }),
   ...CASES.map((c) => ({ title: c.title, type: 'Case study', extra: c.summary, jump: { kind: 'case', id: c.id } as Jump })),
   ...SAFETY.map((a) => ({ title: a.title, type: 'Safety', extra: `${a.group} ${a.intro}`, jump: { kind: 'safety', id: a.id } as Jump })),
   ...GLOSSARY.map((t) => ({ title: t.term, type: 'Term', extra: t.def, jump: { kind: 'term', term: t.term } as Jump })),
