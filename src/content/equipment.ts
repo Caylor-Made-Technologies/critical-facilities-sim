@@ -747,6 +747,66 @@ export const EQUIPMENT: EquipmentGuide[] = [
     hazards: ['Massive simultaneous load drop'],
     changeTriggers: ['Any change to EPO wiring or what it trips'],
   },
+  {
+    id: 'monitoring',
+    title: 'BMS, EPMS & DCIM (monitoring and alarms)',
+    group: 'Life safety',
+    kinds: [],
+    summary: 'The screens a tech lives on: building automation for mechanical, power monitoring for electrical, and DCIM for capacity and IT space. How alarms are ranked and handled.',
+    howItWorks: [
+      'BMS (building management / automation system): controls and monitors mechanical gear (chillers, pumps, air handlers, DOAS) through controllers, sensors and actuators. It runs sequences and setpoints.',
+      'EPMS (electrical power monitoring system): reads meters, breakers, UPS and generators, captures waveforms and event records with accurate time stamps. Mostly monitoring, little control.',
+      'DCIM (data center infrastructure management): ties power, cooling and space together for capacity planning, rack power, asset tracking and reports.',
+    ],
+    rounds: [
+      'Start of shift: read the active alarm list and the shift log before walking.',
+      'Check that no points are in manual override or hand without a tag and an end date.',
+      'Spot-check a few BMS readings against local gauges (sensors drift).',
+      'Confirm the system clocks match (event records depend on it).',
+    ],
+    pm: [
+      { interval: 'Quarterly (typical)', task: 'Review overrides, shelved and disabled alarms; clear the ones that should be back in service.' },
+      { interval: 'Annually (typical)', task: 'Sensor calibration checks on critical points; controller backups; user access review.' },
+    ],
+    troubleshooting: [
+      { symptom: 'BMS or EPMS screen lost', causes: ['Network or server down', 'Controller power', 'Software update gone wrong'], checks: ['Equipment keeps running on its controllers', 'Start manual rounds and logging (often every 15 min on critical gear)', 'Call the controls contractor / IT support'] },
+      { symptom: 'Alarm flood', causes: ['One upstream event triggering many alarms', 'Communication loss', 'Bad setpoint pushed to many points'], checks: ['Find the first alarm (first-out)', 'Group by equipment', 'Fix the cause, then acknowledge'] },
+    ],
+    neverDo: [
+      'Never change a setpoint or sequence without a change record.',
+      'Never leave a point in hand or override without a tag, a reason and an end date.',
+      'Never acknowledge an alarm you did not read.',
+    ],
+    hazards: ['Blind spots when monitoring is down', 'Remote commands to equipment someone is working on'],
+    changeTriggers: ['Setpoint, sequence or alarm limit changes', 'Adding or removing points', 'Software and firmware updates'],
+  },
+  {
+    id: 'security-network',
+    title: 'Physical security & facility networks',
+    group: 'Life safety',
+    kinds: [],
+    summary: 'Layers of access control around the site, and the separate network that carries BMS and EPMS traffic.',
+    howItWorks: [
+      'Security works in layers: fence and gate, building entry, mantrap or turnstile, data hall door, cage or rack lock. Each layer checks who you are (badge, PIN, biometric) and logs it.',
+      'Facility (OT) networks carry BMS, EPMS and controller traffic. They are kept separate from IT and the internet, with tight remote access, because a controller command can stop real equipment.',
+    ],
+    rounds: [
+      'Doors close and latch behind you; no propped doors.',
+      'Visitors badged and escorted; no tailgating.',
+      'Network cabinets for facility systems locked; no unknown devices plugged in.',
+    ],
+    pm: [{ interval: 'Per site program', task: 'Access list reviews, door hardware checks, controller firmware and password updates by the owner\'s team.' }],
+    troubleshooting: [
+      { symptom: 'Door forced / held alarm', causes: ['Propped door', 'Hardware fault', 'Real intrusion'], checks: ['Follow the security post orders', 'Go look only if that is your role', 'Log it'] },
+    ],
+    neverDo: [
+      'Never let someone tailgate behind you, even someone you know.',
+      'Never plug a laptop or USB drive into a facility controller without approval.',
+      'Never share your badge or PIN.',
+    ],
+    hazards: ['Unauthorized access to energized equipment', 'Remote misuse of controls'],
+    changeTriggers: ['Access level changes', 'New devices on the facility network', 'Remote access changes'],
+  },
 ];
 
 export function guideForKind(kind: ComponentKind): EquipmentGuide | undefined {

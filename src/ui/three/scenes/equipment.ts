@@ -307,6 +307,27 @@ export function mountEquipment(canvas: HTMLCanvasElement): EquipmentApi {
       g.add(cover);
       led(g, 0.25, 1.55, 0.11, M.glowGreen);
     },
+    bms: (g) => {
+      box(g, 2.4, 0.06, 0.9, M.cabLight, 0, 0.75);
+      for (const x of [-0.8, 0.8]) box(g, 0.06, 0.72, 0.8, M.dark, x * 1.4, 0.36);
+      for (let k = 0; k < 3; k++) {
+        const x = (k - 1) * 0.75;
+        box(g, 0.68, 0.42, 0.04, M.dark, x, 1.15, -0.2).rotation.y = (1 - k) * 0.25;
+        box(g, 0.6, 0.34, 0.01, k === 1 ? M.glowAmber : M.glowCyan, x, 1.15, -0.175).rotation.y = (1 - k) * 0.25;
+        box(g, 0.06, 0.2, 0.06, M.steel, x, 0.88, -0.22);
+      }
+      led(g, 1.0, 1.42, -0.16, M.glowRed);
+    },
+    netrack: (g) => {
+      cabinet(g, 0.8, 2, 0.8, -0.3, false);
+      for (let k = 0; k < 4; k++) {
+        box(g, 0.66, 0.08, 0.02, M.dark, -0.3, 1.2 + k * 0.15, 0.42);
+        for (let j = 0; j < 5; j++) led(g, -0.55 + j * 0.12, 1.2 + k * 0.15, 0.44, M.glowGreen);
+      }
+      box(g, 0.9, 2.1, 0.06, M.cabLight, 0.75, 1.05, 0);
+      box(g, 0.12, 0.18, 0.04, M.dark, 1.3, 1.2, 0.05);
+      led(g, 1.3, 1.25, 0.08, M.glowGreen, false);
+    },
   };
 
   // --- Cutaways: inner parts for "See inside" ---

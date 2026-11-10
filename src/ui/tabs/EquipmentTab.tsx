@@ -97,11 +97,13 @@ export function EquipmentTab({ openId, onShowInSim, onRead, onJump, p }: Props) 
           <h2 id="eq-h">{guide.title}</h2>
           {GUIDE_MODEL[guide.id] && <Equipment3D model={GUIDE_MODEL[guide.id]!} title={guide.title} />}
           <p>{guide.summary}</p>
-          <div className="card-actions" style={{ marginTop: 0 }}>
-            <button className="btn" type="button" onClick={() => onShowInSim(guide.kinds[0]!)}>
-              <Icon name="bolt" /> Find it in the simulator
-            </button>
-          </div>
+          {guide.kinds[0] && (
+            <div className="card-actions" style={{ marginTop: 0 }}>
+              <button className="btn" type="button" onClick={() => onShowInSim(guide.kinds[0]!)}>
+                <Icon name="bolt" /> Find it in the simulator
+              </button>
+            </div>
+          )}
           {deep && <SectionTabs label={`${guide.title} sections`} sections={DEEP_PARTS} value={part} onChange={setPart} counts={p.progress.deep[guide.id] ? { quiz: `${p.progress.deep[guide.id]}%` } : undefined} />}
           {deep && part !== 'overview' ? (
             <DeepDivePart dive={deep} part={part} title={guide.title} best={p.progress.deep[guide.id] ?? 0} onJump={onJump} onFinish={(pct, answers) => p.finishDeepQuiz(guide.id, pct, answers)} />

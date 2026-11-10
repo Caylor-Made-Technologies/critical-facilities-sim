@@ -22,6 +22,8 @@ export const MODEL_KEYS = [
   'doas',
   'fire',
   'epo',
+  'bms',
+  'netrack',
 ] as const;
 export type ModelKey = (typeof MODEL_KEYS)[number];
 
@@ -46,6 +48,8 @@ export const GUIDE_MODEL: Record<string, ModelKey> = {
   doas: 'doas',
   fire: 'fire',
   epo: 'epo',
+  monitoring: 'bms',
+  'security-network': 'netrack',
 };
 
 /** What moves in each model, said in words for screen readers. */
@@ -69,5 +73,7 @@ export const MODEL_CAPTION: Record<ModelKey, string> = {
   doas: 'Rooftop outdoor air unit with a turning energy-recovery wheel.',
   fire: 'Clean-agent cylinders, piping and sprinkler heads.',
   epo: 'Emergency power off button under a protective cover.',
+  bms: 'Operator desk with three monitoring screens showing alarm lists and trends.',
+  netrack: 'Locked network cabinet with switches and blinking link lights, beside a door with a badge reader.',
 };
 

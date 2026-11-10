@@ -8,6 +8,7 @@
 import type { LifeQuestion } from './lifecycleTypes';
 import { ELEC_DEEP } from './deepElec';
 import { MECH_DEEP } from './deepMech';
+import { LIFE_DEEP } from './deepLife';
 
 export interface DeepTopic {
   /** Short heading, e.g. "K-factor". */
@@ -53,7 +54,7 @@ export interface DeepDive {
 export const READINGS_NOTE =
   'Typical example ranges for learning, not setpoints. Your nameplate, the manufacturer’s manual and your site’s rounds sheet win. Trend against your own baseline: a change matters more than the number.';
 
-export const DEEP_DIVES: DeepDive[] = [...ELEC_DEEP, ...MECH_DEEP];
+export const DEEP_DIVES: DeepDive[] = [...ELEC_DEEP, ...MECH_DEEP, ...LIFE_DEEP];
 
 export function deepDiveFor(id: string): DeepDive | undefined {
   return DEEP_DIVES.find((d) => d.id === id);
