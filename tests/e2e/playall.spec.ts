@@ -141,3 +141,20 @@ test('every rounds sheet scores 100 when exactly the bad readings are flagged', 
     await expect(card.locator('.round-score')).toContainText('100/100');
   }
 });
+
+// Phase 8d: shift mode. Start a shift, let it run, end early, write a hand-off, get a score that is saved.
+test('shift mode: start a shift, end it, hand off, and get a saved score', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
+  await open('#/procedures', { three: false });
+  await page.getByRole('button', { name: /Work an 8-hour shift/ }).click();
+  const card = page.locator('.shift-card');
+  await expect(card.getByRole('heading', { name: /Day shift · 0[78]:\d\d/ })).toBeVisible();
+  await expect(card.getByRole('progressbar', { name: 'Shift progress' })).toBeVisible();
+  await card.getByRole('button', { name: 'End shift now and hand off' }).click();
+  await expect(card.getByRole('heading', { name: 'Write your hand-off' })).toBeVisible();
+  await card.getByRole('group', { name: 'What happened this shift?' }).getByRole('checkbox').first().check();
+  await card.getByRole('button', { name: 'Hand off and score my shift' }).click();
+  await expect(card.locator('.grade-score')).toContainText('/ 100');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cfs-progress-v1') ?? '{}').procs?.['shift-mode']);
+  expect(typeof saved).toBe('number');
+});

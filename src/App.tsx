@@ -8,7 +8,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { flushSync } from 'react-dom';
 import type React from 'react';
 import { LESSONS, simForStep, type Lesson } from './content/lessons';
-import { choose, confirmStep, evaluate, previewConsequence, procedureSim, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
+import { buildPlant, choose, confirmStep, evaluate, previewConsequence, procedureSim, Simulation, startRun, takeHint, type ComponentKind, type Procedure, type ProcRun } from './sim';
 import { BUSINESS } from './ui/business';
 import { Icon } from './ui/icons';
 import { BOTTOM, GROUP_DESC, GROUPS, NAV, TAB_IDS, type Tab } from './ui/nav';
@@ -24,6 +24,7 @@ import { ProceduresTab } from './ui/tabs/ProceduresTab';
 import { PROCEDURES, surpriseDrill } from './content/procedures';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { useSimulation } from './ui/useSimulation';
+import type { PlannedEvent } from './content/shift';
 import { Palette } from './ui/Palette';
 import { resetQuality } from './ui/three/quality';
 
@@ -67,6 +68,7 @@ const FeedbackTab = lazy(() => LOADERS.feedback().then((m) => ({ default: m.Feed
 const GlossaryTab = lazy(() => LOADERS.glossary().then((m) => ({ default: m.GlossaryTab })));
 const LearnTab = lazy(() => LOADERS.learn().then((m) => ({ default: m.LearnTab })));
 const Coach = lazy(() => LOADERS.learn().then((m) => ({ default: m.Coach })));
+const ShiftCoach = lazy(() => import('./ui/sim/ShiftCoach'));
 const NeverDoTab = lazy(() => LOADERS.never().then((m) => ({ default: m.NeverDoTab })));
 const DesignsTab = lazy(() => LOADERS.designs().then((m) => ({ default: m.DesignsTab })));
 const CasesTab = lazy(() => LOADERS.cases().then((m) => ({ default: m.CasesTab })));
@@ -178,6 +180,8 @@ export function App() {
   const [lesson, setLesson] = useState<LessonState | null>(null);
   type ProcState = { p: Procedure; run: ProcRun; started: number; secs?: number } | null;
   const [proc, setProcState] = useState<ProcState>(null);
+  /** Shift mode (Phase 8d): the planned events of the running shift, or null. */
+  const [shift, setShift] = useState<{ seed: number; plan: PlannedEvent[] } | null>(null);
   // The latest run, updated synchronously (B-023): a click and the scoring effect can land in the same frame,
   // and the effect must build on the click's result, not on the run from the render before it.
   const procRef = useRef<ProcState>(null);
@@ -347,6 +351,7 @@ export function App() {
     if (st.focus) setSelected(st.focus);
   }, []);
   const startProc = (p: Procedure) => {
+    setShift(null);
     const sim = procedureSim(p);
     h.load(sim, p.scenario);
     h.setSpeed(1);
@@ -359,6 +364,22 @@ export function App() {
     setProc({ p, run, started: Date.now() });
     focusStep(p, run.step);
     setTab('sim');
+  };
+  /** Start an 8-hour shift (Phase 8d): fresh 2N plant, a seeded plan of events, 32× speed. */
+  const startShift = () => {
+    void import('./content/shift').then((m) => {
+      const seed = Math.floor(Math.random() * 1e9) + 1;
+      const plan = m.planShift(seed);
+      setProc(null);
+      setLesson(null);
+      setSelected(null);
+      h.load(new Simulation(buildPlant('2N')), plan.map((x) => ({ at: x.at, action: x.def.action })));
+      h.setSpeed(m.SHIFT.speed);
+      h.setRunning(true);
+      setMode('explore');
+      setShift({ seed, plan });
+      setTab('sim');
+    });
   };
   // Score and auto-advance on every engine change.
   useEffect(() => {
@@ -643,7 +664,11 @@ export function App() {
                 focused={!!proc || !!simLesson}
                 setUnits={(u) => update({ units: u })}
                 coach={
-                  procCoach ?? (simLesson ? (
+                  procCoach ?? (shift ? (
+                    <Suspense fallback={null}>
+                      <ShiftCoach key={shift.seed} h={h} plan={shift.plan} onFinish={(score) => p.finishProcedure('shift-mode', score)} onExit={() => (setShift(null), h.setSpeed(1), h.setRunning(false))} />
+                    </Suspense>
+                  ) : simLesson ? (
                     <Coach
                       compact
                       state={simLesson}
@@ -684,7 +709,7 @@ export function App() {
               />
             )}
             {tab === 'procedures' && (
-              <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} onRound={(id, score) => p.finishProcedure(id, score)} />
+              <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} startShift={startShift} onRound={(id, score) => p.finishProcedure(id, score)} />
             )}
             {tab === 'cases' && (
               <CasesTab

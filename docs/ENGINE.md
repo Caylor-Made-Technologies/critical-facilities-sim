@@ -474,3 +474,22 @@ its own hot spot yet); GPU rows use the same rule for their air-cooled share.
   generator start).
 - Tests: `scenarios.test.ts` plays each to 100 (0 s and 45 s reading time) on `forProcedure`; parity tests skip
   scenario drills; the consequence test walks them on v2 only; `playall` e2e plays them in the browser.
+
+## Phase 8d: shift mode (2026-11-11)
+
+`src/content/shift.ts` (pure: pool, `planShift(seed)`, `scoreShift`, `shiftClock`), `src/ui/sim/ShiftCoach.tsx`
+(lazy), started from Procedures. Tests: `shift.test.ts`, e2e in `playall.spec.ts`.
+
+- An 8 h shift (28,800 sim s) at 32× ≈ 15 min, clock 07:00–15:00, on a fresh 2N plant.
+- `planShift(seed)` (own mulberry32, replayable) picks 5 of 8 pool events (CRAH, CHW pump, chiller, cooling tower
+  failures; utility A sag; utility B imbalance; containment door propped; blanking missing after an install) and
+  puts one in each equal window of the shift (not in the first 20 min, not in the last hour). They are scheduled as
+  engine actions (`applyScenario`).
+- The coach records per event: alarm first seen, acknowledged (state ack or gone), fix ready (a "tech" reports the
+  repair after 30–60 min; operator fixes are ready at once) and fixed (Restore, containment back to full, blanking
+  all in). Events found on rounds write a cue to the event log.
+- Score (0–100): per event 5 for acknowledging within 15 min (or found on rounds) + 5 for fixing within 30 min of
+  ready (log-only events: being in the hand-off); events scaled to 50 so ending early is fair; 20 for no racks
+  down; 30 for the hand-off (every pool item ticked right in "happened" and "still open"). Best score saved as
+  `procs['shift-mode']`.
+- An ideal operator finishes whole shifts with no racks down (two seeds, tested on the engine).

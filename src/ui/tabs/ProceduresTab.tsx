@@ -29,6 +29,8 @@ interface Props {
   best: Record<string, number>;
   times: Record<string, number>;
   start: (p: Procedure) => void;
+  /** Start an 8-hour shift in shift mode (Phase 8d). */
+  startShift?: () => void;
   onRound: (id: string, score: number) => void;
 }
 
@@ -59,7 +61,7 @@ function Tile({ p, best, time, start }: { p: Procedure; best?: number; time?: nu
   );
 }
 
-export function ProceduresTab({ best, times, start, onRound }: Props) {
+export function ProceduresTab({ best, times, start, startShift, onRound }: Props) {
   const [section, setSection] = useState<Section>('mop');
   const [level, setLevel] = useState<Level>('all');
   const all = [...MOPS, ...DRILLS];
@@ -90,6 +92,20 @@ export function ProceduresTab({ best, times, start, onRound }: Props) {
             <small>
               {next.kind === 'mop' ? 'MOP' : 'Drill'} · {next.level} · {next.steps.length} steps
             </small>
+          </span>
+          <Icon name="arrow-right" />
+        </button>
+      )}
+
+      {startShift && (
+        <button type="button" className="card next-up shift-start" onClick={startShift}>
+          <span className="next-icon" aria-hidden="true">
+            <Icon name="clock" />
+          </span>
+          <span>
+            <span className="eyebrow">Shift mode{best['shift-mode'] !== undefined ? ` · best ${best['shift-mode']}` : ''}</span>
+            <strong>Work an 8-hour shift in about 15 minutes</strong>
+            <small>Random events, alarms to acknowledge, repairs to return to service, then a scored hand-off.</small>
           </span>
           <Icon name="arrow-right" />
         </button>
