@@ -134,3 +134,17 @@ describe('saved profile', () => {
     expect(sanitize({ profile: raw }).profile!.role).toBe('building-eng');
   });
 });
+
+describe('saved profile stays light (Phase 8a bundle split)', () => {
+  const RAW = import.meta.glob(['../../ui/progress.ts', '../../ui/tabs/HomeExtras.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+  it('progress and the Home cards never import the path builder directly', () => {
+    for (const [f, t] of Object.entries(RAW)) expect(t, f).not.toMatch(/from '(\.\.\/)+content\/path'/);
+  });
+  it('sanitizeProfile checks quiz and branch ids by shape', async () => {
+    const { sanitizeProfile } = await import('../../content/pathProfile');
+    const p = sanitizeProfile({ role: 'new', check: { e1: true, 'Bad Id!': true, x: 'yes' }, branch: 'not a branch' });
+    expect(p!.check).toEqual({ e1: true });
+    expect(p!.branch).toBe('');
+    expect(sanitizeProfile({ role: 'new', branch: 'b-elec-sme' })!.branch).toBe('b-elec-sme');
+  });
+});

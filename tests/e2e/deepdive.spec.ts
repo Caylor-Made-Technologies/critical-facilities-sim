@@ -41,3 +41,15 @@ test('quick search finds a deep-dive topic and opens it on the Deep dive part', 
   await expect(page.getByRole('tab', { name: 'Deep dive' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: /LSIG: reading a trip unit/ })).toBeVisible();
 });
+
+test('Home blueprint card loads its progress on demand (path builder is not in the main bundle)', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
+  await page.addInitScript(() => {
+    localStorage.setItem('cfs-progress-v1', JSON.stringify({ schema: 2, lessons: ['power-path'], profile: { role: 'industrial', name: 'Sam', goal: 'climb', hours: 2, rev: 2 } }));
+  });
+  await open('#/home', { three: false });
+  const card = page.locator('.path-invite.has-path');
+  await expect(card).toContainText("Sam's blueprint · rev 2");
+  await expect(card).toContainText(/\d+\/\d+ done/);
+  await expect(card).toContainText(/Next up: /);
+});

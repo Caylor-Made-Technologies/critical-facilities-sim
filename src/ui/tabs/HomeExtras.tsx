@@ -1,5 +1,5 @@
 /** Home extras: daily challenge with streak, badge wall, and the install button. */
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { PROCEDURES } from '../../content/procedures';
 import { BADGES } from '../badges';
 import { Confetti } from '../common';
@@ -9,7 +9,7 @@ import { streakOf, today, type ProgressHandle } from '../progress';
 import { NAV, type Tab } from '../nav';
 import type React from 'react';
 import { FACTS } from '../../content/facts';
-import { buildPath, itemDone, scoreProfile } from '../../content/path';
+const PathProgress = lazy(() => import('./HomePathProgress'));
 
 export function BadgeWall({ p }: { p: ProgressHandle }) {
   const got = BADGES.filter((b) => b.earned(p.progress)).length;
@@ -173,25 +173,21 @@ export function PathCard({ p, go }: { p: ProgressHandle; go: (t: Tab) => void })
       </button>
     );
   }
-  const s = scoreProfile(prof);
-  const path = buildPath(prof, s);
-  const all = path.phases.flatMap((ph) => ph.items);
-  const done = all.filter((it) => itemDone(it, p.progress, prof.done)).length;
-  const next = all.find((it) => !itemDone(it, p.progress, prof.done));
+  // The path builder (ladder, quiz, drills) loads on demand; the placeholder holds the same space.
   return (
-    <button type="button" className="path-invite has-path" onClick={() => go('mypath')}>
-      <span className="path-invite-ring" aria-hidden="true">
-        <svg viewBox="0 0 40 40">
-          <circle cx="20" cy="20" r="16" className="ring-bg" />
-          <circle cx="20" cy="20" r="16" className="ring-fg" strokeDasharray={100.5} strokeDashoffset={100.5 * (1 - (all.length ? done / all.length : 0))} />
-        </svg>
-        <span>{all.length ? Math.round((done / all.length) * 100) : 0}%</span>
-      </span>
-      <span>
-        <strong>{prof.name ? `${prof.name}'s blueprint` : 'Your blueprint'} · rev {prof.rev} · {done}/{all.length} done</strong>
-        <span>{next ? `Next up: ${next.title}` : 'Fully energized. Draw your next revision!'}</span>
-      </span>
-      <Icon name="arrow-right" />
-    </button>
+    <Suspense
+      fallback={
+        <button type="button" className="path-invite has-path" onClick={() => go('mypath')}>
+          <span className="path-invite-ring" aria-hidden="true" />
+          <span>
+            <strong>{prof.name ? `${prof.name}'s blueprint` : 'Your blueprint'} · rev {prof.rev}</strong>
+            <span>Loading your next step…</span>
+          </span>
+          <Icon name="arrow-right" />
+        </button>
+      }
+    >
+      <PathProgress p={p} go={go} />
+    </Suspense>
   );
 }

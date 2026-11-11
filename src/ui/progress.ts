@@ -4,7 +4,7 @@
  * every access guarded. Turned into XP and a level to make growth visible.
  */
 import { useCallback, useState } from 'react';
-import { sanitizeProfile, type Profile } from '../content/path';
+import { sanitizeProfile, type Profile } from '../content/pathProfile';
 import { earnedBadges } from './badges';
 import { today } from './dates';
 export { streakOf, today } from './dates';
