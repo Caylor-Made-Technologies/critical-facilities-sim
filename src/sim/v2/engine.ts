@@ -249,6 +249,7 @@ export class EngineV2 {
     if (s.sources) e.sources.restore(s.sources);
     if (s.air) {
       e.air.restore(s.air);
+      e.air.refreshRackHeat(e.sim);
     }
     if (s.hyd) {
       e.hyd.restore(s.hyd);

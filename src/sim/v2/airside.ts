@@ -150,6 +150,8 @@ export class AirsideModel {
       if (moved < 1e-9) break;
     }
     this.reading = this.read(sim, f);
+    this.rackHeat = this.computeRackHeat(sim);
+    if (sim.thermal.readout) sim.thermal.readout.rackInlets = this.rackHeat.racks;
   }
 
   /** Chilled water the coils see: from the v2 hydronic model when it is switched in, else v1 thermal. */
@@ -405,6 +407,12 @@ export class AirsideModel {
       if (!hottest || t.top > hottest.topC) hottest = { id: r.id, topC: t.top };
     });
     return { racks, hottest };
+  }
+
+  /** Recompute per-rack heat now (after a restore, before the next tick). */
+  refreshRackHeat(sim: Simulation): void {
+    this.rackHeat = this.computeRackHeat(sim);
+    if (sim.thermal.readout) sim.thermal.readout.rackInlets = this.rackHeat.racks;
   }
 
   /** Hot-spot check for the alarm list: hottest rack top above the recommended maximum. */

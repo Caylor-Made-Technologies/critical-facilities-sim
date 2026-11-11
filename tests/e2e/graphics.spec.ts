@@ -91,3 +91,18 @@ test('graphics v2: 3D plant beacon carries the alarm priority', async ({ page, o
   await expect(page.locator('.plant3d-card canvas').first()).toBeVisible();
   await expect(page.locator('.plant3d-card [aria-label*="1 in alarm"]').first()).toBeAttached();
 });
+
+// Phase 8b: per-rack heat. Every rack tile shows a heat bar and says its top inlet; missing blanking makes hot spots.
+test('graphics v2: rack tiles show per-rack heat; missing blanking raises some racks', async ({ page, open }) => {
+  await open('#/sim', { three: false });
+  const tiles = page.locator('.hall .rack');
+  await expect(tiles).toHaveCount(36);
+  await expect(page.locator('.hall .rack .rack-heat')).toHaveCount(36);
+  await expect(tiles.first()).toHaveAttribute('aria-label', /Top inlet \d+(\.\d)? °[FC]/);
+  const tops = async () =>
+    (await tiles.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''))).map((l) => Number(/Top inlet ([\d.]+)/.exec(l)?.[1] ?? 'NaN'));
+  const before = await tops();
+  await page.getByRole('group', { name: 'Blanking panels' }).getByRole('button').nth(1).click();
+  await page.getByRole('button', { name: 'Step one second' }).click();
+  await expect.poll(async () => Math.max(...(await tops())) - Math.max(...before)).toBeGreaterThan(0.3);
+});
