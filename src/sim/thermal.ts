@@ -83,6 +83,8 @@ export interface ThermalReadout {
   airHeatKwt: number;
   airCoolingKwt: number;
   hallInletC: number;
+  /** Per-rack inlet, middle and top of the rack (°C), written by the engine v2 air model (Phase 8b). */
+  rackInlets?: Record<string, { mid: number; top: number }>;
   hallDewC: number;
   hallRh: number;
   hallHumidity: 'ok' | 'too-dry' | 'too-humid';

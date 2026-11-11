@@ -406,7 +406,7 @@ function Hall3DCard({ sim, version, selected, onPick }: { sim: SimHandle['sim'];
       <h2 id="hall3d-h" className="h-card hall-title">
         3D data hall <span className={`chip${down ? ' chip-alarm' : ''}`}>live · {summary}</span>
       </h2>
-      <Hall3D mode="live" vis={vis} selected={selected} onPick={onPick} label={`3D view of the data hall: ${summary}. Airflow at ${Math.round(vis.airflow * 100)} percent. The rack tiles below list every rack.`} />
+      <Hall3D mode="live" vis={vis} selected={selected} onPick={onPick} label={`3D view of the data hall: ${summary}. Airflow at ${Math.round(vis.airflow * 100)} percent.${vis.hottest ? ` Hottest rack ${vis.hottest.id}, top inlet ${vis.hottest.topC.toFixed(1)} degrees C; the bar across each rack top shows its inlet temperature.` : ''} The rack tiles below list every rack.`} />
       <div className="legend" aria-hidden="true">
         <span>
           <i style={{ background: 'var(--ok)' }} /> running

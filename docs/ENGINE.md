@@ -435,3 +435,28 @@ is the lumped hall (one rack column stands for 36 racks); 3D shows alarms on the
 
 Not modeled: per-phase voltages through transformers, sub-cycle timing, eco-mode transfer, SPD action,
 motor heating from imbalance, VFD auto-restart differences.
+
+## Phase 8b: per-rack heat and hot spots (2026-11-11)
+
+Formulas in `physics.ts` (`RACKHEAT`, `rackRecircWeights`, `rackInletC`, `gapRacks`), worked out in
+`AirsideModel.computeRackHeat` each tick, tests in `rackheat.test.ts`.
+
+- The lumped hall stays the energy model (and still owns the trip). On top of it each rack gets its own share of
+  the hall's recirculation: `inlet_mid = cold + (rackIn − cold) × w`, `inlet_top = mid + 0.5 × (rackIn − cold) × w`.
+- Weights `w` start at 1, then: row ends +0.3 / +0.8 / +1.0 (full / door open / no containment); a rack missing
+  blanking +1.0 (`gapRacks`: a fixed scattered set, `round(missing × 36)` racks); local CRAH shortfall +2.0 ×
+  (distance-weighted share of nearby CRAHs down, `1 / (1 + 3d)`; odd CRAHs on the west wall, even on the east,
+  spread along the rows). Then normalized so they average 1: **the mean rack inlet equals the lumped rack inlet**
+  (tested), so energy balance, PUE and the trip are unchanged.
+- Readout: `engine.air.rackHeat` (`racks[id] = { mid, top }`, `hottest`) and `sim.thermal.readout.rackInlets`
+  (what the 2D tiles and the 3D hall read).
+- Alarm `HALL.HOTSPOT` (low, 60 s on-delay): hottest top above 27 °C (ASHRAE recommended max). It now comes in
+  before `HALL.INLET-HI` on a cooling loss, and briefly while fans catch up after a containment door opens:
+  golden 5, 7 and 8 alarm lists updated on purpose.
+- What it shows (2N, mild day): row ends a little warmer than the middle, no hot spot. 25% blanking missing: those
+  racks run hot. Two CRAHs down on one wall: that end of every row runs hotter.
+- UI: a heat bar on each 2D rack tile and a heat cap across each rack top in 3D (cyan → amber → red, 18–32 °C);
+  the top inlet is in each rack's name and the hottest rack is in the 3D description.
+
+Limits: not CFD; weights are fixed rules, not airflow; rack trips stay hall-wide (a single rack does not trip on
+its own hot spot yet); GPU rows use the same rule for their air-cooled share.

@@ -169,7 +169,8 @@ describe('golden scenarios (engine v2)', () => {
     expect(after.crahFanKw).toBeGreaterThan(before.crahFanKw);
     expect(after.returnAirC).toBeLessThan(before.returnAirC);
     expect(after.pue).toBeGreaterThan(before.pue);
-    expect(after.alarms).toEqual(['low:HALL.DOOR:unack*']);
+    // Phase 8b: row ends run hot while the fans catch up (hot spot comes in first, then clears).
+    expect(after.alarms).toEqual(['low:HALL.HOTSPOT:rtn-unack*', 'low:HALL.DOOR:unack']);
     expect(after).toMatchSnapshot();
   });
 

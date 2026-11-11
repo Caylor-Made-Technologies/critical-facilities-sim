@@ -50,7 +50,8 @@ export function DataHall({ sim, selected, onActivate, units }: Props) {
                 const single = row.single.includes(num);
                 const a = cordLive(id, 'A');
                 const b = !single && cordLive(id, 'B');
-                const label = `${r.tag}, ${r.name}, ${r.state.demandKw} kilowatts. ${!powered ? 'NO POWER' : hot ? 'THERMAL SHUTDOWN' : throttled ? 'Throttling (too hot)' : 'Running'}. ${single ? 'Single-corded' : `Cord A ${a ? 'live' : 'dead'}, cord B ${b ? 'live' : 'dead'}`}.`;
+                const topC = th.rackInlets?.[id]?.top;
+                const label = `${r.tag}, ${r.name}, ${r.state.demandKw} kilowatts. ${!powered ? 'NO POWER' : hot ? 'THERMAL SHUTDOWN' : throttled ? 'Throttling (too hot)' : 'Running'}. ${single ? 'Single-corded' : `Cord A ${a ? 'live' : 'dead'}, cord B ${b ? 'live' : 'dead'}`}.${topC !== undefined ? ` Top inlet ${fmtTemp(topC, units, 1)}.` : ''}`;
                 return (
                   <div role="listitem" key={id}>
                     <button
@@ -61,6 +62,7 @@ export function DataHall({ sim, selected, onActivate, units }: Props) {
                       onClick={() => onActivate(id)}
                     >
                       <span>{num}</span>
+                      {topC !== undefined && <span className="rack-heat" aria-hidden="true" style={{ background: tempColor(topC) }} />}
                       <span className="cords" aria-hidden="true">
                         <span className="cord" style={a ? { background: 'var(--side-a)' } : undefined} />
                         {!single && <span className="cord" style={b ? { background: 'var(--side-b)' } : undefined} />}
@@ -85,6 +87,9 @@ export function DataHall({ sim, selected, onActivate, units }: Props) {
         </span>
         <span>
           <i style={{ background: 'var(--alarm)' }} /> rack down (power or heat)
+        </span>
+        <span>
+          <i className="legend-heat" /> top inlet: cool → hot
         </span>
         <span>
           <i style={{ background: 'var(--warn)' }} /> GPUs throttling

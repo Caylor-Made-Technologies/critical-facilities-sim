@@ -37,6 +37,8 @@ import {
   relaxExact,
 } from '../physics';
 import type { ActionResult } from '../types';
+import { ROWS } from '../plant/builder';
+import { gapRacks, rackInletC, rackRecircWeights, RACKHEAT, type CrahSpot, type RackSpot } from '../physics';
 
 export type AirNode = 'cold' | 'rackIn' | 'rackOut' | 'hot' | 'room';
 export const AIR_NODES: readonly AirNode[] = ['cold', 'rackIn', 'rackOut', 'hot', 'room'];
@@ -79,6 +81,12 @@ export interface AirReading {
   supplyC: number;
   inletBand: InletClassBand;
   tripped: boolean;
+}
+
+/** Per-rack inlet temperatures (Phase 8b): middle and top of each rack, and the hottest top. */
+export interface RackHeat {
+  racks: Record<string, { mid: number; top: number }>;
+  hottest: { id: string; topC: number } | null;
 }
 
 interface Flows {
@@ -355,11 +363,54 @@ export class AirsideModel {
     return { ok: true };
   }
 
+  /** Per-rack inlets from the last tick (Phase 8b). */
+  rackHeat: RackHeat = { racks: {}, hottest: null };
+
   /** When v2 owns trips, the hall inlet every screen reads (v1 readout) is the v2 rack inlet. */
   private publish(sim: Simulation): void {
     const inlet = this.state.temps.rackIn;
     sim.thermal.state.hallInletC = inlet;
-    if (sim.thermal.readout) sim.thermal.readout.hallInletC = inlet;
+    this.rackHeat = this.computeRackHeat(sim);
+    if (sim.thermal.readout) {
+      sim.thermal.readout.hallInletC = inlet;
+      sim.thermal.readout.rackInlets = this.rackHeat.racks;
+    }
+  }
+
+  /** Spread the lumped rack inlet over the racks (weights average 1; see physics rackRecircWeights). */
+  private computeRackHeat(sim: Simulation): RackHeat {
+    const g = sim.graph;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nums = ROWS.flatMap((r) => [...r.dual, ...r.single]);
+    const gaps = gapRacks(nums, this.state.blankingMissing);
+    const spots: (RackSpot & { id: string })[] = [];
+    ROWS.forEach((row, ri) => {
+      const list = [...row.dual, ...row.single];
+      list.forEach((num, slot) => spots.push({ id: `R-${pad(num)}`, row: ri, slot, perRow: list.length, rows: ROWS.length, gap: gaps.has(num) }));
+    });
+    const units = g.byKind('crah').sort((a, b) => a.id.localeCompare(b.id));
+    const perSide = Math.max(1, Math.ceil(units.length / 2));
+    const crahs: CrahSpot[] = units.map((c, i) => ({
+      side: i % 2 === 0 ? -1 : 1,
+      pos: perSide > 1 ? Math.floor(i / 2) / (perSide - 1) : 0.5,
+      down: !(c.status === 'online' && sim.solution.energized.has(c.id)),
+    }));
+    const w = rackRecircWeights(spots, crahs, this.state.containment);
+    const racks: RackHeat['racks'] = {};
+    let hottest: RackHeat['hottest'] = null;
+    spots.forEach((r, i) => {
+      if (!g.nodes.has(r.id)) return;
+      const t = rackInletC(this.state.temps.cold, this.state.temps.rackIn, w[i]!);
+      racks[r.id] = t;
+      if (!hottest || t.top > hottest.topC) hottest = { id: r.id, topC: t.top };
+    });
+    return { racks, hottest };
+  }
+
+  /** Hot-spot check for the alarm list: hottest rack top above the recommended maximum. */
+  get hotspot(): { id: string; topC: number } | null {
+    const h = this.rackHeat.hottest;
+    return h && h.topC > RACKHEAT.hotspotC ? h : null;
   }
 
   snapshot(): AirState {

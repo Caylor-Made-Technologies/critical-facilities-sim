@@ -91,7 +91,8 @@ exports[`golden scenarios (engine v2) > 5. every chiller lost: supply holds unti
     "high:GPU-1.THROTTLE:unack",
     "high:GPU-2.THROTTLE:unack",
     "high:GPU-3.THROTTLE:unack",
-    "medium:HALL.INLET-HI:unack*",
+    "medium:HALL.INLET-HI:unack",
+    "low:HALL.HOTSPOT:unack*",
     "low:TES.DISCH:rtn-unack",
   ],
   "chillers": {
@@ -127,6 +128,7 @@ exports[`golden scenarios (engine v2) > 7. all chilled water pumps lost: coils s
     "medium:CHWP-02.FAIL:unack",
     "medium:CHWP-03.FAIL:unack",
     "medium:HALL.INLET-HI:unack",
+    "low:HALL.HOTSPOT:unack",
   ],
   "chillers": {
     "ACH-04": "off",
@@ -151,7 +153,8 @@ exports[`golden scenarios (engine v2) > 7. all chilled water pumps lost: coils s
 exports[`golden scenarios (engine v2) > 8. containment door left open: fans work harder, return air colder, PUE up, low-priority door alarm after 2 min 1`] = `
 {
   "alarms": [
-    "low:HALL.DOOR:unack*",
+    "low:HALL.HOTSPOT:rtn-unack*",
+    "low:HALL.DOOR:unack",
   ],
   "chillers": {
     "ACH-04": "off",

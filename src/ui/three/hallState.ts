@@ -19,6 +19,8 @@ export interface RackVis {
   cordA: boolean;
   cordB: boolean;
   kw: number;
+  /** Top-of-rack inlet (°C) from the engine's per-rack heat (Phase 8b); the hall inlet when not known. */
+  inletTopC: number;
 }
 
 export interface HallVis {
@@ -31,6 +33,8 @@ export interface HallVis {
   airflow: number;
   /** Any rack down. */
   alarm: boolean;
+  /** Hottest rack top inlet (Phase 8b), or null when per-rack heat isn't known. */
+  hottest: { id: string; topC: number } | null;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -68,6 +72,7 @@ export function hallVis(sim: Simulation): HallVis {
         cordA: cordLive(id, 'A'),
         cordB: !single && cordLive(id, 'B'),
         kw: r.state.demandKw ?? 0,
+        inletTopC: th.rackInlets?.[id]?.top ?? th.hallInletC,
       });
     });
   });
@@ -81,6 +86,7 @@ export function hallVis(sim: Simulation): HallVis {
     inletC: th.hallInletC,
     airflow: crahs.length ? running / crahs.length : 0,
     alarm: racks.some((r) => r.status === 'down' || r.status === 'hot'),
+    hottest: th.rackInlets ? racks.reduce<HallVis['hottest']>((h, r) => (!h || r.inletTopC > h.topC ? { id: r.id, topC: r.inletTopC } : h), null) : null,
   };
 }
 
@@ -89,8 +95,8 @@ export function demoHall(rows = 6, perRow = 6): HallVis {
   const racks: RackVis[] = [];
   for (let r = 0; r < rows; r++)
     for (let s = 0; s < perRow; s++)
-      racks.push({ id: `D-${r}-${s}`, num: r * perRow + s + 1, row: r, slot: s, gpu: r >= rows - 2, single: false, status: 'up', cordA: true, cordB: true, kw: r >= rows - 2 ? 130 : 30 });
-  return { racks, rows, perRow, inletC: 24, airflow: 0.8, alarm: false };
+      racks.push({ id: `D-${r}-${s}`, num: r * perRow + s + 1, row: r, slot: s, gpu: r >= rows - 2, single: false, status: 'up', cordA: true, cordB: true, kw: r >= rows - 2 ? 130 : 30, inletTopC: 24 });
+  return { racks, rows, perRow, inletC: 24, airflow: 0.8, alarm: false, hottest: null };
 }
 
 /** Rack colors by status, as theme keys, so 2D legend and 3D agree. */

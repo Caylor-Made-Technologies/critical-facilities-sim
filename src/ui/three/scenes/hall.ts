@@ -52,6 +52,8 @@ interface RackObj {
   body: Mesh;
   strip: Mesh;
   leds: Mesh[];
+  /** Heat cap across the top of the rack front: cool cyan → amber → red with the top-of-rack inlet (Phase 8b). */
+  heat: Mesh;
   vis: RackVis;
 }
 
@@ -163,7 +165,10 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
 
   function build(v: HallVis) {
     // Clear old racks and room pieces that depend on the layout.
-    for (const r of rackObjs) root.remove(r.group);
+    for (const r of rackObjs) {
+      root.remove(r.group);
+      (r.heat.material as MeshBasicMaterial).dispose();
+    }
     for (const m of [...crahs, ...buses, ...pipes, ...pulses.map((p) => p.mesh)]) root.remove(m);
     rackObjs = [];
     crahs.length = 0;
@@ -188,6 +193,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
     const bodyGeo = new BoxGeometry(RACK_W, RACK_H, RACK_D);
     const stripGeo = new BoxGeometry(0.05, RACK_H * 0.82, 0.02);
     const ledGeo = new BoxGeometry(0.08, 0.04, 0.02);
+    const heatGeo = new BoxGeometry(RACK_W * 0.8, 0.07, 0.02);
     for (const r of v.racks) {
       const g = new Group();
       const facing = r.row % 2 === 0 ? 1 : -1; // fronts face the cold aisle
@@ -206,8 +212,11 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
         g.add(led);
         leds.push(led);
       }
+      const heat = new Mesh(heatGeo, new MeshBasicMaterial({ color: stage.theme.cyan.clone(), toneMapped: false }));
+      heat.position.set(0, RACK_H / 2 - 0.09, (facing * RACK_D) / 2 + facing * 0.014);
+      g.add(heat);
       root.add(g);
-      rackObjs.push({ group: g, body, strip, leds, vis: r });
+      rackObjs.push({ group: g, body, strip, leds, heat, vis: r });
     }
 
     // Busway over each row, with a power pulse that runs along it.
@@ -264,6 +273,12 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
         l.material = on ? ledMat(key, c) : ledMat('off', th.line);
       });
       o.group.userData.status = o.vis.status;
+      // Top-of-rack inlet: cyan up to the middle of the scale, amber, then red near 32 °C.
+      const h = heat01(o.vis.inletTopC);
+      const hc = o.heat.material as MeshBasicMaterial;
+      if (h < 0.5) hc.color.copy(th.cyan).lerp(th.warn, h * 2);
+      else hc.color.copy(th.warn).lerp(th.alarm, (h - 0.5) * 2);
+      o.group.userData.inletTopC = o.vis.inletTopC;
     }
     const heat = heat01(vis.inletC);
     // Supply air: blue when cool, toward amber as the inlet warms. Exhaust is always warmer.
@@ -429,6 +444,7 @@ export function mountHall(canvas: HTMLCanvasElement, opts: { mode: 'hero' | 'liv
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointerup', onUp);
       for (const m of ledMats.values()) m.dispose();
+      for (const o of rackObjs) (o.heat.material as MeshBasicMaterial).dispose();
       for (const m of [mBody, mBodyGpu, mDown, mFloor, mCrah, mBus, mPipe, mPulse, mSel, pMat, mEdge]) m.dispose();
       stage.dispose();
       void renderer;

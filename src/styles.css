@@ -6263,3 +6263,7 @@ body.has-follow .toast-region { bottom: 84px; }
 /* Power quality events on the utility card (Phase 8a) */
 .pq-events { margin-top: 10px; }
 .pq-events .card-actions { margin-top: 6px; }
+
+/* Per-rack heat (Phase 8b): a bar across the top of each rack tile, colored by its top inlet. */
+.rack .rack-heat { position: absolute; top: 3px; left: 8px; right: 8px; height: 4px; border-radius: 2px; }
+.legend .legend-heat { background: linear-gradient(90deg, rgb(34, 211, 238), rgb(255, 181, 71), rgb(255, 90, 90)); }

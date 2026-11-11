@@ -730,6 +730,94 @@ export const PQ = {
   durationS: [0.05, 600] as const,
 } as const;
 
+/**
+ * Per-rack inlet temperatures (Phase 8b) on top of the lumped hall: each rack gets its own share of the
+ * hall's recirculation, so hot spots show up where a real floor has them. Simplified, not CFD (Verify).
+ * The weights average 1, so the mean rack inlet equals the lumped rack-inlet node and the hall's energy
+ * balance and trip are unchanged.
+ */
+export const RACKHEAT = {
+  /** Extra recirculation weight for the first and last rack in a row (hot air wraps around row ends). */
+  endBoost: { full: 0.3, 'door-open': 0.8, none: 1.0 } as const,
+  /** Extra weight for a rack with missing blanking panels (hot air comes back through the gaps). */
+  gapBoost: 1.0,
+  /** Extra weight per unit of local CRAH shortfall (nearby units down get less cold air to that end). */
+  crahDeficitBoost: 2.0,
+  /** How fast a CRAH's influence falls off with distance (1 / (1 + k × d), d in hall widths). */
+  crahDistK: 3,
+  /** Top of the rack sees this much more of the rack's own inlet rise (recirculation over the top). */
+  stratFrac: 0.5,
+  /** Hot-spot alarm: any rack top inlet above the ASHRAE recommended maximum (°C). */
+  hotspotC: 27,
+} as const;
+
+export interface RackSpot {
+  /** Row index 0..rows-1 and position in the row 0..perRow-1. */
+  row: number;
+  slot: number;
+  perRow: number;
+  rows: number;
+  /** This rack is missing blanking panels. */
+  gap: boolean;
+}
+export interface CrahSpot {
+  /** West (-1) or east (+1) wall. */
+  side: -1 | 1;
+  /** Position along the wall, 0 (row 1) .. 1 (last row). */
+  pos: number;
+  /** Down, stopped or unpowered. */
+  down: boolean;
+}
+
+/**
+ * Recirculation weights per rack, normalized to mean 1.
+ * Hand-worked: one row of 3 racks, full containment, no gaps, no CRAH down: raw [1.3, 1, 1.3], mean 1.2
+ * → [1.0833, 0.8333, 1.0833].
+ */
+export function rackRecircWeights(racks: RackSpot[], crahs: CrahSpot[], mode: ContainmentMode): number[] {
+  if (!racks.length) return [];
+  const raw = racks.map((r) => {
+    let w = 1;
+    if (r.perRow > 1 && (r.slot === 0 || r.slot === r.perRow - 1)) w += RACKHEAT.endBoost[mode];
+    if (r.gap) w += RACKHEAT.gapBoost;
+    if (crahs.length) {
+      // Rack position in hall widths: x from the west wall (0..1), z along the walls (0..1).
+      const x = r.perRow > 1 ? r.slot / (r.perRow - 1) : 0.5;
+      const z = r.rows > 1 ? r.row / (r.rows - 1) : 0.5;
+      let wSum = 0;
+      let downSum = 0;
+      for (const c of crahs) {
+        const dx = c.side < 0 ? x : 1 - x;
+        const d = Math.hypot(dx, z - c.pos);
+        const k = 1 / (1 + RACKHEAT.crahDistK * d);
+        wSum += k;
+        if (c.down) downSum += k;
+      }
+      w += RACKHEAT.crahDeficitBoost * (wSum > 0 ? downSum / wSum : 0);
+    }
+    return w;
+  });
+  const mean = raw.reduce((a, b) => a + b, 0) / raw.length;
+  return raw.map((w) => w / mean);
+}
+
+/**
+ * Rack inlet (middle) and top from the cold aisle, the lumped rack inlet and the rack's weight.
+ * Hand-worked: cold 23.2, lumped inlet 24.0, weight 1.5 → middle 23.2 + 0.8 × 1.5 = 24.4, top 24.4 + 0.5 × 1.2 = 25.0.
+ */
+export function rackInletC(coldC: number, lumpedInletC: number, weight: number): { mid: number; top: number } {
+  const rise = Math.max(0, lumpedInletC - coldC) * weight;
+  const mid = coldC + rise;
+  return { mid, top: mid + RACKHEAT.stratFrac * rise };
+}
+
+/** Which racks are missing blanking panels for a missing share 0–1: a fixed, scattered order so it is replayable. */
+export function gapRacks(nums: number[], missing: number): Set<number> {
+  const n = Math.round(Math.max(0, Math.min(1, missing)) * nums.length);
+  const order = [...nums].sort((a, b) => ((a * 17) % 37) - ((b * 17) % 37) || a - b);
+  return new Set(order.slice(0, n));
+}
+
 export type PqKind = 'sag' | 'swell' | 'single-phase' | 'imbalance';
 
 export interface PqResponse {

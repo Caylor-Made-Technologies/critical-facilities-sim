@@ -18,7 +18,7 @@
  * Conditions read the engine's models; nothing here changes the plant.
  */
 import type { Simulation } from '../engine';
-import { AIR, ALARM, HYD } from '../physics';
+import { AIR, ALARM, HYD, RACKHEAT } from '../physics';
 import { DESIGN } from '../plant/builder';
 import type { ActionResult, Component } from '../types';
 import type { AirsideModel } from './airside';
@@ -238,6 +238,17 @@ export function buildAlarmDefs(sim: Simulation): AlarmDef[] {
     onDelayS: 60,
     offDelayS: 120,
     analog: { value: (c) => c.air.state.temps.rackIn, setpoint: AIR.recommendedC[1], deadband: 0.5, unit: '°C' },
+    fault: 'hot-aisle-recirc',
+  });
+  defs.push({
+    id: 'HALL.HOTSPOT',
+    source: 'Data hall',
+    text: 'Hot spot: a rack top inlet above recommended (see the hall view)',
+    priority: 'low',
+    group: 'hall',
+    onDelayS: 60,
+    offDelayS: 120,
+    analog: { value: (c) => c.air.rackHeat.hottest?.topC ?? c.air.state.temps.rackIn, setpoint: RACKHEAT.hotspotC, deadband: 0.5, unit: '°C' },
     fault: 'hot-aisle-recirc',
   });
   defs.push({
