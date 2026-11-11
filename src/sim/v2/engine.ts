@@ -20,6 +20,7 @@ import { applyToSim, type Action } from '../actions';
 import { Simulation, type SimSnapshot } from '../engine';
 import { buildPlant, type Topology } from '../plant/builder';
 import type { ActionResult } from '../types';
+import { procedureSim, type Procedure, type ScenarioStep } from '../procedure';
 import { AlarmSystem, type AlarmsState, type AlarmSummary } from './alarms';
 import { AirsideModel, type AirState } from './airside';
 import { readEfficiency, type EfficiencyReading } from './efficiency';
@@ -102,6 +103,21 @@ export class EngineV2 {
     this.feedChw();
     this.alarms.init(this.sim);
     this.recordTrend();
+  }
+
+  /** Apply a procedure's scenario steps (Phase 8c): at ≤ 0 now, later ones scheduled from the current time. */
+  applyScenario(steps: readonly ScenarioStep[] | undefined): void {
+    for (const x of steps ?? []) {
+      if (x.at <= 0) this.apply(x.action);
+      else this.schedule(this.sim.t + x.at, x.action);
+    }
+  }
+
+  /** The engine a procedure starts on: its prepared plant plus its scenario steps. */
+  static forProcedure(p: Procedure, seed = 1): EngineV2 {
+    const e = EngineV2.wrap(procedureSim(p), seed);
+    e.applyScenario(p.scenario);
+    return e;
   }
 
   /** Adopt a plant that was already prepared (walkthroughs, MOP/drill setups) without rebuilding it. */

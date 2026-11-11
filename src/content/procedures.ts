@@ -928,6 +928,243 @@ export const DRILLS: Procedure[] = [
     ],
     debrief: ['Fuel math: tank size ÷ burn rate.', 'Order fuel early under the emergency contract.', 'Brief every shift change during a long outage.'],
   },
+  // --- Phase 8c: scenarios that turn on the engine's typed switches ---------------------------------
+  {
+    id: 'drill-gen-overcrank',
+    kind: 'drill',
+    title: 'Utility A lost, A generators fail to start',
+    summary: 'Utility A drops and every A generator cranks without firing. Hold the site on side B and the UPS batteries, then recover.',
+    level: 'Advanced',
+    minutes: 8,
+    topology: '2N',
+    run: true,
+    scenario: [{ at: 0, action: { a: 'failToStart', p: 1 } }],
+    setup: (s) => {
+      s.fail('UTIL-A');
+    },
+    steps: [
+      {
+        title: 'Alarm: Utility A lost, UPS A on battery',
+        detail: 'UPS A is on battery and the A generators are cranking. What is your first move?',
+        why: 'Verify the automation and the redundant side before you touch anything.',
+        focus: 'ATS-A',
+        choices: [
+          { text: 'Confirm side B is carrying, watch the A generators start and the ATS transfer', correct: true, why: 'Right. Same first move as any utility loss.' },
+          { text: 'Close the tie breaker to feed A from B', correct: false, consequence: (s) => s.closeBreaker('TIE-AB'), why: 'The Kirk-key interlock blocks it, and switching during an automatic transfer causes outages.' },
+          { text: 'Put UPS A on static bypass to save the batteries', correct: false, consequence: (s) => s.setUpsSystemMode('A', 'static-bypass'), why: 'Bypass is fed from the same dead source: the A side would drop at once.' },
+        ],
+      },
+      {
+        title: 'Watch the generators',
+        detail: 'Let the plant run. Watch the A generators: do they reach speed?',
+        why: 'A start normally takes about 10 s. A controller gives up after a set crank time (overcrank) and locks the engine out.',
+        hint: 'Make sure the clock is running, or press "+10s" a few times.',
+        focus: 'GEN-A1',
+        check: (s) => ['GEN-A1', 'GEN-A2', 'GEN-A3'].every((id) => !s.graph.nodes.has(id) || s.graph.get(id).status === 'failed'),
+      },
+      {
+        title: 'Overcrank: the A generators failed to start. What now?',
+        detail: 'UPS A is still on battery and its runtime is counting down. Side B is healthy.',
+        why: 'On a 2N site the other side is built to carry everything. Your job is to protect it and buy time on A.',
+        focus: 'UPS-A1',
+        choices: [
+          { text: 'Confirm B carries everything, send someone to the generators, and track UPS A runtime', correct: true, why: 'Right. Protect what is working, find the cause at the engines, and know your clock.' },
+          { text: 'Reset the overcrank from the screen and crank again right away', correct: false, why: 'An overcrank lockout means something is wrong (fuel, batteries, air). Cranking again without a cause burns the starter and the batteries.' },
+          { text: 'Close the tie breaker to feed A from B', correct: false, consequence: (s) => s.closeBreaker('TIE-AB'), why: 'Blocked by the interlock with both mains closed; and you never parallel through a tie during an event.' },
+        ],
+      },
+      {
+        title: 'UPS A runs out. What happens to the IT load?',
+        detail: 'If utility A doesn\u2019t come back first, UPS A will reach the end of its battery.',
+        why: 'Know what your topology does when one side goes dark before it happens.',
+        focus: 'STS-4',
+        choices: [
+          { text: 'Dual-corded racks keep running on B; single-corded racks stay up through their STS', correct: true, why: 'Right. That is what 2N and the static transfer switches are for. Every rack is now on one source, so protect side B.' },
+          { text: 'Every rack goes down', correct: false, why: 'Not on 2N: side B carries the whole load.' },
+          { text: 'Nothing changes, the batteries last for hours', correct: false, why: 'UPS batteries are sized for minutes, not hours.' },
+        ],
+      },
+      {
+        title: 'Utility A is back. What do you check first?',
+        detail: 'The utility restored the feed.',
+        why: 'The ATS never transferred, so A comes straight back on utility.',
+        focus: 'UPS-A1',
+        choices: [
+          { text: 'UPS A back on its inverter and recharging, A side PDUs energized, every rack on two cords again', correct: true, why: 'Right. Confirm redundancy is back before anything else.' },
+          { text: 'Close the tie breaker to share load', correct: false, why: 'No reason to change the normal line-up.' },
+          { text: 'Nothing, it fixed itself', correct: false, why: 'The generators are still locked out: the next outage would go the same way.' },
+        ],
+        after: (s) => {
+          s.restore('UTIL-A');
+        },
+      },
+      {
+        title: 'Return the A generators to service',
+        detail: 'The technician found the cause (in this story, a clogged fuel filter on the shared supply) and fixed it. Restore GEN-A1, GEN-A2 and GEN-A3 so they are back in automatic standby.',
+        why: 'A generator locked out after overcrank stays out until someone resets it on purpose.',
+        hint: 'Select each A generator and press Restore.',
+        focus: 'GEN-A1',
+        check: (s) => ['GEN-A1', 'GEN-A2', 'GEN-A3'].every((id) => !s.graph.nodes.has(id) || s.graph.get(id).status !== 'failed'),
+      },
+      {
+        title: 'After the event',
+        detail: 'Log it, plan a loaded test run of the A generators, and review fuel filtering and starting-battery tests.',
+        why: 'A common-cause failure (one problem that stops every engine) is the one to design out.',
+        confirm: 'Event logged, generator test planned, fuel and batteries on the review list',
+      },
+    ],
+    debrief: [
+      'Overcrank = the engine cranked for its full time without firing. Find the cause before you crank again.',
+      'On 2N the other side is your plan B; protect it.',
+      'Know your UPS runtime before you need it.',
+    ],
+  },
+  {
+    id: 'drill-cold-start',
+    kind: 'drill',
+    title: 'Utility A lost with the block heaters off',
+    summary: 'Same outage as Utility A lost, but the A generators are cold. Watch how long the batteries carry the load.',
+    level: 'Intermediate',
+    minutes: 6,
+    topology: '2N',
+    run: true,
+    scenario: [
+      { at: 0, action: { a: 'blockHeater', id: 'GEN-A1', on: false } },
+      { at: 0, action: { a: 'blockHeater', id: 'GEN-A2', on: false } },
+      { at: 0, action: { a: 'blockHeater', id: 'GEN-A3', on: false } },
+    ],
+    setup: (s) => {
+      s.fail('UTIL-A');
+    },
+    steps: [
+      {
+        title: 'Alarm: Utility A lost, UPS A on battery',
+        detail: 'UPS A is on battery and the A generators are cranking.',
+        why: 'First move is always the same: verify the automation and the other side.',
+        focus: 'ATS-A',
+        choices: [
+          { text: 'Confirm side B is carrying, watch the A generators start and the ATS transfer', correct: true, why: 'Right.' },
+          { text: 'Press the EPO to protect the equipment', correct: false, consequence: (s) => s.emergencyPowerOff(), consequenceS: 30, why: 'EPO is for life safety only.' },
+        ],
+      },
+      {
+        title: 'Wait for the transfer',
+        detail: 'Let the plant run until ATS A transfers to the generators. Note the time.',
+        why: 'Compare it with a normal start (about 13 s from the outage to transfer here).',
+        hint: 'Make sure the clock is running, or press "+10s".',
+        focus: 'ATS-A',
+        check: (s) => s.graph.get('ATS-A').state.selected === 'emergency' && s.solution.energized.has('MSB-A'),
+      },
+      {
+        title: 'That took about 28 s, not 13. Why?',
+        detail: 'The event log shows "cold start (block heater off): slow to build speed".',
+        why: 'Diesels start and take load faster when the jacket water is kept warm.',
+        focus: 'GEN-A1',
+        choices: [
+          { text: 'The block heaters were off, so the engines were cold and slow to build speed', correct: true, why: 'Right. Feel the heater hose or read the jacket-water gauge on every round.' },
+          { text: 'The ATS start delay is set too long', correct: false, why: 'The ATS sent the start signal on time; the engines were slow.' },
+          { text: 'The UPS batteries are weak', correct: false, why: 'The UPS carried the load fine; the delay was at the engines.' },
+        ],
+      },
+      {
+        title: 'What does a slow start cost you?',
+        detail: 'Think about the UPS and the load step.',
+        why: 'Every second the engines take is a second on battery.',
+        choices: [
+          { text: 'More time on UPS battery and a harder load step on a cold engine; with weak batteries the gap could become an outage', correct: true, why: 'Right. Heaters protect the start time the whole design depends on.' },
+          { text: 'Nothing, as long as it starts eventually', correct: false, why: 'Battery runtime is minutes, and it shrinks as batteries age.' },
+        ],
+        after: (s) => {
+          s.restore('UTIL-A');
+        },
+      },
+      {
+        title: 'Utility A is restored. Let the ATS retransfer',
+        detail: 'The utility reports the feed is back. Let the clock run until ATS A goes back to utility (5 minutes here). Speed it up with 60× if you like.',
+        why: 'The retransfer timer proves the utility stable first.',
+        hint: 'Set speed to 60× and press Run.',
+        focus: 'ATS-A',
+        check: (s) => s.graph.get('ATS-A').state.selected === 'normal' && s.solution.energized.has('MSB-A'),
+      },
+      {
+        title: 'After the event',
+        detail: 'Find out why the heaters were off (tripped breaker, failed thermostat, left off after work), restore them, and check the jacket-water temperature on the next rounds.',
+        why: 'A heater left off after maintenance is a classic way to lose start time without anyone noticing.',
+        confirm: 'Heaters restored and checked, event logged',
+      },
+    ],
+    debrief: ['A cold engine starts slower and dips more when the load lands.', 'Block heaters are on every generator round: feel the hose or read the gauge.', 'End every job with the heater breaker on and the generator in AUTO.'],
+  },
+  {
+    id: 'drill-sag',
+    kind: 'drill',
+    title: 'Voltage sag on utility A',
+    summary: 'A half-second sag hits utility A while UPS A runs in eco mode. Work out who rode through and who didn\u2019t.',
+    level: 'Intermediate',
+    minutes: 6,
+    topology: '2N',
+    run: true,
+    scenario: [
+      { at: 0, action: { a: 'eco', system: 'A', on: true } },
+      { at: 5, action: { a: 'utilityEvent', id: 'UTIL-A', kind: 'sag', pct: 60, s: 0.5 } },
+    ],
+    steps: [
+      {
+        title: 'Watch for the event',
+        detail: 'Let the plant run for a few seconds.',
+        why: 'Most power quality events are over before anyone looks. The EPMS captures them.',
+        hint: 'Make sure the clock is running.',
+        focus: 'UTIL-A',
+        check: (s) => s.events.some((e) => /power quality event/.test(e.message)),
+      },
+      {
+        title: 'A 0.5 s sag to 60% on utility A. What happened to the IT load?',
+        detail: 'The EPMS shows all three phases at 60% for half a second. UPS A went to battery for the event and came straight back.',
+        why: 'This is the UPS doing exactly its job.',
+        focus: 'UPS-A1',
+        choices: [
+          { text: 'Nothing: the UPS carried it. In eco mode the inverter takes the load within a few milliseconds', correct: true, why: 'Right. Servers ride through a few milliseconds; the batteries cover the sag.' },
+          { text: 'Every rack on side A rebooted', correct: false, why: 'Not with a healthy UPS. Check the rack logs if you doubt it, but the UPS covers this.' },
+          { text: 'The generators took the load', correct: false, why: 'The sag was over long before the generators could even be asked to start.' },
+        ],
+      },
+      {
+        title: 'A chiller dropped offline. What now?',
+        detail: 'The event log says a chiller dropped on the voltage dip and will restart on its timer.',
+        why: 'Motors and drives have much less ride-through than the UPS.',
+        choices: [
+          { text: 'Watch it restart on its timer; confirm storage and the other chillers carry the load; reset only if it doesn\u2019t come back', correct: true, why: 'Right. Most chillers restart by themselves after a dip, but it takes minutes.' },
+          { text: 'Bypass the anti-short-cycle timer to restart it now', correct: false, why: 'Never defeat a compressor safety; the timer protects the motor.' },
+          { text: 'Transfer side A to the generators', correct: false, why: 'The utility is fine again; transferring now adds risk for nothing.' },
+        ],
+      },
+      {
+        title: 'Wait for the chiller to come back',
+        detail: 'Let the clock run until no chiller is restarting (about 3 minutes). Speed it up if you like.',
+        why: 'Confirm recovery with your own eyes before you close the event.',
+        hint: 'Set speed to 60× and press Run.',
+        check: (s) => s.t > 200 && Object.values(s.thermal.state.chillers).every((c) => c.mode !== 'starting'),
+      },
+      {
+        title: 'Why didn\u2019t the generators start?',
+        detail: 'The ATS saw the sag too.',
+        why: 'Start delays exist for exactly this.',
+        focus: 'ATS-A',
+        choices: [
+          { text: 'The sag lasted 0.5 s, shorter than the ATS engine-start delay (2 s here)', correct: true, why: 'Right. The delay rides through blips so the engines don\u2019t start for every dip.' },
+          { text: 'The generators were not in AUTO', correct: false, why: 'They were in AUTO; the ATS never asked them to start.' },
+          { text: 'Eco mode stops the generators from starting', correct: false, why: 'Eco mode is a UPS setting; it has nothing to do with the ATS.' },
+        ],
+      },
+      {
+        title: 'After the event',
+        detail: 'Log it with the EPMS capture, check every drive and pump restarted, and report repeated sags to the utility and engineering.',
+        why: 'One sag is weather; a pattern is a problem worth chasing.',
+        confirm: 'Event logged with the capture, restarts checked',
+      },
+    ],
+    debrief: ['The UPS covers sags; motors and drives often don\u2019t.', 'ATS start delays ride through short events.', 'Log power quality events: patterns matter.'],
+  },
 ];
 
 export const PROCEDURES: Procedure[] = [...MOPS, ...DRILLS];

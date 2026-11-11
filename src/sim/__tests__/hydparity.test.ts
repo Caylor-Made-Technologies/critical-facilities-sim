@@ -47,7 +47,7 @@ function play(p: P, mode: 'v1' | 'v2', watch?: (e: EngineV2) => void) {
 }
 
 describe('hydronic parity: every drill scores the same with v2 owning chilled water (default)', () => {
-  for (const p of DRILLS) {
+  for (const p of DRILLS.filter((x) => !x.scenario)) {
     it(`${p.id}`, { timeout: 120_000 }, () => {
       const v1 = play(p, 'v1').result;
       const { eng, result } = play(p, 'v2');
@@ -79,7 +79,7 @@ function playWrapped(p: P) {
 }
 
 describe('engine v2 parity on the browser path (prepared plant, then EngineV2.wrap)', () => {
-  for (const p of DRILLS) {
+  for (const p of DRILLS.filter((x) => !x.scenario)) {
     it(`${p.id}`, { timeout: 120_000 }, () => {
       expect(playWrapped(p)).toEqual(play(p, 'v1').result);
     });

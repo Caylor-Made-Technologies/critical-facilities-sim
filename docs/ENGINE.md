@@ -460,3 +460,17 @@ Formulas in `physics.ts` (`RACKHEAT`, `rackRecircWeights`, `rackInletC`, `gapRac
 
 Limits: not CFD; weights are fixed rules, not airflow; rack trips stay hall-wide (a single rack does not trip on
 its own hot spot yet); GPU rows use the same rule for their air-cooled share.
+
+## Phase 8c: scenario switches in new drills (2026-11-11)
+
+- `Procedure.scenario?: { at, action }[]` (src/sim/procedure.ts): engine v2 actions applied when the drill loads
+  (`at ≤ 0`) or scheduled (`at` seconds after the start). `EngineV2.applyScenario()` and `EngineV2.forProcedure(p)`
+  (prepared plant + scenario, the path the app uses); `useSimulation.load(sim, scenario)` applies them, or holds them
+  until the engine chunk has loaded.
+- New drills (only new scenarios use the switches; every older drill keeps its v1 setup and its parity tests):
+  `drill-gen-overcrank` (fail-to-start chance 1 + utility A lost: all A generators overcrank, side B carries,
+  restore the generators after the fix), `drill-cold-start` (block heaters off on GEN-A1–A3: transfer ~15 s later),
+  `drill-sag` (eco mode on UPS A, a 0.5 s sag to 60 % at 5 s: UPS rides it, a chiller drops and restarts, no
+  generator start).
+- Tests: `scenarios.test.ts` plays each to 100 (0 s and 45 s reading time) on `forProcedure`; parity tests skip
+  scenario drills; the consequence test walks them on v2 only; `playall` e2e plays them in the browser.

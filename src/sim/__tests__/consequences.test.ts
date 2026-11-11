@@ -12,9 +12,11 @@ describe('wrong-choice consequences', () => {
       p.steps.forEach((step, i) => {
         step.choices?.forEach((c) => {
           if (!c.consequence) return;
+          // Scenario drills (Phase 8c) need engine v2 switches: walked on the v2 path only.
+          if (mode === 'bare' && p.scenario?.length) return;
           it(`${mode}: ${p.id} step ${i + 1}: "${c.text}" shows a real outcome`, () => {
-            const sim = procedureSim(p);
-            const eng = mode === 'v2' ? EngineV2.wrap(sim) : null;
+            const eng = mode === 'v2' ? EngineV2.forProcedure(p) : null;
+            const sim = eng ? eng.sim : procedureSim(p);
             let run: ProcRun = startRun(p, sim);
             let guard = 0;
             while (run.step < i && guard++ < 30) {

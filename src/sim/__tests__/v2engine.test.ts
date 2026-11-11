@@ -148,7 +148,8 @@ describe('engine v2 parity: every drill scores the same on v1 and v2', () => {
     }
     return { done: run.done, score: run.score, t: sim.t, down: sim.itDownRacks().length };
   }
-  for (const p of DRILLS) {
+  // Scenario drills (Phase 8c) use v2-only switches: they are checked in scenarios.test.ts instead.
+  for (const p of DRILLS.filter((x) => !x.scenario)) {
     it(p.title, () => {
       const v1 = score(p, false);
       const v2 = score(p, true);

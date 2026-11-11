@@ -158,6 +158,36 @@ export const DEEPER: Record<string, { q: string; a: string }[]> = {
       a: 'Removing capacity during an event can create the very outage you are trying to avoid. Any change to running equipment during an emergency needs the same capacity math as a planned change, plus a plan to undo it.',
     },
   ],
+  'drill-gen-overcrank': [
+    {
+      q: 'All three A generators failed the same way at the same time. What does that tell you about the cause?',
+      a: 'Three independent engines rarely fail together by chance. Look for a common cause: shared fuel supply or filters, a shared day tank, starting batteries that all aged together, or a controls change pushed to every unit. Common-cause failures are what redundancy does not cover, so they are worth designing out.',
+    },
+    {
+      q: 'Side B carried everything. What changes about how you run the site until the A generators are fixed?',
+      a: 'You are one failure from an outage on every rack: no planned work on side B, extra rounds on B equipment, a clear plan for what to do if B has a problem, and the customer told about the reduced redundancy.',
+    },
+  ],
+  'drill-cold-start': [
+    {
+      q: 'How would you catch block heaters that are off before an outage finds them?',
+      a: 'Rounds: feel the heater hose or read the jacket-water gauge; check the heater breaker; trend jacket-water temperature on the BMS with a low alarm; and make "heater breaker on, control in AUTO" part of every generator job close-out.',
+    },
+    {
+      q: 'The design says the generators take load in about 10 s. Where else does that number show up?',
+      a: 'In UPS battery sizing (minutes of runtime with margin), the ATS timing, the load-step plan (which loads land first), and in commissioning tests. A slow start eats into every one of those margins at once.',
+    },
+  ],
+  'drill-sag': [
+    {
+      q: 'The UPS rode through but a chiller dropped. Why do motors and drives have less ride-through than IT?',
+      a: 'A UPS has stored energy right at the load. A chiller starter or drive protects its motor and electronics: on low voltage it drops out (contactors open, drives trip on undervoltage) and then has to go through its restart and anti-short-cycle timers. Some sites add ride-through options or restart logic, but cooling still blinks.',
+    },
+    {
+      q: 'What would make you ask the utility and engineering to look into sags?',
+      a: 'A pattern: several events a month, events at the same time of day or during storms, events that keep dropping the same equipment, or depths and durations close to the windows that start the generators. The EPMS captures are the evidence.',
+    },
+  ],
   'drill-surprise': [
     {
       q: 'You found the failure from the event log. What makes an event log easy or hard to read in a real incident?',

@@ -48,6 +48,7 @@ const ACTIONS: Record<string, Record<number, Act[]>> = {
   },
   'mop-chiller-pm': { 2: [{ dev: 'CH-01', btn: /Take out of service/ }] },
   'drill-towers': { 3: [{ dev: 'CH-01', btn: /^Restore$/ }, { dev: 'CH-02', btn: /^Restore$/ }] },
+  'drill-gen-overcrank': { 5: [{ dev: 'GEN-A1', btn: /^Restore$/ }, { dev: 'GEN-A2', btn: /^Restore$/ }, { dev: 'GEN-A3', btn: /^Restore$/ }] },
   'mop-crah-filters': { 1: [{ dev: 'CRAH-101', btn: /Take out of service/ }], 3: [{ dev: 'CRAH-101', btn: /Return to service/ }] },
 };
 

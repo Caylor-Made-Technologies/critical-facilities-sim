@@ -1,3 +1,4 @@
+import type { Action } from './actions';
 /**
  * Procedure runner for MOP practice and emergency drills.
  *
@@ -107,6 +108,11 @@ export interface ProcStep {
   after?: (sim: Simulation) => void;
 }
 
+export interface ScenarioStep {
+  at: number;
+  action: Action;
+}
+
 export interface Procedure {
   id: string;
   kind: ProcKind;
@@ -118,6 +124,12 @@ export interface Procedure {
   weather?: WeatherId;
   /** Puts the plant in the starting condition (drills fail something here). */
   setup?: (sim: Simulation) => void;
+  /**
+   * Engine v2 scenario switches and timed events (Phase 8c), applied right after the plant is loaded:
+   * `at` = seconds after the start (0 = before the first tick). E.g. fail-to-start, block heater off,
+   * eco mode, a utility sag at 5 s. Only new scenarios use these; older drills keep their v1 setup.
+   */
+  scenario?: ScenarioStep[];
   /** Start the clock running (drills) or leave it paused (MOPs). */
   run?: boolean;
   steps: ProcStep[];

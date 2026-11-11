@@ -348,7 +348,7 @@ export function App() {
   }, []);
   const startProc = (p: Procedure) => {
     const sim = procedureSim(p);
-    h.load(sim);
+    h.load(sim, p.scenario);
     h.setSpeed(1);
     h.setRunning(!!p.run);
     setMode('explore');

@@ -171,7 +171,7 @@ describe('drills', () => {
   const DRILL_ACTIONS: Record<string, Record<number, (s: Simulation) => void>> = {
     'drill-towers': { 3: (s) => (s.restore('CH-01'), s.restore('CH-02')) },
   };
-  for (const p of DRILLS) {
+  for (const p of DRILLS.filter((x) => !x.scenario)) {
     // 0 s = instant answers; 45 s = a person reading each step while the clock runs.
     // (Slower than that is meant to cost points in some drills, e.g. the CDU drill gives you seconds.)
     for (const readS of [0, 45]) {

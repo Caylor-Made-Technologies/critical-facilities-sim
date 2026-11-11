@@ -46,7 +46,7 @@ function score(p: P, mode: 'v1' | 'v2trips') {
 }
 
 describe('air-side parity: every drill scores the same with v2 rack-inlet trips', () => {
-  for (const p of DRILLS) {
+  for (const p of DRILLS.filter((x) => !x.scenario)) {
     it(`${p.id}: ${p.title}`, { timeout: 120_000 }, () => {
       const v1 = score(p, 'v1');
       const v2 = score(p, 'v2trips');
