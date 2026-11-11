@@ -12,7 +12,7 @@
 import { groupCapacity, type GroupCapacity } from './capacity';
 import type { PlantGraph } from './graph';
 import type { InterlockSystem } from './interlocks';
-import { BATTERY_AGES, bessSocDrop, genFuelLPerS, PHYSICS, pue, upsSocDrop, type BatteryAge } from './physics';
+import { BATTERY_AGES, bessSocDrop, genFuelLPerS, PHYSICS, PQ, pue, upsSocDrop, type BatteryAge } from './physics';
 import type { Plant, PlantMeta } from './plant/builder';
 import { loadFraction, solvePower, type PowerSolution } from './power';
 import { ThermalPlant, WEATHER, type WeatherId } from './thermal';
@@ -29,6 +29,8 @@ export function formatT(t: number): string {
 interface AtsTimers {
   lossS: number;
   restoreS: number;
+  /** Seconds left on the generator cool-down after normal came back before a transfer (Phase 8a). */
+  cooldownS?: number;
 }
 
 /** UPS battery recharge rate (SOC per second) while on normal power: ~30 min to full. */
@@ -47,7 +49,7 @@ export interface SimSnapshot {
   nodes: { id: string; status: Status; state: Component['state'] }[];
   keys: { id: string; inLock: string | null }[];
   thermal: ReturnType<ThermalPlant['snapshot']>;
-  ats: { id: string; lossS: number; restoreS: number }[];
+  ats: { id: string; lossS: number; restoreS: number; cooldownS?: number }[];
   overloaded: string[];
   events: SimEvent[];
 }
@@ -64,6 +66,12 @@ export class Simulation {
   /** Age of every UPS battery string (sets usable capacity). */
   batteryAge: BatteryAge = 'new';
   private atsTimers = new Map<string, AtsTimers>();
+  /**
+   * Utilities whose voltage is outside the ATS window right now (sag, swell, lost phase; set by the engine v2
+   * power quality model each tick). An ATS treats such a normal source as lost. Not in snapshots (the v2 model
+   * re-applies it from its own saved state).
+   */
+  pqRejected = new Set<string>();
   /** Status each component had at build time, used by restore(). */
   private homeStatus = new Map<string, Status>();
   /** Last overload state per component, so alarms fire once per crossing. */
@@ -128,7 +136,7 @@ export class Simulation {
     const byId = new Map(snap.keys.map((k) => [k.id, k.inLock]));
     for (const sc of this.interlocks.schemes) for (const k of sc.keys) if (byId.has(k.id)) k.inLock = byId.get(k.id)!;
     this.thermal.restore(JSON.parse(JSON.stringify(snap.thermal)));
-    this.atsTimers = new Map(snap.ats.map(({ id, lossS, restoreS }) => [id, { lossS, restoreS }]));
+    this.atsTimers = new Map(snap.ats.map(({ id, lossS, restoreS, cooldownS }) => [id, cooldownS ? { lossS, restoreS, cooldownS } : { lossS, restoreS }]));
     this.overloaded = new Set(snap.overloaded);
     this.t = snap.t;
     this.batteryAge = snap.batteryAge;
@@ -225,21 +233,42 @@ export class Simulation {
     }
   }
 
+  /** Is the source feeding this node out of the ATS voltage window (power quality event)? */
+  private sourceRejected(id: string): boolean {
+    if (!this.pqRejected.size) return false;
+    const o = this.solution.origins.get(id);
+    return !!o && [...o].some((k) => this.pqRejected.has(k));
+  }
+
   private runTransferSwitches(dt: number): void {
     for (const ats of this.graph.byKind('ats')) {
       if (ats.status === 'failed' || ats.status === 'maintenance') continue;
       const timers = this.atsTimers.get(ats.id)!;
       const normalEdge = this.graph.inEdges(ats.id, 'power').find((e) => e.port === 'normal');
       const emergEdge = this.graph.inEdges(ats.id, 'power').find((e) => e.port === 'emergency');
-      const normalLive = !!normalEdge && this.solution.energized.has(normalEdge.from);
+      const normalLive =
+        !!normalEdge && this.solution.energized.has(normalEdge.from) && !this.sourceRejected(normalEdge.from);
       const emergLive = !!emergEdge && this.solution.energized.has(emergEdge.from);
 
       if (ats.state.selected === 'normal') {
         timers.restoreS = 0;
         if (normalLive) {
+          // Normal came back before the transfer: the start signal is removed; generators run an unloaded
+          // cool-down, then stop (Phase 8a). Before 8a they kept running.
+          if (timers.lossS >= PHYSICS.atsStartDelayS && emergEdge) {
+            timers.cooldownS = PQ.genCooldownS;
+            this.log('info', ats.tag, `${ats.tag} normal source back before transfer. Start signal removed; generators run a ${PQ.genCooldownS / 60} min unloaded cool-down.`);
+          } else if (timers.cooldownS !== undefined && emergEdge) {
+            timers.cooldownS -= dt;
+            if (timers.cooldownS <= 0) {
+              delete timers.cooldownS;
+              this.stopGeneratorsIfIdle(emergEdge.from);
+            }
+          }
           timers.lossS = 0;
           continue;
         }
+        delete timers.cooldownS;
         const before = timers.lossS;
         timers.lossS += dt;
         if (before < PHYSICS.atsStartDelayS && timers.lossS >= PHYSICS.atsStartDelayS && emergEdge) {
@@ -315,6 +344,7 @@ export class Simulation {
         s.closed ? 1 : 0,
         s.selected ?? '',
         s.upsMode ?? '',
+        s.inputRejected ? 1 : 0,
         s.genState ?? '',
         (s.fuelL ?? 1) > 0 ? 1 : 0,
         (s.soc ?? 1) > 0 ? 1 : 0,

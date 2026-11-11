@@ -373,6 +373,18 @@ export class HydronicModel {
     sim.log('critical', n.tag, `${n.tag} TRIPPED: ${why}. Needs investigation and a manual reset (Restore).`);
   }
 
+  /**
+   * Voltage dip (Phase 8a): a running or starting chiller drops offline and restarts on its restart timer
+   * once voltage is back (not a latched trip). Returns true if it was running.
+   */
+  powerDip(id: string): boolean {
+    const c = this.state.chillers[id];
+    if (!c || (c.mode !== 'running' && c.mode !== 'starting')) return false;
+    const was = c.mode === 'running';
+    Object.assign(c, { mode: 'off', timer: 0, runningSince: null, lowFlowS: 0, restart: true });
+    return was;
+  }
+
   /** Manual reset after a trip (the operator's Restore of that chiller also resets it). */
   reset(id: string): ActionResult {
     const c = this.state.chillers[id];

@@ -26,6 +26,7 @@ import { readEfficiency, type EfficiencyReading } from './efficiency';
 import { ElectricalModel, type ElecState } from './electrical';
 import { HydronicModel, type HydState } from './hydronic';
 import { SourcesModel, type SourcesState } from './sources';
+import { PowerQualityModel, type PqState } from './quality';
 import { EventQueue, type Scheduled } from './queue';
 import { Rng } from './rng';
 import { TrendRecorder, type TrendSample } from './trends';
@@ -63,6 +64,8 @@ export interface EngineSnapshot {
   hyd?: HydState;
   /** Alarm states (Phase 4d). */
   alarms?: AlarmsState;
+  /** Active utility power quality events (Phase 8a). */
+  pq?: PqState;
 }
 
 export class EngineV2 {
@@ -83,6 +86,8 @@ export class EngineV2 {
   readonly hyd = new HydronicModel();
   /** Alarm system: priorities, delays, deadbands, ack/shelve, first-out, flood (Phase 4d). */
   readonly alarms = new AlarmSystem();
+  /** Utility sags, swells, single-phasing and imbalance (Phase 8a). */
+  readonly pq = new PowerQualityModel();
   /** BMS-style trend log of key readings, one sample per 10 s, 1 h kept (Phase 5). Not in snapshots. */
   readonly trends = new TrendRecorder();
 
@@ -154,6 +159,7 @@ export class EngineV2 {
 
   /** Advance the plant and the electrical model together (dt ≤ 1 s per call). */
   private step(dt: number): void {
+    this.pq.apply(this.sim, this.hyd);
     this.sim.advance(dt);
     this.elec.step(this.sim, dt);
     this.sources.step(this.sim, this.rng);
@@ -177,7 +183,7 @@ export class EngineV2 {
   }
 
   private get alarmCtx() {
-    return { sim: this.sim, air: this.air, hyd: this.hyd, sources: this.sources };
+    return { sim: this.sim, air: this.air, hyd: this.hyd, sources: this.sources, pq: this.pq };
   }
 
   /** The alarm list as an operator sees it now. */
@@ -228,6 +234,7 @@ export class EngineV2 {
       air: this.air.snapshot(),
       hyd: this.hyd.snapshot(),
       alarms: this.alarms.snapshot(),
+      pq: this.pq.snapshot(),
     };
   }
 
@@ -248,6 +255,10 @@ export class EngineV2 {
       e.feedChw();
     }
     if (s.alarms) e.alarms.restore(s.alarms);
+    if (s.pq) {
+      e.pq.restore(s.pq);
+      e.pq.sync(e.sim);
+    }
     return e;
   }
 
@@ -294,6 +305,8 @@ export class EngineV2 {
         return this.air.setBlanking(x.missing);
       case 'tiles':
         return this.air.setTiles(x.ratio);
+      case 'utilityEvent':
+        return this.pq.add(s, this.hyd, x.id, x.kind, x.pct, x.s);
       case 'chillerReset':
         return this.hyd.reset(x.id);
       case 'ack':

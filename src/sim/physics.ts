@@ -706,6 +706,72 @@ export const SOURCES = {
   inPhaseWindowDeg: 10,
 } as const;
 
+/**
+ * Utility power quality (Phase 8a). Example windows for training, not settings: real UPS input
+ * windows, ATS pickup/dropout and drive ride-through come from the equipment and the site's settings.
+ */
+export const PQ = {
+  /** UPS rectifier accepts input inside this window (% of nominal); outside it, the UPS runs on battery. */
+  upsLowPct: 85,
+  upsHighPct: 110,
+  /** ATS undervoltage dropout and overvoltage trip (% of nominal); outside = normal source not acceptable. */
+  atsLowPct: 85,
+  atsHighPct: 110,
+  /** Below this (% of nominal), chiller starters and drives drop out and restart on their restart timer. */
+  motorDropPct: 70,
+  /** Voltage imbalance alarm (%). */
+  imbalanceAlarmPct: 2,
+  /** Generators started by an event that cleared before transfer run unloaded this long, then stop. */
+  genCooldownS: 300,
+  /** Accepted event ranges. */
+  sagPct: [10, 90] as const,
+  swellPct: [105, 130] as const,
+  imbalancePct: [0.5, 10] as const,
+  durationS: [0.05, 600] as const,
+} as const;
+
+export type PqKind = 'sag' | 'swell' | 'single-phase' | 'imbalance';
+
+export interface PqResponse {
+  /** UPS rectifiers reject the input: the UPS carries the load on battery. */
+  upsBattery: boolean;
+  /** ATS sees the normal source as not acceptable (its start delay then runs). */
+  atsReject: boolean;
+  /** Chiller starters/drives drop out (they restart on their timer once voltage is back). */
+  motorsDrop: boolean;
+  /** Voltage imbalance alarm. */
+  imbalance: boolean;
+}
+
+/**
+ * What the plant does during one utility power quality event (simplified, Verify).
+ * `pct`: remaining voltage for a sag, voltage for a swell (both % of nominal), voltage imbalance % for imbalance.
+ * Single-phasing (one phase lost) is outside every window and drops motors.
+ * Hand-worked: sag 88 → nothing (inside every window); sag 80 → UPS battery + ATS reject, motors ride through;
+ * sag 50 → all three; swell 115 → UPS battery + ATS reject; imbalance 3 → alarm only.
+ */
+export function pqResponse(kind: PqKind, pct: number): PqResponse {
+  if (kind === 'single-phase') return { upsBattery: true, atsReject: true, motorsDrop: true, imbalance: true };
+  if (kind === 'imbalance') return { upsBattery: false, atsReject: false, motorsDrop: false, imbalance: pct > PQ.imbalanceAlarmPct };
+  const v = pct;
+  return {
+    upsBattery: v < PQ.upsLowPct || v > PQ.upsHighPct,
+    atsReject: v < PQ.atsLowPct || v > PQ.atsHighPct,
+    motorsDrop: v < PQ.motorDropPct,
+    imbalance: false,
+  };
+}
+
+/** Is an event inside the accepted ranges? Returns a reason when it isn't. */
+export function pqInvalid(kind: PqKind, pct: number, s: number): string | null {
+  const [d0, d1] = PQ.durationS;
+  if (!(Number.isFinite(s) && s >= d0 && s <= d1)) return `Duration must be ${d0}–${d1} s.`;
+  const range = kind === 'sag' ? PQ.sagPct : kind === 'swell' ? PQ.swellPct : kind === 'imbalance' ? PQ.imbalancePct : null;
+  if (range && !(Number.isFinite(pct) && pct >= range[0] && pct <= range[1])) return `${kind} must be ${range[0]}–${range[1]}%.`;
+  if (!range && kind !== 'single-phase') return 'Unknown event.';
+  return null;
+}
+
 export type GenStage = 'off' | 'crank' | 'build-vf' | 'ready' | 'online';
 
 /**

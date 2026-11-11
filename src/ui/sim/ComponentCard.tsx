@@ -16,6 +16,17 @@ interface Props {
   units: Units;
 }
 
+/** One-tap utility power quality events (Phase 8a). */
+const PQ_PRESETS: { label: string; kind: 'sag' | 'swell' | 'single-phase' | 'imbalance'; pct: number; s: number }[] = [
+  { label: 'Shallow sag: 88% for 2 s', kind: 'sag', pct: 88, s: 2 },
+  { label: 'Sag: 80% for 1 s', kind: 'sag', pct: 80, s: 1 },
+  { label: 'Sag: 80% for 5 s', kind: 'sag', pct: 80, s: 5 },
+  { label: 'Deep sag: 50% for 0.2 s', kind: 'sag', pct: 50, s: 0.2 },
+  { label: 'Swell: 115% for 1 s', kind: 'swell', pct: 115, s: 1 },
+  { label: 'Lost phase for 2 min', kind: 'single-phase', pct: 0, s: 120 },
+  { label: 'Voltage imbalance 3% for 5 min', kind: 'imbalance', pct: 3, s: 300 },
+];
+
 const kw = (v: number) => `${Math.round(v).toLocaleString('en-US')} kW`;
 const fmtS = (s: number) => (!isFinite(s) ? '—' : s >= 3600 ? `${(s / 3600).toFixed(1)} h` : s >= 60 ? `${Math.floor(s / 60)} min ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
 
@@ -245,6 +256,19 @@ export function ComponentCard({ sim, id, apply, onClose, onOpenGuide, units }: P
           <Icon name="wrench" /> Equipment guide
         </button>
       </div>
+      {n.kind === 'utility' && n.status !== 'failed' && n.status !== 'maintenance' && (
+        <details className="acc pq-events">
+          <summary>Power quality event</summary>
+          <p className="muted small">What the utility does to you most often. Watch the UPS, ATS, generators and chillers respond. Windows are simplified examples.</p>
+          <div className="card-actions" role="group" aria-label={`Power quality events on ${n.tag}`}>
+            {PQ_PRESETS.map((p) => (
+              <button key={p.label} className="btn btn-sm" type="button" onClick={() => run({ a: 'utilityEvent', id, kind: p.kind, pct: p.pct, s: p.s })}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
       {msg && (
         <div className={`callout ${msg.ok ? '' : 'callout-warn'}`} role="status">
           {msg.ok ? <Icon name="check" /> : <Icon name="warning" />} {msg.text}

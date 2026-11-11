@@ -6259,3 +6259,7 @@ body.has-follow .toast-region { bottom: 84px; }
   .dd-readings th[scope='row'], .dd-readings td { min-width: 0; padding: 2px 0; border: 0; }
   .dd-readings td::before { content: attr(data-label) ': '; font-weight: 700; color: var(--text-heading); }
 }
+
+/* Power quality events on the utility card (Phase 8a) */
+.pq-events { margin-top: 10px; }
+.pq-events .card-actions { margin-top: 6px; }

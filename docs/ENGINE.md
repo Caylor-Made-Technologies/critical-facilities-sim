@@ -406,3 +406,32 @@ the recommended inlet band), and a stacked PUE bar in `EfficiencyPanel`. e2e: `t
 
 Limits: trends cover the last hour only and are cleared on Reset or when a walkthrough loads a plant; the air path
 is the lumped hall (one rack column stands for 36 racks); 3D shows alarms on the plant only, not in the hall.
+
+## Phase 8a: utility power quality events (2026-11-11)
+
+`src/sim/v2/quality.ts` (`PowerQualityModel`, `engine.pq`), windows and the response rule in `physics.ts`
+(`PQ`, `pqResponse`, `pqInvalid`), hand-worked tests in `quality.test.ts`.
+
+- Action `{ a: 'utilityEvent', id, kind, pct, s }`: `sag` (remaining voltage 10–90 %), `swell` (105–130 %),
+  `single-phase` (one phase lost), `imbalance` (0.5–10 %), lasting 0.05–600 s. Logged, queued and replayed like
+  any action; active events are in `EngineSnapshot.pq` and re-applied on restore.
+- Each tick, before the plant advances, the model ends finished events and pushes the response into the plant:
+  - UPS: rectifier window 85–110 %. Outside it the UPS gets `state.inputRejected`; the power solver then gives the
+    rectifier input no path, so pass 3 puts the UPS on battery. Judged by what feeds the rectifier input, so the
+    flag doesn't flip while the UPS is on battery. `inputRejected` is in the solver cache key.
+  - ATS: window 85–110 %, single-phasing always out. `Simulation.pqRejected` (utility ids) makes an ATS see its
+    normal source as lost. Its 2 s start delay rides through short events; a longer one starts the generators and
+    transfers. New in v1: if normal comes back before the transfer, generators run a 5 min unloaded cool-down
+    (`PQ.genCooldownS`, `AtsTimers.cooldownS`, in snapshots) and stop. Before 8a they kept running.
+  - Chillers: below 70 %, or on a lost phase, a running/starting chiller fed from that utility drops offline
+    (`HydronicModel.powerDip`) and restarts on its normal restart timer (not a latched trip).
+  - Imbalance: alarm only.
+- Only gear fed from that utility right now is affected (`solution.origins`), so a bus already on generator rides
+  through. An event shorter than one tick lasts one tick.
+- Alarms: `UTIL-x.PQ` (medium, while a sag/swell/lost phase is active, 10 s off-delay) and `UTIL-x.IMB` (medium,
+  5 s on-delay). Fault library: `utility-sag`, `utility-single-phase`, `utility-imbalance` (inject tests).
+- UI: the utility's component card has a "Power quality event" disclosure with 7 presets.
+- Parity: no event = no change; all drills/MOPs/goldens unchanged.
+
+Not modeled: per-phase voltages through transformers, sub-cycle timing, eco-mode transfer, SPD action,
+motor heating from imbalance, VFD auto-restart differences.

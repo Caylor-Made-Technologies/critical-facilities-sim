@@ -84,6 +84,8 @@ function conductingInputs(g: PlantGraph, n: Component, forcedBypass: Set<string>
     case 'ups': {
       if (n.state.upsMode === 'off') return [];
       const bypass = n.state.upsMode === 'static-bypass' || forcedBypass.has(n.id);
+      // A rectifier rejecting bad input voltage (sag, swell, lost phase) leaves the UPS to its batteries.
+      if (!bypass && n.state.inputRejected) return [];
       return inputs.filter((e) => e.port === (bypass ? 'bypass' : 'input'));
     }
     default:

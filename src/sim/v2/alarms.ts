@@ -24,6 +24,7 @@ import type { ActionResult, Component } from '../types';
 import type { AirsideModel } from './airside';
 import type { HydronicModel } from './hydronic';
 import type { SourcesModel } from './sources';
+import type { PowerQualityModel } from './quality';
 
 export type AlarmPriority = 'critical' | 'high' | 'medium' | 'low';
 export type AlarmGroup = 'electrical' | 'cooling' | 'hall';
@@ -34,6 +35,8 @@ export interface AlarmCtx {
   air: AirsideModel;
   hyd: HydronicModel;
   sources: SourcesModel;
+  /** Utility power quality events (Phase 8a); optional so older callers still work. */
+  pq?: PowerQualityModel;
 }
 
 export interface AlarmDef {
@@ -115,6 +118,11 @@ export function buildAlarmDefs(sim: Simulation): AlarmDef[] {
   // --- Electrical -------------------------------------------------------------------------------
   for (const u of of('utility'))
     defs.push({ id: `${u.id}.LOSS`, source: u.tag, text: 'Utility source lost', priority: 'high', group: 'electrical', equipment: u.id, onDelayS: 0, offDelayS: 5, active: failed(u.id), fault: 'utility-loss' });
+  for (const u of of('utility')) {
+    const pqOn = (c: AlarmCtx) => !!c.pq?.active.some((e) => e.util === u.id && e.kind !== 'imbalance');
+    defs.push({ id: `${u.id}.PQ`, source: u.tag, text: 'Power quality event (sag / swell / lost phase)', priority: 'medium', group: 'electrical', equipment: u.id, onDelayS: 0, offDelayS: 10, active: pqOn, fault: 'utility-sag' });
+    defs.push({ id: `${u.id}.IMB`, source: u.tag, text: 'Utility voltage imbalance', priority: 'medium', group: 'electrical', equipment: u.id, onDelayS: 5, offDelayS: 10, active: (c) => !!c.pq?.response(u.id).imbalance, fault: 'utility-imbalance' });
+  }
   for (const sys of sim.meta.upsSystems) {
     const mods = g.byKind('ups').filter((u) => g.downstream(`UIB-${sys.id}`).some((n) => n.id === u.id));
     defs.push({

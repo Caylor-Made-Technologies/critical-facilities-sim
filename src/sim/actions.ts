@@ -6,7 +6,7 @@
  * (scenario switches, chiller reset) return null here and are handled by `EngineV2`.
  */
 import type { Simulation } from './engine';
-import type { BatteryAge, ContainmentMode } from './physics';
+import type { BatteryAge, ContainmentMode, PqKind } from './physics';
 import type { WeatherId } from './thermal';
 import type { ActionResult } from './types';
 
@@ -34,6 +34,8 @@ export type Action =
   | { a: 'ackAll' }
   | { a: 'shelve'; alarm: string; s: number }
   | { a: 'unshelve'; alarm: string }
+  /** Utility power quality event (Phase 8a): pct = remaining/peak voltage % (sag/swell) or imbalance %; s = duration. */
+  | { a: 'utilityEvent'; id: string; kind: PqKind; pct: number; s: number }
   /** Let time pass in one go (used by "skip ahead" and by replays of it). */
   | { a: 'skip'; s: number };
 

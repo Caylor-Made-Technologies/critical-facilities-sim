@@ -74,6 +74,8 @@ export interface ComponentState {
   fuelL?: number;
   /** UPS: operator-selected mode. 'auto' lets the UPS choose normal / battery / static bypass. */
   upsMode?: 'auto' | 'static-bypass' | 'off';
+  /** UPS: the rectifier is rejecting its input (voltage outside its window, Phase 8a), so it runs on battery. */
+  inputRejected?: boolean;
   /** UPS / BESS: battery state of charge, 0..1. */
   soc?: number;
   /** BESS: usable energy capacity (kWh). */

@@ -50,3 +50,19 @@ test('engine v2: a failure raises a first-out alarm that can be acknowledged and
   await expect(panel.locator('.alarm-row', { hasText: 'CRAH-101' })).toHaveCount(0);
   await expect(panel.getByText(/Shelved \(come back by themselves\): CRAH-101\.FAIL/)).toBeVisible();
 });
+
+// Engine v2 only (Phase 8a): a utility power quality event from the utility's card.
+test('engine v2: a utility sag puts UPS A on battery and raises a power quality alarm', async ({ page, open }) => {
+  await open('#/sim', { three: false });
+  await page.locator('[aria-label^="UTIL-A,"]').first().focus();
+  await page.keyboard.press('Enter');
+  const card = page.locator('.comp-card');
+  await card.locator('.pq-events summary').click();
+  await card.getByRole('button', { name: 'Sag: 80% for 5 s' }).click();
+  await expect(page.getByText(/UPS-A1 input out of tolerance: carrying the load on battery/).first()).toBeVisible();
+  // Paused: alarms scan once a second.
+  await page.getByRole('button', { name: 'Step one second' }).click();
+  await expect(page.locator('.alarm-panel').getByText('Power quality event (sag / swell / lost phase)').first()).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include('.pq-events').analyze();
+  expect(axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
+});
