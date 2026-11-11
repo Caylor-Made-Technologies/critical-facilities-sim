@@ -379,35 +379,58 @@ export class AirsideModel {
     }
   }
 
+  /** Rack layout and CRAH placement, built once; gap racks rebuilt only when the blanking share changes. */
+  private layout: { spots: (RackSpot & { id: string; num: number })[]; crahIds: string[]; crahs: CrahSpot[]; gapFor: number; key: string } | null = null;
+
   /** Spread the lumped rack inlet over the racks (weights average 1; see physics rackRecircWeights). */
   private computeRackHeat(sim: Simulation): RackHeat {
     const g = sim.graph;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const nums = ROWS.flatMap((r) => [...r.dual, ...r.single]);
-    const gaps = gapRacks(nums, this.state.blankingMissing);
-    const spots: (RackSpot & { id: string })[] = [];
-    ROWS.forEach((row, ri) => {
-      const list = [...row.dual, ...row.single];
-      list.forEach((num, slot) => spots.push({ id: `R-${pad(num)}`, row: ri, slot, perRow: list.length, rows: ROWS.length, gap: gaps.has(num) }));
+    if (!this.layout) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const spots: (RackSpot & { id: string; num: number })[] = [];
+      ROWS.forEach((row, ri) => {
+        const list = [...row.dual, ...row.single];
+        list.forEach((num, slot) => {
+          const id = `R-${pad(num)}`;
+          if (g.nodes.has(id)) spots.push({ id, num, row: ri, slot, perRow: list.length, rows: ROWS.length, gap: false });
+        });
+      });
+      const crahIds = g.byKind('crah').map((c) => c.id).sort((a, b) => a.localeCompare(b));
+      const perSide = Math.max(1, Math.ceil(crahIds.length / 2));
+      const crahs: CrahSpot[] = crahIds.map((_, i) => ({ side: i % 2 === 0 ? -1 : 1, pos: perSide > 1 ? Math.floor(i / 2) / (perSide - 1) : 0.5, down: false }));
+      this.layout = { spots, crahIds, crahs, gapFor: -1, key: '' };
+    }
+    const L = this.layout;
+    if (L.gapFor !== this.state.blankingMissing) {
+      const gaps = gapRacks(L.spots.map((x) => x.num), this.state.blankingMissing);
+      for (const x of L.spots) x.gap = gaps.has(x.num);
+      L.gapFor = this.state.blankingMissing;
+      L.key = '';
+    }
+    let key = `${this.state.containment}|${L.gapFor}|`;
+    L.crahIds.forEach((id, i) => {
+      const c = g.get(id);
+      const down = !(c.status === 'online' && sim.solution.energized.has(id));
+      L.crahs[i]!.down = down;
+      key += down ? '1' : '0';
     });
-    const units = g.byKind('crah').sort((a, b) => a.id.localeCompare(b.id));
-    const perSide = Math.max(1, Math.ceil(units.length / 2));
-    const crahs: CrahSpot[] = units.map((c, i) => ({
-      side: i % 2 === 0 ? -1 : 1,
-      pos: perSide > 1 ? Math.floor(i / 2) / (perSide - 1) : 0.5,
-      down: !(c.status === 'online' && sim.solution.energized.has(c.id)),
-    }));
-    const w = rackRecircWeights(spots, crahs, this.state.containment);
+    // Weights only change with containment, blanking or CRAH status: reuse them otherwise.
+    if (key !== L.key) {
+      this.weights = rackRecircWeights(L.spots, L.crahs, this.state.containment);
+      L.key = key;
+    }
     const racks: RackHeat['racks'] = {};
     let hottest: RackHeat['hottest'] = null;
-    spots.forEach((r, i) => {
-      if (!g.nodes.has(r.id)) return;
-      const t = rackInletC(this.state.temps.cold, this.state.temps.rackIn, w[i]!);
+    const cold = this.state.temps.cold;
+    const lumped = this.state.temps.rackIn;
+    L.spots.forEach((r, i) => {
+      const t = rackInletC(cold, lumped, this.weights[i]!);
       racks[r.id] = t;
       if (!hottest || t.top > hottest.topC) hottest = { id: r.id, topC: t.top };
     });
     return { racks, hottest };
   }
+  private weights: number[] = [];
 
   /** Recompute per-rack heat now (after a restore, before the next tick). */
   refreshRackHeat(sim: Simulation): void {
