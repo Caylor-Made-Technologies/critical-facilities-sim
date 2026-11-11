@@ -46,6 +46,7 @@ Severity: **S1** broken or unsafe content · **S2** wrong result · **S3** visua
 | B-025 | S3 | Sidebar (laptop) | 1366 × 768 laptop, any tab | All sections visible in the sidebar | After the 6b regroup the sidebar needed ~900 px; Uptime, Change Mgmt and the whole Me group sat below the fold (the current tab could be hidden) | 6e | **Fixed** (6e sweep, 2026-11-10): rows tighten to 26 px on screens ≤ 1000 px tall (fits exactly at 768) and the current tab scrolls into view; e2e |
 | B-026 | S4 | Never Do lists | Never Do tab, Equipment guides | Firm, calm rule text | Code appended a decorative "!!" to every rule | 6e | **Fixed** (6e sweep): ends with a period; red NEVER + warning icon stay; e2e |
 | B-027 | S4 | Offline update (e2e) | `robust.spec` "a new deploy installs a fresh worker", laptop-light, full e2e | Old cache deleted within 15 s of Reload | Old cache still listed at 15 s once; passed on rerun alone | 6e | Flake (timing): watch; if it repeats, poll for the activate event instead of the cache list |
+| B-028 | S4 | Long e2e under load | `lifecycle.spec` "all 10 stages" (laptop-light), gate e2e:v2 and live check | Finishes well inside its 8 min timeout | Hit 8 min when unit suites and a second browser run shared the box; 1.9 min (local) and 4.7 min (live) on rerun alone | 8 | Flake (CPU contention): run gates with nothing else heavy beside them |
 
 ## Deferred (with reason)
 - `npm audit`: vite advisory cleared (vite 6.4.5). Remaining vitest / tinypool / @vitest/mocker advisories only clear with vitest 5 (a major upgrade). Dev-only: the test runner is never shipped and runs headless (`vitest run`, no UI or server). Planned as its own task.
@@ -62,3 +63,4 @@ Severity: **S1** broken or unsafe content · **S2** wrong result · **S3** visua
 - Timers, animation frames and listeners: every repeating one is cleared on unmount (checked by reading every file that sets one); one-shot frames are harmless.
 - Focus: changing tabs moves focus to the page; 0 unnamed controls in the 101-view sweep; axe covers names and contrast.
 - CDU drill drops GPU racks if you take 2 minutes per step: intended ("seconds, not minutes").
+- Air-side "steady state in every setting" unit test needs ~14 s alone; under a parallel gate it neared its 30 s timeout once (2026-11-11). Per-rack heat now caches its weights so the tick costs no more than before Phase 8b.
