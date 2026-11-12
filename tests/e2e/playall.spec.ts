@@ -13,7 +13,7 @@ import { test, expect } from './fixtures';
  */
 
 /** One operator action: open a device card and press a button (optionally inside one lock's row). */
-type Act = { dev: string; btn: RegExp; lock?: string };
+type Act = { dev: string; btn: RegExp; lock?: string } | { group: string; btn: RegExp };
 
 // Same actions as the engine tests, by step index.
 const ACTIONS: Record<string, Record<number, Act[]>> = {
@@ -48,6 +48,7 @@ const ACTIONS: Record<string, Record<number, Act[]>> = {
   },
   'mop-chiller-pm': { 2: [{ dev: 'CH-01', btn: /Take out of service/ }] },
   'drill-towers': { 3: [{ dev: 'CH-01', btn: /^Restore$/ }, { dev: 'CH-02', btn: /^Restore$/ }] },
+  'drill-crah-hotspot': { 2: [{ group: 'Blanking panels', btn: /^All in$/ }], 3: [{ dev: 'CRAH-101', btn: /^Restore$/ }, { dev: 'CRAH-103', btn: /^Restore$/ }] },
   'drill-gen-overcrank': { 5: [{ dev: 'GEN-A1', btn: /^Restore$/ }, { dev: 'GEN-A2', btn: /^Restore$/ }, { dev: 'GEN-A3', btn: /^Restore$/ }] },
   'mop-crah-filters': { 1: [{ dev: 'CRAH-101', btn: /Take out of service/ }], 3: [{ dev: 'CRAH-101', btn: /Return to service/ }] },
   'mop-chwp-rotate': { 2: [{ dev: 'CHWP-01', btn: /Take out of service/ }], 5: [{ dev: 'CHWP-01', btn: /Return to service/ }] },
@@ -59,6 +60,13 @@ const ACTIONS: Record<string, Record<number, Act[]>> = {
 const card = (page: Page) => page.locator('section.comp-card');
 
 async function doAct(page: Page, a: Act) {
+  if ('group' in a) {
+    // A control outside the component cards (e.g. the Air path what-ifs).
+    const g = page.getByRole('group', { name: a.group });
+    await g.scrollIntoViewIfNeeded();
+    await g.getByRole('button', { name: a.btn }).click();
+    return;
+  }
   const jump = page.locator('.plant3d-jump select');
   // Pick the first option whose value starts with the device id (UPS-A → UPS-A1).
   const value = await jump.evaluate((el, dev) => {

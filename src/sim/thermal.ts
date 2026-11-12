@@ -85,6 +85,8 @@ export interface ThermalReadout {
   hallInletC: number;
   /** Per-rack inlet, middle and top of the rack (°C), written by the engine v2 air model (Phase 8b). */
   rackInlets?: Record<string, { mid: number; top: number }>;
+  /** Share of blanking panels missing (0–1), from the engine v2 air model (Phase 9b; undefined without v2). */
+  blankingMissing?: number;
   hallDewC: number;
   hallRh: number;
   hallHumidity: 'ok' | 'too-dry' | 'too-humid';

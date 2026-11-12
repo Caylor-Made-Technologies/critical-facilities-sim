@@ -376,6 +376,7 @@ export class AirsideModel {
     if (sim.thermal.readout) {
       sim.thermal.readout.hallInletC = inlet;
       sim.thermal.readout.rackInlets = this.rackHeat.racks;
+      sim.thermal.readout.blankingMissing = this.state.blankingMissing;
     }
   }
 
@@ -437,7 +438,10 @@ export class AirsideModel {
     // After a restore the reading still comes from the freshly built plant: work it out from the restored state.
     this.reading = this.read(sim, this.flows(sim));
     this.rackHeat = this.computeRackHeat(sim);
-    if (sim.thermal.readout) sim.thermal.readout.rackInlets = this.rackHeat.racks;
+    if (sim.thermal.readout) {
+      sim.thermal.readout.rackInlets = this.rackHeat.racks;
+      sim.thermal.readout.blankingMissing = this.state.blankingMissing;
+    }
   }
 
   /** Hot-spot check for the alarm list: hottest rack top above the recommended maximum. */

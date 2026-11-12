@@ -10,6 +10,7 @@ import { EngineV2 } from '../v2/engine';
 /** Wait-step actions a person does on the plant (indexed by step). */
 const ACTIONS: Record<string, Record<number, (e: EngineV2) => void>> = {
   'drill-gen-overcrank': { 5: (e) => ['GEN-A1', 'GEN-A2', 'GEN-A3'].forEach((id) => e.apply({ a: 'restore', id })) },
+  'drill-crah-hotspot': { 2: (e) => e.apply({ a: 'blanking', missing: 0 }), 3: (e) => ['CRAH-101', 'CRAH-103'].forEach((id) => e.apply({ a: 'restore', id })) },
 };
 
 function play(p: Procedure, readS: number) {

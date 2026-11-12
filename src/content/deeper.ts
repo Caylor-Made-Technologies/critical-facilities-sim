@@ -178,6 +178,22 @@ export const DEEPER: Record<string, { q: string; a: string }[]> = {
     { q: 'Why compare phase to phase instead of using a fixed "too hot" number?', a: 'The same lug on three phases at the same load should read the same. A difference points to the connection itself, while an absolute number also changes with load and room temperature.' },
     { q: 'What makes an IR scan program useful year after year?', a: 'The same route, the same equipment, load and ambient recorded, images saved, findings ranked and closed out, and last year\u2019s results compared with this year\u2019s.' },
   ],
+  'drill-alarm-flood': [
+    { q: 'What makes an alarm system flood-proof, or at least flood-resistant?', a: 'Rationalized alarms (every one needs a response), suppression of consequence alarms by design (UPS on battery when the utility is known lost), first-out marking, delays and deadbands so things don\u2019t chatter, and a rule that standing alarms get fixed or handed off instead of shelved.' },
+    { q: 'Why were three standing alarms still there before the burst, and why does that matter?', a: 'Standing alarms train people to ignore the list. When the real event comes, it lands on top of noise, and the first-out is harder to see. Clearing standing alarms is part of being ready.' },
+  ],
+  'drill-bypass-storm': [
+    { q: 'Who decides whether to stay on bypass or force a transfer back, and on what information?', a: 'The UPS service engineer and the site\u2019s lead or engineering, using the fault code, the vendor\u2019s guidance, the redundancy of the other side and the weather. A forced transfer onto a faulted inverter can be worse than staying on bypass.' },
+    { q: 'What would you tell the customer, and when?', a: 'As soon as the UPS went to bypass: which side is unprotected, what still protects their load (side B, STS), the repair plan and time, and anything they should avoid (e.g. maintenance on their B feeds) until it is fixed.' },
+  ],
+  'drill-crah-hotspot': [
+    { q: 'Why can the hall average look normal while racks overheat?', a: 'The average mixes many racks. A few racks at row ends, near failed units or behind missing blanking can run several degrees hotter at the top without moving the average much. Servers care about their own inlet, not the average.' },
+    { q: 'What temporary measures might a site use while CRAHs are down?', a: 'Shut containment doors, install every blanking panel, check tiles are only in cold aisles, raise fan speed on the remaining units, and follow the site\u2019s plan for portable cooling or load moves. Never prop doors or remove tiles at random.' },
+  ],
+  'drill-imbalance': [
+    { q: 'Why does a small voltage imbalance cause a much larger current imbalance in a motor?', a: 'An induction motor\u2019s negative-sequence impedance is low, so the unbalanced part of the voltage drives a large unbalanced current. A rule of thumb is several times the voltage imbalance, which heats the windings unevenly.' },
+    { q: 'How would you tell whether the imbalance comes from the utility or from inside the building?', a: 'Measure at the service entrance and at downstream boards. If it is there at the service with the building\u2019s load balanced, it is the utility. If it appears downstream, look for unbalanced single-phase loads or a bad connection on one phase.' },
+  ],
   'drill-gen-overcrank': [
     {
       q: 'All three A generators failed the same way at the same time. What does that tell you about the cause?',
