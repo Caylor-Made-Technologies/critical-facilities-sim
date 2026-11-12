@@ -89,3 +89,15 @@ export async function plantReady(page: Page) {
   await page.locator('.scene3d-plant canvas').scrollIntoViewIfNeeded();
   await page.waitForFunction(() => window.__cf3d!.plant!.frames() > 0);
 }
+
+/**
+ * Open quick search with Ctrl+K once the app is listening (B-029): `open()` returns at page load, which can be
+ * before React has attached the shortcut. Presses until the search box is there.
+ */
+export async function openSearch(page: Page) {
+  await page.getByRole('button', { name: /Search/ }).first().waitFor();
+  await expect(async () => {
+    if (!(await page.getByRole('combobox', { name: /Search lessons/ }).isVisible())) await page.keyboard.press('Control+k');
+    await expect(page.getByRole('combobox', { name: /Search lessons/ })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+}

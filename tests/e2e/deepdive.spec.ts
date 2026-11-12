@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, openSearch } from './fixtures';
 
 test.describe('equipment deep dives (Phase 7)', () => {
   test('transformer: every part opens, quiz saves, See it live lands in the simulator', async ({ page, open }) => {
@@ -35,7 +35,7 @@ test.describe('equipment deep dives (Phase 7)', () => {
 test('quick search finds a deep-dive topic and opens it on the Deep dive part', async ({ page, open }, info) => {
   test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
   await open('#/home', { three: false });
-  await page.keyboard.press('Control+k');
+  await openSearch(page);
   await page.keyboard.type('LSIG');
   await page.getByRole('option', { name: /LSIG/ }).or(page.getByRole('button', { name: /LSIG/ })).first().click();
   await expect(page.getByRole('tab', { name: 'Deep dive' })).toHaveAttribute('aria-selected', 'true');

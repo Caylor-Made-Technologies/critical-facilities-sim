@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { LIFE_STAGES, type LifeStage } from '../../src/content/lifecycle';
-import { test, expect } from './fixtures';
+import { test, expect, openSearch } from './fixtures';
 
 async function openStage(page: Page, s: LifeStage) {
   const all = page.getByRole('button', { name: 'All stages' });
@@ -147,7 +147,7 @@ test.describe('Life of a Data Center', () => {
   test('search opens a stage', async ({ page, open }, info) => {
     test.skip(info.project.name !== 'laptop-dark', 'one project is enough');
     await open('#/home', { three: false });
-    await page.keyboard.press('Control+k');
+    await openSearch(page);
     await page.keyboard.type('stranded');
     await page.getByRole('option', { name: /Capacity & growth/ }).or(page.getByRole('button', { name: /Capacity & growth/ })).first().click();
     await expect(page.locator('#lc-stage-h')).toHaveText('Capacity & growth');
