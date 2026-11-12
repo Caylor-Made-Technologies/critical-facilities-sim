@@ -113,6 +113,17 @@ export interface ScenarioStep {
   action: Action;
 }
 
+/** The MOP sheet a real method of procedure starts with (Phase 9). */
+export interface MopPlan {
+  risk: 'Low' | 'Medium' | 'High';
+  /** What has to be true before the work starts. */
+  prereqs: string[];
+  /** Conditions that stop the job on the spot. */
+  stopWork: string[];
+  /** How to put everything back if the job is stopped. */
+  rollback: string[];
+}
+
 export interface Procedure {
   id: string;
   kind: ProcKind;
@@ -133,6 +144,8 @@ export interface Procedure {
   /** Start the clock running (drills) or leave it paused (MOPs). */
   run?: boolean;
   steps: ProcStep[];
+  /** MOPs: risk, prerequisites, stop-work points and rollback (Phase 9). */
+  plan?: MopPlan;
   /** Key takeaways shown on the result screen. */
   debrief: string[];
   /** Open questions to think about afterwards, each with a model answer. */

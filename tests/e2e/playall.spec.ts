@@ -50,6 +50,10 @@ const ACTIONS: Record<string, Record<number, Act[]>> = {
   'drill-towers': { 3: [{ dev: 'CH-01', btn: /^Restore$/ }, { dev: 'CH-02', btn: /^Restore$/ }] },
   'drill-gen-overcrank': { 5: [{ dev: 'GEN-A1', btn: /^Restore$/ }, { dev: 'GEN-A2', btn: /^Restore$/ }, { dev: 'GEN-A3', btn: /^Restore$/ }] },
   'mop-crah-filters': { 1: [{ dev: 'CRAH-101', btn: /Take out of service/ }], 3: [{ dev: 'CRAH-101', btn: /Return to service/ }] },
+  'mop-chwp-rotate': { 2: [{ dev: 'CHWP-01', btn: /Take out of service/ }], 5: [{ dev: 'CHWP-01', btn: /Return to service/ }] },
+  'mop-tower-pm': { 2: [{ dev: 'CT-01', btn: /Take out of service/ }], 4: [{ dev: 'CT-01', btn: /Return to service/ }] },
+  'mop-doas-pm': { 1: [{ dev: 'DOAS-01', btn: /Take out of service/ }], 4: [{ dev: 'DOAS-01', btn: /Return to service/ }] },
+  'mop-gen-heater': { 1: [{ dev: 'GEN-B1', btn: /Take out of service/ }], 3: [{ dev: 'GEN-B1', btn: /Return to service/ }] },
 };
 
 const card = (page: Page) => page.locator('section.comp-card');

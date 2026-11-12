@@ -6279,3 +6279,13 @@ body.has-follow .toast-region { bottom: 84px; }
 .shift-lines li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); }
 .shift-lines li.ok strong { color: var(--ok); }
 .shift-lines li.miss strong { color: var(--warn); }
+
+/* MOP sheet (Phase 9) */
+.mop-sheet { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; margin: 0 0 12px; }
+.mop-sheet summary { cursor: pointer; font-weight: 700; color: var(--text-heading); min-height: 32px; display: flex; align-items: center; gap: 8px; }
+.mop-sheet-body { display: grid; gap: 8px; padding: 4px 0 8px; }
+.mop-sheet-body ul, .mop-sheet-body ol { margin: 4px 0 0; padding-left: 20px; }
+.mop-risk { font-size: 0.72rem; }
+.mop-risk.risk-high { color: var(--alarm); border-color: var(--alarm); }
+.mop-risk.risk-medium { color: var(--warn); border-color: var(--warn); }
+.mop-risk.risk-low { color: var(--ok); border-color: var(--ok); }

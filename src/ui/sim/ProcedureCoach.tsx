@@ -183,6 +183,27 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, p
           <Icon name={feedback.ok ? 'check' : 'warning'} /> {feedback.text}
         </p>
       )}
+      {proc.plan && (
+        <details className="mop-sheet" open={run.step === 0}>
+          <summary>
+            MOP sheet · risk <span className={`chip mop-risk risk-${proc.plan.risk.toLowerCase()}`}>{proc.plan.risk}</span>
+          </summary>
+          <div className="mop-sheet-body">
+            <div>
+              <strong>Before you start</strong>
+              <ul>{proc.plan.prereqs.map((x) => <li key={x}>{x}</li>)}</ul>
+            </div>
+            <div>
+              <strong>Stop work if</strong>
+              <ul>{proc.plan.stopWork.map((x) => <li key={x}>{x}</li>)}</ul>
+            </div>
+            <div>
+              <strong>Rollback</strong>
+              <ol>{proc.plan.rollback.map((x) => <li key={x}>{x}</li>)}</ol>
+            </div>
+          </div>
+        </details>
+      )}
       <div className="step-body" key={run.step}>
         <p>{s.detail}</p>
         <button className="linklike why-toggle" type="button" aria-expanded={whyOpen} onClick={() => setWhyOpen(!whyOpen)}>

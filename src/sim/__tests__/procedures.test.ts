@@ -264,3 +264,16 @@ describe('case studies', () => {
     }
   });
 });
+
+describe('MOP sheets (Phase 9)', () => {
+  it('every MOP has a risk level, prerequisites, stop-work points and a rollback', () => {
+    for (const p of MOPS) {
+      expect(p.plan, p.id).toBeTruthy();
+      expect(['Low', 'Medium', 'High']).toContain(p.plan!.risk);
+      expect(p.plan!.prereqs.length, p.id).toBeGreaterThanOrEqual(1);
+      expect(p.plan!.stopWork.length, p.id).toBeGreaterThanOrEqual(1);
+      expect(p.plan!.rollback.length, p.id).toBeGreaterThanOrEqual(1);
+    }
+  });
+  it('there are at least 12 MOPs', () => expect(MOPS.length).toBeGreaterThanOrEqual(12));
+});
