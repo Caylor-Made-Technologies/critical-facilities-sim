@@ -188,6 +188,8 @@ test('live round: read every gauge on the live plant and get a saved score', asy
   const card = page.locator('.rg-card');
   await expect(card.getByText(/station 1 of/)).toBeVisible();
   for (let i = 0; i < 20; i++) {
+    // Wait until the card shows this station before reading its gauge (B-030).
+    await expect(card.getByText(new RegExp(`station ${i + 1} of`))).toBeVisible();
     const label = (await card.getByRole('img', { name: /gauge/ }).getAttribute('aria-label')) ?? '';
     const v = /needle at (-?[\d.]+)/.exec(label)?.[1];
     expect(v, label).toBeTruthy();
