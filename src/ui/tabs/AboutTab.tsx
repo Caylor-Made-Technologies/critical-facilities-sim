@@ -1,6 +1,7 @@
 /** About, privacy and terms (checklist points 1, 2, 4, 16, 17, 19, 20). */
 import { useRef, useState } from 'react';
 import { BUSINESS } from '../business';
+import { RELEASED, VERSION, WHATS_NEW } from '../../version';
 import { BACKUP_MAX_BYTES, backupJson, parseBackup, type Progress } from '../progress';
 import { IssuerCredits } from './CareerLadder';
 import { useQuality, type QualityPref } from '../three/quality';
@@ -51,6 +52,17 @@ export function AboutTab({ onResetPrefs, progress, onRestore }: { onResetPrefs: 
             follow your facility's approved MOPs/EOPs and LOTOTO program. Simplified physics: not an engineering or design
             tool. Tier-style descriptions explain ideas only; nothing here is certified.
           </div>
+          <p className="muted small" data-version={VERSION}>
+            Version {VERSION} · released {RELEASED}
+          </p>
+          <details className="acc">
+            <summary>What's new in {VERSION}</summary>
+            <ul>
+              {WHATS_NEW.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
+          </details>
           <h3>Built by</h3>
           <p>
             {BUSINESS.name}, {BUSINESS.city}

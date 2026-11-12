@@ -77,3 +77,13 @@ test('quality setting rebuilds 3D on a fresh canvas', async ({ page, open }, inf
   expect(await page.evaluate(() => (window.__cf3d!.plant as unknown as { stats: () => { tier: string } }).stats().tier)).toBe('high');
   expect(await page.evaluate(() => window.__glLive!())).toBeLessThanOrEqual(2);
 });
+
+// Phase 10: the app says which version it is and what's new.
+test('About shows the version and what is new', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
+  await open('#/about', { three: false });
+  const ver = page.locator('[data-version]');
+  await expect(ver).toContainText(/Version \d+\.\d+\.\d+ · released \d{4}-\d{2}-\d{2}/);
+  await page.getByText(/What's new in \d+\.\d+\.\d+/).click();
+  await expect(page.getByText(/Shift mode: an 8-hour shift/)).toBeVisible();
+});
