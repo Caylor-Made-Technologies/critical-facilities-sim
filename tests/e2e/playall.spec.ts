@@ -177,3 +177,28 @@ test('shift mode: start a shift, end it, hand off, and get a saved score', async
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cfs-progress-v1') ?? '{}').procs?.['shift-mode']);
   expect(typeof saved).toBe('number');
 });
+
+// Phase 9d: a live round. Walk every station, read the gauge, write the value, check the round.
+test('live round: read every gauge on the live plant and get a saved score', async ({ page, open }, info) => {
+  test.skip(info.project.name !== 'laptop-light' && info.project.name !== 'phone-dark', 'two projects are enough');
+  test.setTimeout(120_000);
+  await open('#/procedures', { three: false });
+  await page.getByRole('tab', { name: /Rounds/ }).click();
+  await page.getByRole('button', { name: /Walk a live round/ }).click();
+  const card = page.locator('.rg-card');
+  await expect(card.getByText(/station 1 of/)).toBeVisible();
+  for (let i = 0; i < 20; i++) {
+    const label = (await card.getByRole('img', { name: /gauge/ }).getAttribute('aria-label')) ?? '';
+    const v = /needle at (-?[\d.]+)/.exec(label)?.[1];
+    expect(v, label).toBeTruthy();
+    await card.getByRole('spinbutton', { name: /Reading/ }).fill(v!);
+    const next = card.getByRole('button', { name: 'Next station' });
+    if (await next.count()) await next.click();
+    else break;
+  }
+  await card.getByRole('button', { name: 'Check my round' }).click();
+  await expect(card.locator('.grade-score')).toContainText('/ 100');
+  await expect(card.getByText(/7 of 7 read right/)).toBeVisible();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cfs-progress-v1') ?? '{}').procs?.['rounds-live']);
+  expect(saved).toBeGreaterThanOrEqual(60);
+});

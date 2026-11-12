@@ -25,6 +25,7 @@ import { PROCEDURES, surpriseDrill } from './content/procedures';
 import { ProcedureCoach, type ProcFeedback } from './ui/sim/ProcedureCoach';
 import { useSimulation } from './ui/useSimulation';
 import type { PlannedEvent } from './content/shift';
+import type { RoundIssue } from './content/liveRounds';
 import { Palette } from './ui/Palette';
 import { resetQuality } from './ui/three/quality';
 
@@ -69,6 +70,7 @@ const GlossaryTab = lazy(() => LOADERS.glossary().then((m) => ({ default: m.Glos
 const LearnTab = lazy(() => LOADERS.learn().then((m) => ({ default: m.LearnTab })));
 const Coach = lazy(() => LOADERS.learn().then((m) => ({ default: m.Coach })));
 const ShiftCoach = lazy(() => import('./ui/sim/ShiftCoach'));
+const RoundCoach = lazy(() => import('./ui/sim/RoundCoach'));
 const NeverDoTab = lazy(() => LOADERS.never().then((m) => ({ default: m.NeverDoTab })));
 const DesignsTab = lazy(() => LOADERS.designs().then((m) => ({ default: m.DesignsTab })));
 const CasesTab = lazy(() => LOADERS.cases().then((m) => ({ default: m.CasesTab })));
@@ -182,6 +184,8 @@ export function App() {
   const [proc, setProcState] = useState<ProcState>(null);
   /** Shift mode (Phase 8d): the planned events of the running shift, or null. */
   const [shift, setShift] = useState<{ seed: number; plan: PlannedEvent[] } | null>(null);
+  /** Live round (Phase 9d): the hidden issues of the round being walked, or null. */
+  const [round, setRound] = useState<{ seed: number; issues: RoundIssue[] } | null>(null);
   // The latest run, updated synchronously (B-023): a click and the scoring effect can land in the same frame,
   // and the effect must build on the click's result, not on the run from the render before it.
   const procRef = useRef<ProcState>(null);
@@ -352,6 +356,7 @@ export function App() {
   }, []);
   const startProc = (p: Procedure) => {
     setShift(null);
+    setRound(null);
     const sim = procedureSim(p);
     h.load(sim, p.scenario);
     h.setSpeed(1);
@@ -371,6 +376,7 @@ export function App() {
       const seed = Math.floor(Math.random() * 1e9) + 1;
       const plan = m.planShift(seed);
       setProc(null);
+      setRound(null);
       setLesson(null);
       setSelected(null);
       h.load(new Simulation(buildPlant('2N')), plan.map((x) => ({ at: x.at, action: x.def.action })));
@@ -378,6 +384,22 @@ export function App() {
       h.setRunning(true);
       setMode('explore');
       setShift({ seed, plan });
+      setTab('sim');
+    });
+  };
+  /** Walk a live round (Phase 9d): fresh 2N plant, seeded hidden problems, 30 min ahead, then paused for the walk. */
+  const startRound = () => {
+    void import('./content/liveRounds').then((m) => {
+      const seed = Math.floor(Math.random() * 1e9) + 1;
+      const issues = m.planRound(seed);
+      setProc(null);
+      setShift(null);
+      setLesson(null);
+      h.load(new Simulation(buildPlant('2N')), [...issues.flatMap((x) => x.actions), { a: 'skip', s: m.ROUND_WARMUP_S } as const].map((action) => ({ at: 0, action })));
+      h.setSpeed(1);
+      h.setRunning(false);
+      setMode('explore');
+      setRound({ seed, issues });
       setTab('sim');
     });
   };
@@ -664,7 +686,18 @@ export function App() {
                 focused={!!proc || !!simLesson}
                 setUnits={(u) => update({ units: u })}
                 coach={
-                  procCoach ?? (shift ? (
+                  procCoach ?? (round ? (
+                    <Suspense fallback={null}>
+                      <RoundCoach
+                        key={round.seed}
+                        h={h}
+                        issues={round.issues}
+                        goTo={(id, view) => (setSimView(view), setSelected(id))}
+                        onFinish={(score) => p.finishProcedure('rounds-live', score)}
+                        onExit={() => setRound(null)}
+                      />
+                    </Suspense>
+                  ) : shift ? (
                     <Suspense fallback={null}>
                       <ShiftCoach key={shift.seed} h={h} plan={shift.plan} onFinish={(score) => p.finishProcedure('shift-mode', score)} onExit={() => (setShift(null), h.setSpeed(1), h.setRunning(false))} />
                     </Suspense>
@@ -709,7 +742,7 @@ export function App() {
               />
             )}
             {tab === 'procedures' && (
-              <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} startShift={startShift} onRound={(id, score) => p.finishProcedure(id, score)} />
+              <ProceduresTab best={p.progress.procs} times={p.progress.times} start={startProc} startShift={startShift} startRound={startRound} onRound={(id, score) => p.finishProcedure(id, score)} />
             )}
             {tab === 'cases' && (
               <CasesTab

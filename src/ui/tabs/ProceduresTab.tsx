@@ -31,6 +31,8 @@ interface Props {
   start: (p: Procedure) => void;
   /** Start an 8-hour shift in shift mode (Phase 8d). */
   startShift?: () => void;
+  /** Walk a live round on the simulator (Phase 9d). */
+  startRound?: () => void;
   onRound: (id: string, score: number) => void;
 }
 
@@ -61,7 +63,7 @@ function Tile({ p, best, time, start }: { p: Procedure; best?: number; time?: nu
   );
 }
 
-export function ProceduresTab({ best, times, start, startShift, onRound }: Props) {
+export function ProceduresTab({ best, times, start, startShift, startRound, onRound }: Props) {
   const [section, setSection] = useState<Section>('mop');
   const [level, setLevel] = useState<Level>('all');
   const all = [...MOPS, ...DRILLS];
@@ -116,6 +118,19 @@ export function ProceduresTab({ best, times, start, startShift, onRound }: Props
 
       {section === 'rounds' ? (
         <div className="section-body">
+          {startRound && (
+            <button type="button" className="card next-up rg-start" onClick={startRound}>
+              <span className="next-icon" aria-hidden="true">
+                <Icon name="clipboard" />
+              </span>
+              <span>
+                <span className="eyebrow">Live round{best['rounds-live'] !== undefined ? ` · best ${best['rounds-live']}` : ''}</span>
+                <strong>Walk a live round on the simulator</strong>
+                <small>Go station to station, read the gauges, write the values down and flag what’s out of range. Something is wrong somewhere.</small>
+              </span>
+              <Icon name="arrow-right" />
+            </button>
+          )}
           <RoundsPractice best={best} onDone={onRound} />
         </div>
       ) : (

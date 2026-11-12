@@ -6289,3 +6289,21 @@ body.has-follow .toast-region { bottom: 84px; }
 .mop-risk.risk-high { color: var(--alarm); border-color: var(--alarm); }
 .mop-risk.risk-medium { color: var(--warn); border-color: var(--warn); }
 .mop-risk.risk-low { color: var(--ok); border-color: var(--ok); }
+
+/* Live round (Phase 9d) */
+.rg-body { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 16px; align-items: center; }
+@media (max-width: 520px) { .rg-body { grid-template-columns: 1fr; justify-items: center; } }
+.rg-gauge { width: 100%; max-width: 200px; height: auto; }
+.rg-face { fill: var(--surface-2, var(--surface)); stroke: var(--border-strong); stroke-width: 2; }
+.rg-major { stroke: var(--text-heading); stroke-width: 1.6; }
+.rg-minor { stroke: var(--text-muted); stroke-width: 0.8; }
+.rg-num { font: 600 7px var(--font-body); fill: var(--text-heading); paint-order: stroke; stroke: var(--surface-2, var(--surface)); stroke-width: 2.5px; }
+.rg-unit { font: 700 8px var(--font-body); fill: var(--text-muted); }
+.rg-needle { stroke: var(--alarm); stroke-width: 2.2; stroke-linecap: round; }
+.rg-hub { fill: var(--text-heading); }
+.rg-form { display: grid; gap: 8px; width: 100%; }
+.rg-form .check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+.rg-results { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 6px; }
+.rg-results li { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.rg-results li.bad { border-color: var(--warn); }
+.rg-why { color: var(--text-body); font-size: 0.9em; }
