@@ -4,7 +4,6 @@
  * approved for each site and each piece of equipment.
  */
 import type { Procedure, Simulation } from '../sim';
-import { DEEPER } from './deeper';
 
 const upsModules = (sim: Simulation, sys: string) => sim.graph.downstream(`UIB-${sys}`).filter((n) => n.kind === 'ups');
 const isClosed = (sim: Simulation, id: string) => !!sim.graph.get(id).state.closed;
@@ -2157,7 +2156,6 @@ export const DRILLS: Procedure[] = [
 ];
 
 export const PROCEDURES: Procedure[] = [...MOPS, ...DRILLS];
-for (const p of PROCEDURES) p.deeper = DEEPER[p.id];
 
 /** Failures the surprise drill can pick from: what fails, and what an operator sees first. */
 const SURPRISES: { id: string; clue: string }[] = [
@@ -2223,7 +2221,6 @@ export function surpriseDrill(pick: number = Math.floor(Math.random() * SURPRISE
         confirm: 'Alarms clearing, event logged, work order opened',
       },
     ],
-    deeper: DEEPER['drill-surprise'],
     debrief: ['Find the first alarm, not the loudest one.', 'The status bar tells you what is wrong now; the event log tells you what happened first.', 'Log every failure, even when nothing went down.'],
   };
 }

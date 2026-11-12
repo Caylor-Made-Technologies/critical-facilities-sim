@@ -35,6 +35,16 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, p
   // Outcomes of wrong choices, simulated once when picked (key: "step:choice").
   const [outcomes, setOutcomes] = useState<Record<string, Consequence | null>>({});
   const kindLabel = proc.kind === 'mop' ? 'MOP practice' : 'Emergency drill';
+  // "Think deeper" Q&As load with the result screen, not with the app (they are only read here).
+  const [deeper, setDeeper] = useState<{ q: string; a: string }[] | undefined>(proc.deeper);
+  useEffect(() => {
+    if (!run.done || deeper) return;
+    let live = true;
+    void import('../../content/deeper').then((m) => live && setDeeper(m.DEEPER[proc.id]));
+    return () => {
+      live = false;
+    };
+  }, [run.done, proc.id, deeper]);
   // Follow bar: when the coach card scrolls out of view, a slim bar keeps the step in sight.
   const cardRef = useRef<HTMLElement>(null);
   const [away, setAway] = useState(false);
@@ -101,11 +111,11 @@ export function ProcedureCoach({ proc, run, started, secs, bestSecs, feedback, p
             <Icon name="check" /> {run.hints.length ? `No mistakes. Hints used: ${run.hints.length}.` : 'Nothing. Clean run.'}
           </p>
         )}
-        {proc.deeper && proc.deeper.length > 0 && (
+        {deeper && deeper.length > 0 && (
           <>
             <h3 className="h-sub">Think deeper</h3>
             <div className="deeper">
-              {proc.deeper.map((d) => (
+              {deeper.map((d) => (
                 <details key={d.q} className="deeper-q">
                   <summary>{d.q}</summary>
                   <p>

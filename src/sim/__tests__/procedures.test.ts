@@ -1,3 +1,4 @@
+import { DEEPER } from '../../content/deeper';
 import { DRILLS, MOPS, PROCEDURES } from '../../content/procedures';
 import { loadFraction } from '../power';
 import { choose, confirmStep, evaluate, procedureSim, SCORE, startRun, takeHint, type Procedure, type ProcRun } from '../procedure';
@@ -245,8 +246,8 @@ describe('rounds practice', () => {
 describe('think deeper', () => {
   it('every procedure and the surprise drill has at least two questions with model answers', () => {
     for (const p of [...PROCEDURES, surpriseDrill(0)]) {
-      expect(p.deeper?.length ?? 0, p.id).toBeGreaterThanOrEqual(2);
-      for (const d of p.deeper!) expect(d.a.length).toBeGreaterThan(60);
+      expect(DEEPER[p.id]?.length ?? 0, p.id).toBeGreaterThanOrEqual(2);
+      for (const d of DEEPER[p.id]!) expect(d.a.length).toBeGreaterThan(60);
     }
   });
 });

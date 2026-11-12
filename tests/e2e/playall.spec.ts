@@ -128,6 +128,8 @@ async function play(page: Page, p: Procedure) {
     });
   }
   await expect(page.locator('.proc-result .grade-score')).toContainText('100', { timeout: 20_000 });
+  // Think deeper loads with the result screen (on demand since Phase 9c).
+  await expect(page.locator('.proc-result').getByRole('heading', { name: 'Think deeper' })).toBeVisible();
 }
 
 test.describe('every MOP and drill plays to 100/100 in the browser', () => {
