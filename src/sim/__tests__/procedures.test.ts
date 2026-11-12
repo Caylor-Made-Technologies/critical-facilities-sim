@@ -281,3 +281,31 @@ describe('MOP sheets (Phase 9)', () => {
     expect(DRILLS.length).toBeGreaterThanOrEqual(15);
   });
 });
+
+describe('verification hold points (Phase 9e)', () => {
+  it('signing off before the plant shows it costs points once and keeps the step open', async () => {
+    const { EngineV2 } = await import('../v2/engine');
+    const p = MOPS.find((x) => x.id === 'mop-chwp-rotate')!;
+    const e = EngineV2.forProcedure(p);
+    let run = startRun(p, e.sim);
+    const last = p.steps.length - 1;
+    expect(p.steps[last]!.verify).toBeTruthy();
+    // Jump to the close-out with CHWP-01 still locked out: the verification is false.
+    e.apply({ a: 'maint', id: 'CHWP-01' });
+    run = { ...run, step: last };
+    run = confirmStep(p, run, e.sim);
+    expect(run.step).toBe(last);
+    expect(run.score).toBe(SCORE.start - SCORE.unverified);
+    expect(run.mistakes.at(-1)).toMatch(/signed off/);
+    run = confirmStep(p, run, e.sim);
+    expect(run.score).toBe(SCORE.start - SCORE.unverified); // only once
+    // Put the pump back: now the sign-off is true and the MOP finishes.
+    e.apply({ a: 'restore', id: 'CHWP-01' });
+    e.run(60);
+    run = confirmStep(p, run, e.sim);
+    expect(run.done).toBe(true);
+  });
+  it('every verification is true at the end of a correct run (checked by the play tests) and only sits on confirm steps', () => {
+    for (const p of PROCEDURES) for (const s of p.steps) if (s.verify) expect(s.confirm, `${p.id}: ${s.title}`).toBeTruthy();
+  });
+});

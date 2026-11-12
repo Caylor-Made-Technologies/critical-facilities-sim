@@ -102,6 +102,11 @@ export interface ProcStep {
   check?: (sim: Simulation) => boolean;
   /** Hold point: the operator confirms it by pressing a button with this label. */
   confirm?: string;
+  /**
+   * Verification hold point (Phase 9e): what the plant must show before this confirm is true. Signing off early
+   * costs points (once per step) and keeps you on the step until it is true.
+   */
+  verify?: (sim: Simulation) => boolean;
   /** Decision point. */
   choices?: ProcChoice[];
   /** Runs once when the step finishes (drills use it to move the story along). */
@@ -152,7 +157,7 @@ export interface Procedure {
   deeper?: { q: string; a: string }[];
 }
 
-export const SCORE = { start: 100, blocked: 5, hint: 5, wrongChoice: 10, dropped: 30 } as const;
+export const SCORE = { start: 100, blocked: 5, hint: 5, wrongChoice: 10, dropped: 30, unverified: 10 } as const;
 
 export interface ProcRun {
   id: string;
@@ -243,6 +248,17 @@ export function evaluate(p: Procedure, run: ProcRun, sim: Simulation): ProcRun {
 export function confirmStep(p: Procedure, run: ProcRun, sim: Simulation): ProcRun {
   const s = p.steps[run.step];
   if (run.done || !s?.confirm) return run;
+  if (s.verify && !s.verify(sim)) {
+    // Signed off before the plant shows it: costs points once, and the step stays open.
+    const tried = run.wrong[run.step] ?? [];
+    if (tried.includes(-1)) return run;
+    return {
+      ...run,
+      score: clampScore(run.score - SCORE.unverified),
+      mistakes: [...run.mistakes, `Step ${run.step + 1}: signed off "${s.confirm}" before the plant showed it`],
+      wrong: { ...run.wrong, [run.step]: [...tried, -1] },
+    };
+  }
   const r = advanceStep(p, run, sim);
   return evaluate(p, { ...r, eventIdx: sim.events.length }, sim);
 }
