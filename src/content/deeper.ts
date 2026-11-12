@@ -158,6 +158,26 @@ export const DEEPER: Record<string, { q: string; a: string }[]> = {
       a: 'Removing capacity during an event can create the very outage you are trying to avoid. Any change to running equipment during an emergency needs the same capacity math as a planned change, plus a plan to undo it.',
     },
   ],
+  'mop-chwp-rotate': [
+    { q: 'Why rotate lead and standby pumps at all?', a: 'Equal run hours spread the wear, and a standby that never runs can hide a seized bearing or a stuck check valve until the day you need it. Rotation proves every pump works.' },
+    { q: 'The standby started but loop DP stayed low. What would you look at?', a: 'A closed or partly closed isolation valve on the standby, a check valve stuck open on the stopped pump (flow short-circuits back), a clogged strainer, air in the pump, or the VFD in hand at a low speed.' },
+  ],
+  'mop-tower-pm': [
+    { q: 'Why does weather decide when you can take a tower out?', a: 'A tower can only cool toward the wet bulb. On a hot, humid day the remaining cells may not hold condenser water, the chillers lose capacity and can trip on head pressure. Mild days give you margin.' },
+    { q: 'What does the water treatment provider want to hear after a cleaning?', a: 'What you found (scale, slime, debris, corrosion), where, how much, and anything that changed the water: make-up added, chemicals flushed. It helps them adjust blowdown and chemical feed.' },
+  ],
+  'mop-doas-pm': [
+    { q: 'Why check hall pressure instead of just seeing that DOAS-02 is running?', a: 'A running fan can still fail to pressurize the hall: dampers closed, a filter blinded, a door propped. Pressure and dew point are the results that matter.' },
+    { q: 'What happens to a hall that stays slightly negative for weeks?', a: 'Unfiltered, humid or dusty air leaks in through every gap. Dust builds up in server fans and filters, humidity drifts, and corrosion and static risks grow slowly.' },
+  ],
+  'mop-gen-heater': [
+    { q: 'Why bleed the air out of the coolant after the swap?', a: 'Trapped air makes hot spots and can leave the heater element running dry, which burns it out early. It also makes the heater cycle badly so the jacket water never reaches temperature.' },
+    { q: 'How would you prove the heater works without waiting for an outage?', a: 'Read the jacket water temperature after a few hours (commonly about 90–120 °F), feel the hose, check the heater current with a clamp meter, and trend it on the BMS if the point exists.' },
+  ],
+  'mop-ir-scan': [
+    { q: 'Why compare phase to phase instead of using a fixed "too hot" number?', a: 'The same lug on three phases at the same load should read the same. A difference points to the connection itself, while an absolute number also changes with load and room temperature.' },
+    { q: 'What makes an IR scan program useful year after year?', a: 'The same route, the same equipment, load and ambient recorded, images saved, findings ranked and closed out, and last year\u2019s results compared with this year\u2019s.' },
+  ],
   'drill-gen-overcrank': [
     {
       q: 'All three A generators failed the same way at the same time. What does that tell you about the cause?',
