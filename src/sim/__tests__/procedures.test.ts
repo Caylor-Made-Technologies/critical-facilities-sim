@@ -275,5 +275,8 @@ describe('MOP sheets (Phase 9)', () => {
       expect(p.plan!.rollback.length, p.id).toBeGreaterThanOrEqual(1);
     }
   });
-  it('there are at least 12 MOPs', () => expect(MOPS.length).toBeGreaterThanOrEqual(12));
+  it('there are at least 20 MOPs and 15 drills (Phase 9 target)', () => {
+    expect(MOPS.length).toBeGreaterThanOrEqual(20);
+    expect(DRILLS.length).toBeGreaterThanOrEqual(15);
+  });
 });

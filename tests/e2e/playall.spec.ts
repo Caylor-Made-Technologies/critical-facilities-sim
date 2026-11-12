@@ -54,6 +54,11 @@ const ACTIONS: Record<string, Record<number, Act[]>> = {
   'mop-chwp-rotate': { 2: [{ dev: 'CHWP-01', btn: /Take out of service/ }], 5: [{ dev: 'CHWP-01', btn: /Return to service/ }] },
   'mop-tower-pm': { 2: [{ dev: 'CT-01', btn: /Take out of service/ }], 4: [{ dev: 'CT-01', btn: /Return to service/ }] },
   'mop-doas-pm': { 1: [{ dev: 'DOAS-01', btn: /Take out of service/ }], 4: [{ dev: 'DOAS-01', btn: /Return to service/ }] },
+  'mop-crah-coil': { 2: [{ dev: 'CRAH-106', btn: /Take out of service/ }], 4: [{ dev: 'CRAH-106', btn: /Return to service/ }] },
+  'mop-cwp-pm': { 2: [{ dev: 'CWP-01', btn: /Take out of service/ }], 4: [{ dev: 'CWP-01', btn: /Return to service/ }] },
+  'mop-ch02-tubes': { 2: [{ dev: 'CH-02', btn: /Take out of service/ }], 5: [{ dev: 'CH-02', btn: /Return to service/ }] },
+  'mop-ach-coil': { 2: [{ dev: 'ACH-04', btn: /Take out of service/ }], 4: [{ dev: 'ACH-04', btn: /Return to service/ }] },
+  'mop-gen-annual': { 2: [{ dev: 'GEN-A2', btn: /Take out of service/ }], 4: [{ dev: 'GEN-A2', btn: /Return to service/ }] },
   'mop-gen-heater': { 1: [{ dev: 'GEN-B1', btn: /Take out of service/ }], 3: [{ dev: 'GEN-B1', btn: /Return to service/ }] },
 };
 

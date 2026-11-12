@@ -11,9 +11,17 @@ const TAPS: Record<string, Record<number, Action[]>> = {
   'mop-doas-pm': { 1: [{ a: 'maint', id: 'DOAS-01' }], 4: [{ a: 'restore', id: 'DOAS-01' }] },
   'mop-gen-heater': { 1: [{ a: 'maint', id: 'GEN-B1' }], 3: [{ a: 'restore', id: 'GEN-B1' }] },
   'mop-ir-scan': {},
+  'mop-crah-coil': { 2: [{ a: 'maint', id: 'CRAH-106' }], 4: [{ a: 'restore', id: 'CRAH-106' }] },
+  'mop-cwp-pm': { 2: [{ a: 'maint', id: 'CWP-01' }], 4: [{ a: 'restore', id: 'CWP-01' }] },
+  'mop-ch02-tubes': { 2: [{ a: 'maint', id: 'CH-02' }], 5: [{ a: 'restore', id: 'CH-02' }] },
+  'mop-ach-coil': { 2: [{ a: 'maint', id: 'ACH-04' }], 4: [{ a: 'restore', id: 'ACH-04' }] },
+  'mop-gen-annual': { 2: [{ a: 'maint', id: 'GEN-A2' }], 4: [{ a: 'restore', id: 'GEN-A2' }] },
+  'mop-battery-inspect': {},
+  'mop-fire-impairment': {},
+  'mop-hot-work': {},
 };
 
-describe('Phase 9 MOPs play to 100 on engine v2', () => {
+describe('Phase 9 MOPs (9a + 9c) play to 100 on engine v2', () => {
   for (const [id, taps] of Object.entries(TAPS)) {
     const p = MOPS.find((x) => x.id === id)!;
     for (const readS of [0, 30])

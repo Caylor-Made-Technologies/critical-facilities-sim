@@ -194,6 +194,38 @@ export const DEEPER: Record<string, { q: string; a: string }[]> = {
     { q: 'Why does a small voltage imbalance cause a much larger current imbalance in a motor?', a: 'An induction motor\u2019s negative-sequence impedance is low, so the unbalanced part of the voltage drives a large unbalanced current. A rule of thumb is several times the voltage imbalance, which heats the windings unevenly.' },
     { q: 'How would you tell whether the imbalance comes from the utility or from inside the building?', a: 'Measure at the service entrance and at downstream boards. If it is there at the service with the building\u2019s load balanced, it is the utility. If it appears downstream, look for unbalanced single-phase loads or a bad connection on one phase.' },
   ],
+  'mop-crah-coil': [
+    { q: 'Why look at the racks nearest the unit instead of the hall average?', a: 'Air from one CRAH mostly reaches the racks near it. With it off, those racks get less cold air first; the average barely moves because the far racks are fine.' },
+    { q: 'What would tell you the coil was dirty before you opened it?', a: 'A smaller air-side temperature drop across the coil at the same valve position, a wider-open valve for the same supply air, higher filter and coil pressure drop, and fans running faster for the same load.' },
+  ],
+  'mop-cwp-pm': [
+    { q: 'Why does each running water-cooled chiller need its own condenser pump here?', a: 'Each chiller\u2019s condenser needs its design flow to reject heat. Sharing one pump between two chillers halves the flow, raises the head pressure and trips them.' },
+    { q: 'What would you see if the standby pump had a stuck check valve?', a: 'Flow short-circuits backward through the stopped pump: low condenser flow at the chillers, a pump that runs but moves little water, and possibly the stopped pump spinning backward.' },
+  ],
+  'mop-ch02-tubes': [
+    { q: 'How does the condenser approach tell you the tubes need cleaning?', a: 'Approach is the gap between leaving condenser water and the refrigerant condensing temperature. Clean tubes run a small, steady approach; as scale builds it creeps up month by month at the same load.' },
+    { q: 'Why vent the barrel after refilling?', a: 'Air trapped in the top tubes stops water touching them, cutting the heat transfer area and raising the approach right after the cleaning was supposed to lower it.' },
+  ],
+  'mop-ach-coil': [
+    { q: 'Why wash from the inside out?', a: 'Dirt collects on the air-entering face. Washing from the outside pushes it deeper into the fins; from the inside it is pushed back out the way it came.' },
+    { q: 'What makes an air-cooled chiller the weakest link on a hot day?', a: 'It rejects heat to the dry-bulb air, so condensing pressure rises with the weather. Dirty coils add to that, and the unit reaches its high-head limit exactly when the outdoor temperature peaks.' },
+  ],
+  'mop-gen-annual': [
+    { q: 'Why load bank test after the annual service?', a: 'An unloaded run proves the engine starts, not that it can carry load. A load bank run proves power, cooling and fuel delivery under load, and burns off wet stacking from light-load exercise.' },
+    { q: 'What are the most common causes of a generator failing to start?', a: 'Starting batteries and chargers, fuel problems (air, water, clogged filters), controls left out of AUTO, and cold engines with the block heater off.' },
+  ],
+  'mop-battery-inspect': [
+    { q: 'Why does one weak block matter in a string of 40?', a: 'The string is in series: the same current flows through every block. The weakest block reaches its end voltage first and the UPS ends the discharge, so its capacity sets the string\u2019s runtime.' },
+    { q: 'How would you catch thermal runaway early?', a: 'Per-block temperature and float current trends, a room temperature alarm, regular visual checks for swelling, and acting on a sulfur smell at once.' },
+  ],
+  'mop-fire-impairment': [
+    { q: 'Why test the system before ending the impairment?', a: 'A valve that looks open may be partly closed or the supervisory switch may be wrong. A main drain test proves water reaches the riser at the expected pressure.' },
+    { q: 'What else changes while a sprinkler zone is impaired?', a: 'Hot work in that area should stop, the fire watch patrols it, and anything that adds fire risk waits until protection is back.' },
+  ],
+  'mop-hot-work': [
+    { q: 'Why do most hot work fires start after the work is done?', a: 'Sparks and slag land in hidden places and smolder. With the welder gone and the watch relaxed, a smoldering spot can grow into a fire well after the work stopped.' },
+    { q: 'Why not just disable the smoke detectors in the area?', a: 'Disabling detection beyond what the permit allows removes the warning you need if the watch misses something. Programs set exactly what may be bypassed and for how long.' },
+  ],
   'drill-gen-overcrank': [
     {
       q: 'All three A generators failed the same way at the same time. What does that tell you about the cause?',
