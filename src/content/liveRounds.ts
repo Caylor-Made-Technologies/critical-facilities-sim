@@ -52,12 +52,14 @@ export interface RoundIssue {
   actions: Action[];
   /** Stations this issue should push out of range (checked by tests). */
   shows: string[];
+  /** Too big to combine with another problem (the plant would cascade): always on its own. */
+  alone?: boolean;
 }
 
 export const ROUND_ISSUES: RoundIssue[] = [
   { id: 'crac', title: 'UPS room cooling unit failed', actions: [{ a: 'fail', id: 'CRAC-201' }], shows: ['upsroom'] },
   { id: 'crahs', title: 'Two air handlers down', actions: [{ a: 'fail', id: 'CRAH-103' }, { a: 'fail', id: 'CRAH-105' }], shows: ['fan'] },
-  { id: 'sideb', title: 'Switchboard B lost (side B dark)', actions: [{ a: 'fail', id: 'MSB-B' }], shows: ['upsa', 'upsb'] },
+  { id: 'sideb', title: 'Switchboard B lost (side B dark)', actions: [{ a: 'fail', id: 'MSB-B' }], shows: ['upsa', 'upsb'], alone: true },
 ];
 
 /** Warm-up before the walk, so slow problems (a hot UPS room) have developed. */
@@ -80,7 +82,12 @@ export function planRound(seed: number): RoundIssue[] {
   const left = [...ROUND_ISSUES];
   const n = r() < 0.5 ? 1 : 2;
   const out: RoundIssue[] = [];
-  for (let i = 0; i < n; i++) out.push(left.splice(Math.floor(r() * left.length), 1)[0]!);
+  for (let i = 0; i < n; i++) {
+    const pick = left.splice(Math.floor(r() * left.length), 1)[0]!;
+    if (out.length && pick.alone) continue;
+    out.push(pick);
+    if (pick.alone) break;
+  }
   return out;
 }
 
@@ -104,7 +111,9 @@ export function scoreRound(stations: Station[], truth: number[], entries: RoundE
   stations.forEach((s, i) => {
     const t = truth[i]!;
     const e = entries[i];
-    if (e?.value !== null && e?.value !== undefined && Math.abs(e.value - t) <= s.tick + 1e-9) read++;
+    // Compared with what the gauge can show (a needle at full scale reads full scale).
+    const shown = Math.min(s.max, Math.max(s.min, t));
+    if (e?.value !== null && e?.value !== undefined && Math.abs(e.value - shown) <= s.tick + 1e-9) read++;
     if ((e?.flagged ?? false) === outOfRange(t, s)) flags++;
   });
   const n = stations.length || 1;

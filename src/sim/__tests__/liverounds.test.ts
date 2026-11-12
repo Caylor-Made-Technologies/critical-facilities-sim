@@ -31,6 +31,22 @@ describe('live rounds', () => {
       }
       expect(e.sim.droppedRacks()).toEqual([]);
     });
+  it('every plan the generator can make: no racks down, every reading on its gauge scale', { timeout: 120_000 }, () => {
+    const seen = new Map<string, ReturnType<typeof planRound>>();
+    for (let seed = 1; seed < 200; seed++) {
+      const p = planRound(seed);
+      seen.set(p.map((x) => x.id).sort().join('+'), p);
+    }
+    for (const [key, p] of seen) {
+      expect(p.filter((x) => x.alone).length === 0 || p.length === 1, key).toBe(true);
+      const e = plant(p.flatMap((x) => x.actions));
+      expect(e.sim.droppedRacks(), key).toEqual([]);
+      for (const s of STATIONS) {
+        const v = s.read(e);
+        expect(v >= s.min && v <= s.max, `${key}: ${s.id} = ${v}`).toBe(true);
+      }
+    }
+  });
   it('plans are seeded: same seed, same issues; one or two different issues', () => {
     expect(planRound(9)).toEqual(planRound(9));
     for (let seed = 1; seed < 40; seed++) {
