@@ -133,6 +133,13 @@ export class ThermalPlant {
    * (src/sim/v2/airside.ts) and skipped here. False (default) keeps v1 behavior.
    */
   hallTripExternal = false;
+  /**
+   * Engine v2 owns chilled water (Phase 8e, set by HydronicModel.publish): this plant then skips its own chiller
+   * staging and trips, tank, loop temperature and hall-inlet math (v2 publishes those), and leaves the electrical
+   * load of chillers, pumps and towers to v2. It still runs the GPU rows (CDUs), DOAS humidity and the UPS room.
+   * A bare v1 Simulation (no engine) keeps the full v1 model.
+   */
+  chwExternal = false;
 
   constructor(private host: ThermalHost, weather: WeatherId = 'mild') {
     const outDew = dewPointC(WEATHER[weather].dryBulbC, WEATHER[weather].rh);
@@ -248,93 +255,114 @@ export class ThermalPlant {
     const econKwt = econFrac * loopLoad;
     const chillerNeed = Math.max(0, loopLoad - econKwt);
 
-    // --- Chiller staging (BMS lead/lag) -------------------------------------
+    // Engine v2 owns chilled water (Phase 8e): reuse what it published last tick instead of running v1's copy.
+    let cwpNeeded = 0;
+    let chillerCap = 0;
+    let chillerOut = 0;
+    let wcOut = 0;
+    let towerLoad = 0;
+    let condC = 0;
+    let acCond = w.dryBulbC + P.airCooledCondenserLiftC;
+    let deficit = 0;
+    let tesOut = 0;
+    let tesIn = 0;
+    const ext = this.chwExternal && !!this.readout;
     const capOf = (id: string) => (g.get(id).kind === 'chiller-air-cooled' ? AC_CHILLER_KWT * airCooledDerate(w.dryBulbC) : WC_CHILLER_KWT);
     const isWc = (id: string) => g.get(id).kind === 'chiller-water-cooled';
     const canRun = (id: string) => this.avail(id) && chwps.length > 0 && (!isWc(id) || (towers.length > 0 && cwps.length > 0));
+    if (ext) {
+      const ro = this.readout;
+      chillerCap = ro.chillerCapacityKwt;
+      chillerOut = ro.chillerKwt;
+      condC = ro.condenserC;
+      tesOut = ro.tesDischargeKwt;
+      towerLoad = ro.towerLoad;
+    } else {
+      // --- Chiller staging (BMS lead/lag) -------------------------------------
 
-    for (const id of CHILLER_ORDER) {
-      const c = st.chillers[id]!;
-      if (c.mode !== 'off' && !canRun(id)) {
-        const n = g.get(id);
-        const why =
-          n.status === 'failed' ? 'failed' : !this.host.solution.energized.has(id) ? 'lost power' : chwps.length === 0 ? 'no chilled water flow' : 'no condenser water flow';
-        if (n.status !== 'failed') this.host.log('alarm', n.tag, `${n.tag} stopped: ${why}. It will need ${P.chillerRestartS / 60} minutes to restart.`);
-        st.chillers[id] = { mode: 'off', timer: 0 };
-        st.flags[`restart-${id}`] = true;
-      }
-    }
-    const onIds = () => CHILLER_ORDER.filter((id) => st.chillers[id]!.mode !== 'off');
-    const onCap = () => onIds().reduce((s, id) => s + capOf(id), 0);
-    for (const id of CHILLER_ORDER) {
-      if (onCap() >= chillerNeed * 1.05 || chillerNeed <= 0) break;
-      if (st.chillers[id]!.mode !== 'off' || !canRun(id)) continue;
-      const restart = !!st.flags[`restart-${id}`];
-      st.chillers[id] = { mode: initial ? 'running' : 'starting', timer: restart ? P.chillerRestartS : P.chillerStartS };
-      if (!initial) this.host.log('info', id, `BMS called ${id} to ${restart ? 'restart' : 'start'} (${Math.round((restart ? P.chillerRestartS : P.chillerStartS) / 60)} min to load).`);
-      st.flags[`restart-${id}`] = false;
-    }
-    // Stage off the last chiller if the rest comfortably carry the load.
-    const on = onIds();
-    const last = on[on.length - 1];
-    if (last && onCap() - capOf(last) >= chillerNeed * 1.25 && st.chillers[last]!.mode === 'running') {
-      st.chillers[last] = { mode: 'off', timer: 0 };
-      if (!initial) this.host.log('info', last, `BMS staged ${last} off (${econFrac > 0 ? 'free cooling is carrying more load' : 'load dropped'}).`);
-    }
-    for (const id of CHILLER_ORDER) {
-      const c = st.chillers[id]!;
-      if (c.mode === 'starting') {
-        c.timer -= dt;
-        if (c.timer <= 0) {
-          c.mode = 'running';
-          this.host.log('info', id, `${id} running and loaded.`);
+      for (const id of CHILLER_ORDER) {
+        const c = st.chillers[id]!;
+        if (c.mode !== 'off' && !canRun(id)) {
+          const n = g.get(id);
+          const why =
+            n.status === 'failed' ? 'failed' : !this.host.solution.energized.has(id) ? 'lost power' : chwps.length === 0 ? 'no chilled water flow' : 'no condenser water flow';
+          if (n.status !== 'failed') this.host.log('alarm', n.tag, `${n.tag} stopped: ${why}. It will need ${P.chillerRestartS / 60} minutes to restart.`);
+          st.chillers[id] = { mode: 'off', timer: 0 };
+          st.flags[`restart-${id}`] = true;
         }
       }
-    }
+      const onIds = () => CHILLER_ORDER.filter((id) => st.chillers[id]!.mode !== 'off');
+      const onCap = () => onIds().reduce((s, id) => s + capOf(id), 0);
+      for (const id of CHILLER_ORDER) {
+        if (onCap() >= chillerNeed * 1.05 || chillerNeed <= 0) break;
+        if (st.chillers[id]!.mode !== 'off' || !canRun(id)) continue;
+        const restart = !!st.flags[`restart-${id}`];
+        st.chillers[id] = { mode: initial ? 'running' : 'starting', timer: restart ? P.chillerRestartS : P.chillerStartS };
+        if (!initial) this.host.log('info', id, `BMS called ${id} to ${restart ? 'restart' : 'start'} (${Math.round((restart ? P.chillerRestartS : P.chillerStartS) / 60)} min to load).`);
+        st.flags[`restart-${id}`] = false;
+      }
+      // Stage off the last chiller if the rest comfortably carry the load.
+      const on = onIds();
+      const last = on[on.length - 1];
+      if (last && onCap() - capOf(last) >= chillerNeed * 1.25 && st.chillers[last]!.mode === 'running') {
+        st.chillers[last] = { mode: 'off', timer: 0 };
+        if (!initial) this.host.log('info', last, `BMS staged ${last} off (${econFrac > 0 ? 'free cooling is carrying more load' : 'load dropped'}).`);
+      }
+      for (const id of CHILLER_ORDER) {
+        const c = st.chillers[id]!;
+        if (c.mode === 'starting') {
+          c.timer -= dt;
+          if (c.timer <= 0) {
+            c.mode = 'running';
+            this.host.log('info', id, `${id} running and loaded.`);
+          }
+        }
+      }
 
-    // --- Condenser side checks: flow, tower capacity, head pressure -----------
-    let running = CHILLER_ORDER.filter((id) => st.chillers[id]!.mode === 'running');
-    const wcRunning = running.filter(isWc);
-    const cwpNeeded = wcRunning.length + (econKwt > 0 ? 1 : 0);
-    if (cwps.length < wcRunning.length) {
-      for (const id of wcRunning.slice(cwps.length)) this.trip(g.get(id), 'loss of condenser water flow');
+      // --- Condenser side checks: flow, tower capacity, head pressure -----------
+      let running = CHILLER_ORDER.filter((id) => st.chillers[id]!.mode === 'running');
+      const wcRunning = running.filter(isWc);
+      cwpNeeded = wcRunning.length + (econKwt > 0 ? 1 : 0);
+      if (cwps.length < wcRunning.length) {
+        for (const id of wcRunning.slice(cwps.length)) this.trip(g.get(id), 'loss of condenser water flow');
+        running = CHILLER_ORDER.filter((id) => st.chillers[id]!.mode === 'running');
+      }
+      chillerCap = running.reduce((s, id) => s + capOf(id), 0);
+      chillerOut = Math.min(chillerNeed, chillerCap);
+      const wcShare = (id: string) => (chillerCap > 0 ? (chillerOut * capOf(id)) / chillerCap : 0);
+      wcOut = running.filter(isWc).reduce((s, id) => s + wcShare(id), 0);
+      towerLoad = towers.length ? (wcOut * 1.17 + econKwt) / (towers.length * TOWER_KWT) : 0;
+      condC = towerLeavingLoadedC(wb, towerLoad) + P.condenserRangeC;
+      if (condC > P.chillerHighHeadTripC) {
+        for (const id of running.filter(isWc)) this.trip(g.get(id), `high head pressure (condenser water ${fmtF(condC)} on a ${fmtF(w.dryBulbC)} day)`);
+      }
+      acCond = w.dryBulbC + P.airCooledCondenserLiftC;
+      if (acCond > P.airCooledHighHeadTripC) {
+        for (const id of running.filter((x) => !isWc(x))) this.trip(g.get(id), `high head pressure (condensing ${fmtF(acCond)})`);
+      }
       running = CHILLER_ORDER.filter((id) => st.chillers[id]!.mode === 'running');
-    }
-    let chillerCap = running.reduce((s, id) => s + capOf(id), 0);
-    let chillerOut = Math.min(chillerNeed, chillerCap);
-    const wcShare = (id: string) => (chillerCap > 0 ? (chillerOut * capOf(id)) / chillerCap : 0);
-    const wcOut = running.filter(isWc).reduce((s, id) => s + wcShare(id), 0);
-    const towerLoad = towers.length ? (wcOut * 1.17 + econKwt) / (towers.length * TOWER_KWT) : 0;
-    const condC = towerLeavingLoadedC(wb, towerLoad) + P.condenserRangeC;
-    if (condC > P.chillerHighHeadTripC) {
-      for (const id of running.filter(isWc)) this.trip(g.get(id), `high head pressure (condenser water ${fmtF(condC)} on a ${fmtF(w.dryBulbC)} day)`);
-    }
-    const acCond = w.dryBulbC + P.airCooledCondenserLiftC;
-    if (acCond > P.airCooledHighHeadTripC) {
-      for (const id of running.filter((x) => !isWc(x))) this.trip(g.get(id), `high head pressure (condensing ${fmtF(acCond)})`);
-    }
-    running = CHILLER_ORDER.filter((id) => st.chillers[id]!.mode === 'running');
-    chillerCap = running.reduce((s, id) => s + capOf(id), 0);
-    chillerOut = Math.min(chillerNeed, chillerCap);
+      chillerCap = running.reduce((s, id) => s + capOf(id), 0);
+      chillerOut = Math.min(chillerNeed, chillerCap);
 
-    // --- Thermal storage ------------------------------------------------------
-    let deficit = Math.max(0, loopLoad - econKwt - chillerOut);
-    let tesOut = 0;
-    let tesIn = 0;
-    if (deficit > 1 && chwps.length > 0 && st.tesKj > 0) {
-      tesOut = dt > 0 ? Math.min(deficit, st.tesKj / dt) : deficit;
-      st.tesKj -= tesOut * dt;
-      deficit -= tesOut;
-    } else if (chillerCap > chillerOut && st.tesKj < TES_FULL_KJ) {
-      tesIn = Math.min(P.tesRechargeKw, chillerCap - chillerOut, dt > 0 ? (TES_FULL_KJ - st.tesKj) / dt : 0);
-      st.tesKj += tesIn * dt;
+      // --- Thermal storage ------------------------------------------------------
+      deficit = Math.max(0, loopLoad - econKwt - chillerOut);
+      tesOut = 0;
+      tesIn = 0;
+      if (deficit > 1 && chwps.length > 0 && st.tesKj > 0) {
+        tesOut = dt > 0 ? Math.min(deficit, st.tesKj / dt) : deficit;
+        st.tesKj -= tesOut * dt;
+        deficit -= tesOut;
+      } else if (chillerCap > chillerOut && st.tesKj < TES_FULL_KJ) {
+        tesIn = Math.min(P.tesRechargeKw, chillerCap - chillerOut, dt > 0 ? (TES_FULL_KJ - st.tesKj) / dt : 0);
+        st.tesKj += tesIn * dt;
+      }
+      this.once('tes', tesOut > 1, 'warning', 'TES-01', 'Chilled water storage tank discharging to cover the cooling shortfall.', 'Chilled water storage tank no longer discharging.');
+      this.once('tes-empty', st.tesKj <= 0 && deficit > 1, 'critical', 'TES-01', 'Chilled water storage tank is EMPTY. Nothing is left to bridge the cooling shortfall.');
     }
-    this.once('tes', tesOut > 1, 'warning', 'TES-01', 'Chilled water storage tank discharging to cover the cooling shortfall.', 'Chilled water storage tank no longer discharging.');
-    this.once('tes-empty', st.tesKj <= 0 && deficit > 1, 'critical', 'TES-01', 'Chilled water storage tank is EMPTY. Nothing is left to bridge the cooling shortfall.');
 
     // --- Loop, hall, GPU rows, DOAS, UPS room --------------------------------
-    st.chwSupplyC = stepTemp(st.chwSupplyC, deficit, 0, dt, P.chwLoopMassKjPerC, P.chwSupplyC, 120);
-    st.hallInletC = stepTemp(st.hallInletC, airHeat, airCap, dt, P.hallThermalMassKjPerC, P.supplyAirC, 90);
+    if (!ext) st.chwSupplyC = stepTemp(st.chwSupplyC, deficit, 0, dt, P.chwLoopMassKjPerC, P.chwSupplyC, 120);
+    if (!this.hallTripExternal) st.hallInletC = stepTemp(st.hallInletC, airHeat, airCap, dt, P.hallThermalMassKjPerC, P.supplyAirC, 90);
 
     // Hall over-temperature: air-cooled servers protect themselves.
     if (this.hallTripExternal) {
@@ -415,24 +443,30 @@ export class ThermalPlant {
       g.get(id).state.demandKw = kw;
       if (kw > 0) runningIds.add(id);
     };
-    for (const id of CHILLER_ORDER) {
-      const mode = st.chillers[id]!.mode;
-      if (mode !== 'running') {
-        setKw(id, mode === 'starting' ? 15 : 0);
-        if (mode === 'starting') runningIds.add(id);
-        continue;
+    if (ext) {
+      // Loads set by engine v2 (HydronicModel.publish); count what runs for the 3D/2D "running" marks.
+      for (const k of ['chiller-water-cooled', 'chiller-air-cooled', 'pump-chw', 'pump-cw', 'cooling-tower'] as const)
+        for (const n of g.byKind(k)) if ((n.state.demandKw ?? 0) > 0) runningIds.add(n.id);
+    } else {
+      for (const id of CHILLER_ORDER) {
+        const mode = st.chillers[id]!.mode;
+        if (mode !== 'running') {
+          setKw(id, mode === 'starting' ? 15 : 0);
+          if (mode === 'starting') runningIds.add(id);
+          continue;
+        }
+        const share = chillerCap > 0 ? ((chillerOut + tesIn) * capOf(id)) / chillerCap : 0;
+        const cop = isWc(id) ? chillerCop(P.chwSupplyC, condC) : chillerCop(P.chwSupplyC, acCond - 2);
+        setKw(id, Math.max(20, share / cop));
       }
-      const share = chillerCap > 0 ? ((chillerOut + tesIn) * capOf(id)) / chillerCap : 0;
-      const cop = isWc(id) ? chillerCop(P.chwSupplyC, condC) : chillerCop(P.chwSupplyC, acCond - 2);
-      setKw(id, Math.max(20, share / cop));
+      const nChwp = Math.min(chwps.length, Math.max(1, Math.ceil(designLoad / CHWP_KWT)));
+      for (const id of ids('pump-chw')) setKw(id, chwps.slice(0, nChwp).includes(id) ? 10 + 20 * Math.min(1, designLoad / (nChwp * CHWP_KWT)) : 0);
+      const nCwp = Math.min(cwps.length, cwpNeeded);
+      for (const id of ids('pump-cw')) setKw(id, cwps.slice(0, nCwp).includes(id) ? 30 : 0);
+      const nTower = Math.min(towers.length, cwpNeeded > 0 ? Math.max(1, Math.ceil((wcOut * 1.17 + econKwt) / TOWER_KWT)) : 0);
+      const fanFrac = nTower ? Math.min(1, (wcOut * 1.17 + econKwt) / (nTower * TOWER_KWT)) : 0;
+      for (const id of ids('cooling-tower')) setKw(id, towers.slice(0, nTower).includes(id) ? 3 + 12 * fanFrac ** 3 : 0);
     }
-    const nChwp = Math.min(chwps.length, Math.max(1, Math.ceil(designLoad / CHWP_KWT)));
-    for (const id of ids('pump-chw')) setKw(id, chwps.slice(0, nChwp).includes(id) ? 10 + 20 * Math.min(1, designLoad / (nChwp * CHWP_KWT)) : 0);
-    const nCwp = Math.min(cwps.length, cwpNeeded);
-    for (const id of ids('pump-cw')) setKw(id, cwps.slice(0, nCwp).includes(id) ? 30 : 0);
-    const nTower = Math.min(towers.length, cwpNeeded > 0 ? Math.max(1, Math.ceil((wcOut * 1.17 + econKwt) / TOWER_KWT)) : 0);
-    const fanFrac = nTower ? Math.min(1, (wcOut * 1.17 + econKwt) / (nTower * TOWER_KWT)) : 0;
-    for (const id of ids('cooling-tower')) setKw(id, towers.slice(0, nTower).includes(id) ? 3 + 12 * fanFrac ** 3 : 0);
     for (const id of ids('crah')) setKw(id, crahs.includes(id) ? 8 : 0);
     for (const r of GPU_ROWS) setKw(`CDU-${r}`, this.avail(`CDU-${r}`) ? 30 : 0);
     for (const id of ['DOAS-01', 'DOAS-02']) setKw(id, doasUnits[0] === id ? 45 : 0);
@@ -459,8 +493,8 @@ export class ThermalPlant {
       loadKwt: loopLoad,
       chillerKwt: chillerOut,
       chillerCapacityKwt: chillerCap,
-      chillers: Object.fromEntries(CHILLER_ORDER.map((id) => [id, st.chillers[id]!.mode])),
-      chillerTimers: Object.fromEntries(CHILLER_ORDER.map((id) => [id, st.chillers[id]!.timer])),
+      chillers: ext ? { ...this.readout.chillers } : Object.fromEntries(CHILLER_ORDER.map((id) => [id, st.chillers[id]!.mode])),
+      chillerTimers: ext ? { ...this.readout.chillerTimers } : Object.fromEntries(CHILLER_ORDER.map((id) => [id, st.chillers[id]!.timer])),
       condenserC: condC,
       towerLoad,
       chwSupplyC: st.chwSupplyC,

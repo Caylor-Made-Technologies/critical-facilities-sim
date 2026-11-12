@@ -204,16 +204,17 @@ exports[`golden scenarios (engine v2) > 9. economizer switchover: winter → 105
 exports[`golden scenarios (engine v2) > 11. towers lost on a 105 °F day: water-cooled chillers trip on head pressure, CH-03 + air-cooled carry, IT stays up 1`] = `
 {
   "alarms": [
-    "high:CH-01.TRIP:unack*",
+    "high:CH-01.TRIP:unack",
     "high:CH-02.TRIP:unack",
-    "medium:CT-01.FAIL:unack",
+    "medium:CT-01.FAIL:unack*",
     "medium:CT-02.FAIL:unack",
+    "medium:CW.HI:rtn-unack",
     "low:TES.DISCH:unack",
   ],
   "chillers": {
     "ACH-04": "running",
-    "CH-01": "off",
-    "CH-02": "off",
+    "CH-01": "tripped",
+    "CH-02": "tripped",
     "CH-03": "running",
   },
   "chwrC": 26,
@@ -221,7 +222,7 @@ exports[`golden scenarios (engine v2) > 11. towers lost on a 105 °F day: water-
   "crahFanKw": 31,
   "econ": "off",
   "inletC": 24,
-  "pue": 1.366,
+  "pue": 1.365,
   "racksDown": 0,
   "returnAirC": 34.5,
   "supplyAirC": 23.2,

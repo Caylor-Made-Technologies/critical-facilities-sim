@@ -1143,7 +1143,7 @@ export const DRILLS: Procedure[] = [
         detail: 'Let the clock run until no chiller is restarting (about 3 minutes). Speed it up if you like.',
         why: 'Confirm recovery with your own eyes before you close the event.',
         hint: 'Set speed to 60× and press Run.',
-        check: (s) => s.t > 200 && Object.values(s.thermal.state.chillers).every((c) => c.mode !== 'starting'),
+        check: (s) => s.t > 200 && Object.values(s.thermal.readout.chillers).every((m) => m !== 'starting'),
       },
       {
         title: 'Why didn\u2019t the generators start?',

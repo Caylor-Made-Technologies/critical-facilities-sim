@@ -493,3 +493,26 @@ its own hot spot yet); GPU rows use the same rule for their air-cooled share.
   down; 30 for the hand-off (every pool item ticked right in "happened" and "still open"). Best score saved as
   `procs['shift-mode']`.
 - An ideal operator finishes whole shifts with no racks down (two seeds, tested on the engine).
+
+## Phase 8e: v2 is the only cooling model when the engine runs (2026-11-12)
+
+Before 8e both models ran every tick: v1 `ThermalPlant` staged, tripped and logged chillers and set the chiller,
+pump and tower electrical loads, and v2 hydronics overwrote the readouts. The power flow could follow v1's chillers
+while the screens showed v2's.
+
+- `ThermalPlant.chwExternal` (set by `HydronicModel.init`): v1 skips chiller staging, condenser checks and trips,
+  the storage tank, CHW loop temperature, and (with `hallTripExternal`) the hall inlet. It keeps the GPU rows (CDUs),
+  DOAS humidity, the UPS room and CRAH/CDU/DOAS/CRAC loads, which have no v2 model yet.
+- `HydronicModel.publish` sets the chiller (`max(20, kW)` running, 15 starting), CHW pump, CW pump and tower fan
+  loads from its own reading, recomputes `readout.mechanicalKw`, and the engine re-solves the power flow right after
+  (no one-tick lag). v2 now writes the event-log lines v1 used to: "BMS called X to start/restart", "X running and
+  loaded", "staged X off", "X stopped: lost power / no flow", tank discharging / empty.
+- Snapshots carry the hydronic reading; a restore re-publishes it and recomputes the air reading, so a restored copy
+  continues bit-for-bit.
+- Golden 11 updated on purpose: the tower failure is now first-out, condenser water rises (CW.HI) before the
+  head-pressure trip, chillers show "tripped". Every drill still scores the same (parity tests green).
+
+**Kept on purpose:** a bare `Simulation` (no engine) still runs the full v1 cooling model. It seeds the starting
+chiller line-up that v2 copies at init, and it is the reference for the v1/v2 parity tests. The app always runs
+engine v2, so v1 cooling never drives the plant there. Deleting it would mean v2 start-up staging plus rewriting the
+parity harness, for no visible change; revisit only if it gets in the way.

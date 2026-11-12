@@ -181,6 +181,8 @@ export class EngineV2 {
     this.sources.step(this.sim, this.rng);
     this.hyd.step(this.sim, this.air.reading.coilKw, dt);
     this.hyd.publish(this.sim);
+    // v2 sets the chiller, pump and tower loads (Phase 8e): solve the power flow with them now, not a tick late.
+    this.sim.resolve();
     this.feedChw();
     this.air.step(this.sim, dt);
     this.alarms.step(this.alarmCtx);
@@ -269,6 +271,10 @@ export class EngineV2 {
     }
     if (s.hyd) {
       e.hyd.restore(s.hyd);
+      // Put back exactly what v2 had published (readout, chiller/pump/tower loads), then solve with it.
+      e.sim.thermal.step(0);
+      e.hyd.publish(e.sim);
+      e.sim.resolve();
       e.feedChw();
     }
     if (s.alarms) e.alarms.restore(s.alarms);

@@ -434,6 +434,8 @@ export class AirsideModel {
 
   /** Recompute per-rack heat now (after a restore, before the next tick). */
   refreshRackHeat(sim: Simulation): void {
+    // After a restore the reading still comes from the freshly built plant: work it out from the restored state.
+    this.reading = this.read(sim, this.flows(sim));
     this.rackHeat = this.computeRackHeat(sim);
     if (sim.thermal.readout) sim.thermal.readout.rackInlets = this.rackHeat.racks;
   }

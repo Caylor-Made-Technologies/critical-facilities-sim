@@ -67,6 +67,10 @@ export interface HydState {
   /** Economizer mode and when it entered it (Phase 4c part 3: hysteresis + minimum dwell). */
   econMode: EconMode;
   econSince: number;
+  /** Once-only event-log flags (tank discharging / empty), Phase 8e. */
+  flags?: Record<string, boolean>;
+  /** Last reading, only inside snapshots (Phase 8e). */
+  reading?: HydReading;
 }
 
 export interface HydReading {
@@ -95,6 +99,10 @@ export interface HydReading {
   pumpHeadKpa: number;
   pumpKw: number;
   chillers: Record<string, { mode: HydChillerMode; kwt: number; kw: number; kwPerTon: number; liftK: number; capKwt: number }>;
+  /** Which pumps and towers run (for their electrical load in the plant, Phase 8e). */
+  chwPumpIds: string[];
+  cwPumpIds: string[];
+  towerIds: string[];
 }
 
 const ORDER = ['CH-01', 'CH-02', 'CH-03', 'ACH-04'];
@@ -133,6 +141,8 @@ export class HydronicModel {
     this.state.tesKj = v1.tesKj;
     // Settle temperatures without advancing time.
     for (let i = 0; i < 400; i++) this.solve(sim, airCoilKw, 0, true);
+    // From here v2 owns chilled water (Phase 8e); the loads follow on the first publish.
+    sim.thermal.chwExternal = true;
   }
 
   // --- Plant inputs ------------------------------------------------------------------------------
@@ -219,7 +229,14 @@ export class HydronicModel {
     for (const id of ORDER) {
       const c = C[id]!;
       if (!g.nodes.has(id)) continue;
-      if ((c.mode === 'starting' || c.mode === 'running') && !canRun(id)) Object.assign(c, { mode: 'off', timer: 0, runningSince: null, lowFlowS: 0, restart: true });
+      if ((c.mode === 'starting' || c.mode === 'running') && !canRun(id)) {
+        Object.assign(c, { mode: 'off', timer: 0, runningSince: null, lowFlowS: 0, restart: true });
+        const n = g.get(id);
+        if (!settle && n.status !== 'failed') {
+          const why = !sim.solution.energized.has(id) ? 'lost power' : chwps.length === 0 ? 'no chilled water flow' : 'no condenser water flow';
+          sim.log('alarm', n.tag, `${n.tag} stopped: ${why}. It will need ${PHYSICS.chillerRestartS / 60} minutes to restart.`);
+        }
+      }
     }
     const onIds = () => ORDER.filter((id) => C[id]!.mode === 'starting' || C[id]!.mode === 'running');
     const onCap = () => onIds().reduce((s, id) => s + capOf(id), 0);
@@ -232,9 +249,11 @@ export class HydronicModel {
       const c = C[id];
       if (!c || !g.nodes.has(id) || c.mode !== 'off' || !canRun(id)) continue;
       if (!c.restart && c.lastStart !== null && t - c.lastStart < HYD.startToStartS) continue;
+      const restartS = c.restart ? PHYSICS.chillerRestartS : PHYSICS.chillerStartS;
+      sim.log('info', id, `BMS called ${id} to ${c.restart ? 'restart' : 'start'} (${Math.round(restartS / 60)} min to load).`);
       Object.assign(c, {
         mode: 'starting',
-        timer: c.restart ? PHYSICS.chillerRestartS : PHYSICS.chillerStartS,
+        timer: restartS,
         lastStart: t,
         runningSince: null,
         restart: false,
@@ -245,13 +264,19 @@ export class HydronicModel {
     const last = on[on.length - 1];
     if (!settle && last && C[last]!.mode === 'running' && onCap() - capOf(last) >= need * 1.25) {
       const ran = C[last]!.runningSince === null ? 0 : t - C[last]!.runningSince!;
-      if (ran >= HYD.minRunS) Object.assign(C[last]!, { mode: 'off', timer: 0, runningSince: null });
+      if (ran >= HYD.minRunS) {
+        Object.assign(C[last]!, { mode: 'off', timer: 0, runningSince: null });
+        sim.log('info', last, `BMS staged ${last} off (${econFrac > 0 ? 'free cooling is carrying more load' : 'load dropped'}).`);
+      }
     }
     for (const id of ORDER) {
       const c = C[id]!;
       if (c.mode === 'starting') {
         c.timer -= dt;
-        if (c.timer <= 0) Object.assign(c, { mode: 'running', timer: 0, runningSince: t });
+        if (c.timer <= 0) {
+          Object.assign(c, { mode: 'running', timer: 0, runningSince: t });
+          if (!settle) sim.log('info', id, `${id} running and loaded.`);
+        }
       }
     }
 
@@ -283,7 +308,17 @@ export class HydronicModel {
     } else if (cap > chillerOut && st.tesKj < TES_FULL_KJ) {
       tes = -Math.min(PHYSICS.tesRechargeKw, cap - chillerOut, dt > 0 ? (TES_FULL_KJ - st.tesKj) / dt : 0);
     }
-    if (!settle) st.tesKj = Math.min(TES_FULL_KJ, Math.max(0, st.tesKj - tes * dt));
+    if (!settle) {
+      st.tesKj = Math.min(TES_FULL_KJ, Math.max(0, st.tesKj - tes * dt));
+      const F = (st.flags ??= {});
+      const once = (flag: string, on: boolean, sev: 'warning' | 'critical', msg: string, clear?: string) => {
+        if (on && !F[flag]) sim.log(sev, 'TES-01', msg);
+        else if (!on && F[flag] && clear) sim.log('info', 'TES-01', clear);
+        F[flag] = on;
+      };
+      once('tes', tes > 1, 'warning', 'Chilled water storage tank discharging to cover the cooling shortfall.', 'Chilled water storage tank no longer discharging.');
+      once('tes-empty', st.tesKj <= 0 && deficit > 1, 'critical', 'Chilled water storage tank is EMPTY. Nothing is left to bridge the cooling shortfall.');
+    }
 
     // Condenser water: heat of rejection from water-cooled chillers + economizer HX.
     const wcOut = cap > 0 ? running.filter(isWc).reduce((s, id) => s + (chillerOut * capOf(id)) / cap, 0) : 0;
@@ -361,6 +396,9 @@ export class HydronicModel {
       pumpHeadKpa: op.headKpa,
       pumpKw: chwps.length ? nPumps * pumpKw(flow / Math.max(1, nPumps), op.headKpa) : 0,
       chillers,
+      chwPumpIds: chwps.slice(0, chwps.length ? nPumps : 0),
+      cwPumpIds: cwps.slice(0, Math.round(cwFlow / HYD.cwPumpKgS)),
+      towerIds: towers.length && cwFlow > 0 && rejected > 0 ? towers.slice(0, Math.min(towers.length, Math.ceil(rejected / TOWER_KWT))) : [],
     };
   }
 
@@ -401,6 +439,24 @@ export class HydronicModel {
   publish(sim: Simulation): void {
     if (!this.reading) return;
     const r = this.reading;
+    // Phase 8e: v2 owns chilled water. v1 skips its chiller/tank/loop math, and the electrical load of
+    // chillers, pumps and towers comes from here (it reaches the power flow on the next solve).
+    sim.thermal.chwExternal = true;
+    const g = sim.graph;
+    const setKw = (ids: string[], on: string[], each: number) => {
+      for (const id of ids) if (g.nodes.has(id)) g.get(id).state.demandKw = on.includes(id) ? each : 0;
+    };
+    for (const [id, c] of Object.entries(r.chillers)) if (g.nodes.has(id)) g.get(id).state.demandKw = c.mode === 'running' ? Math.max(20, c.kw) : c.mode === 'starting' ? 15 : 0;
+    const all = (k: Component['kind']) => g.byKind(k).map((n) => n.id);
+    setKw(all('pump-chw'), r.chwPumpIds, r.chwPumpIds.length ? r.pumpKw / r.chwPumpIds.length : 0);
+    setKw(all('pump-cw'), r.cwPumpIds, r.cwPumpIds.length ? r.cwPumpKw / r.cwPumpIds.length : 0);
+    setKw(all('cooling-tower'), r.towerIds, r.towerIds.length ? r.towerFanKw / r.towerIds.length : 0);
+    // Mechanical kW on the v1 readout now includes the loads just set.
+    if (sim.thermal.readout) {
+      let mech = 0;
+      for (const n of g.nodes.values()) if (n.domain === 'mechanical') mech += n.state.demandKw ?? 0;
+      sim.thermal.readout.mechanicalKw = mech;
+    }
     const v1 = sim.thermal.state;
     v1.chwSupplyC = r.chwsC;
     v1.tesKj = this.state.tesKj;
@@ -422,11 +478,16 @@ export class HydronicModel {
     }
   }
 
+  /** State plus the last reading (Phase 8e: v1 and the power flow read what v2 published, so a restore re-publishes it). */
   snapshot(): HydState {
-    return JSON.parse(JSON.stringify(this.state)) as HydState;
+    const out = JSON.parse(JSON.stringify(this.state)) as HydState;
+    if (this.reading) out.reading = JSON.parse(JSON.stringify(this.reading, (_k, v) => (v === Infinity ? 'Infinity' : v))) as HydReading;
+    return out;
   }
 
   restore(s: HydState): void {
-    this.state = JSON.parse(JSON.stringify(s)) as HydState;
+    const { reading, ...rest } = JSON.parse(JSON.stringify(s)) as HydState;
+    this.state = rest;
+    if (reading) this.reading = JSON.parse(JSON.stringify(reading), (_k, v) => (v === 'Infinity' ? Infinity : v)) as HydReading;
   }
 }
