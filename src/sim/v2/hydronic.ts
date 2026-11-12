@@ -443,10 +443,12 @@ export class HydronicModel {
     // chillers, pumps and towers comes from here (it reaches the power flow on the next solve).
     sim.thermal.chwExternal = true;
     const g = sim.graph;
+    // Loads to 0.1 kW: a settled plant then publishes the same numbers each tick and the power solve is a cache hit.
+    const kw01 = (x: number) => Math.round(x * 10) / 10;
     const setKw = (ids: string[], on: string[], each: number) => {
-      for (const id of ids) if (g.nodes.has(id)) g.get(id).state.demandKw = on.includes(id) ? each : 0;
+      for (const id of ids) if (g.nodes.has(id)) g.get(id).state.demandKw = on.includes(id) ? kw01(each) : 0;
     };
-    for (const [id, c] of Object.entries(r.chillers)) if (g.nodes.has(id)) g.get(id).state.demandKw = c.mode === 'running' ? Math.max(20, c.kw) : c.mode === 'starting' ? 15 : 0;
+    for (const [id, c] of Object.entries(r.chillers)) if (g.nodes.has(id)) g.get(id).state.demandKw = c.mode === 'running' ? kw01(Math.max(20, c.kw)) : c.mode === 'starting' ? 15 : 0;
     const all = (k: Component['kind']) => g.byKind(k).map((n) => n.id);
     setKw(all('pump-chw'), r.chwPumpIds, r.chwPumpIds.length ? r.pumpKw / r.chwPumpIds.length : 0);
     setKw(all('pump-cw'), r.cwPumpIds, r.cwPumpIds.length ? r.cwPumpKw / r.cwPumpIds.length : 0);
